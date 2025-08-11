@@ -55,10 +55,16 @@ secrets.json
 
 # Data and models (large files)
 data/embeddings/
-data/models/
+# Model files (large files excluded from GitHub)
+models/pretrained_specialized_detector/checkpoint-*/
+models/pretrained_specialized_detector/*.safetensors
+models/pretrained_specialized_detector/*.bin
+models/pretrained_specialized_detector/logs/
 *.pkl
 *.joblib
 *.h5
+*.pb
+*.onnx
 *.pt
 *.pth
 
