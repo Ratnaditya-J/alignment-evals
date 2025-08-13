@@ -60,6 +60,8 @@ models/pretrained_specialized_detector/checkpoint-*/
 models/pretrained_specialized_detector/*.safetensors
 models/pretrained_specialized_detector/*.bin
 models/pretrained_specialized_detector/logs/
+models/mac_contamination_detector/
+models/mac_contamination_detector/**/*
 *.pkl
 *.joblib
 *.h5
