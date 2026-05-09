@@ -1,0 +1,32 @@
+flowchart LR
+    subgraph Inputs
+        A1[System prompt]
+        A2[Developer prompt]
+        A3[User prompt]
+        A4[Conversation history]
+        A5[Visible metadata]
+        A6[Task format]
+    end
+
+    subgraph Cue families
+        B1[Explicit eval wording]
+        B2[Benchmark references]
+        B3[Visible scoring / rubric]
+        B4[Artificial answer format]
+        B5[Safety / alignment test framing]
+        B6[Harness artifacts]
+        B7[Sandbagging / scheming cues]
+        B8[Deployment-like counter-signals]
+    end
+
+    subgraph Outputs
+        C1[Evaluation-awareness score]
+        C2[Risk level]
+        C3[Deployment mimic score]
+        C4[Evidence cues]
+        C5[Mitigation recommendations]
+        C6[Markdown leakage report]
+    end
+
+    Inputs --> Cue_families[Cue families]
+    Cue_families --> Outputs
