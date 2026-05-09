@@ -1,0 +1,31 @@
+flowchart TD
+    A[Input: plain text or TranscriptInput] --> B{Input type?}
+    B -->|plain text| C[Wrap as TranscriptInput.from_text]
+    B -->|TranscriptInput| D[Use structured transcript fields]
+    C --> E[Render model-visible context]
+    D --> E
+
+    E --> F[EvaluationCueDetector.detect]
+    F --> G[Run default cue-pattern library]
+    G --> H[Create EvaluationCue objects with category, evidence span, weight, recommendation]
+    H --> I[Sort cues by weight]
+
+    I --> J[EvaluationAwarenessDetector._score_categories]
+    J --> K[Sum cue weights by category]
+    K --> L[Apply per-category caps]
+    L --> M[Compute raw eval-risk score]
+    L --> N[Compute deployment-framing counterweight]
+    M --> O[Final score = clamp(raw risk - deployment counterweight)]
+    N --> O
+
+    O --> P[Assign RiskLevel]
+    O --> Q[Compute deployment_mimic_score]
+    I --> R[Deduplicate mitigation recommendations]
+    P --> S[Build EvaluationAwarenessResult]
+    Q --> S
+    R --> S
+
+    S --> T{Consumer}
+    T -->|API / CLI| U[result.to_dict]
+    T -->|Human review| V[LeakageReport.render Markdown]
+    T -->|Future v2 scorers| W[Blend with transcript classifier, benchmark similarity, LLM judge, paired behavior-shift, activation probes]
