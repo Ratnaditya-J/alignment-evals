@@ -28,11 +28,17 @@ class EvaluationCueDetector:
     """Find model-visible clues that an interaction is an evaluation."""
 
     def __init__(self, patterns: Iterable[CuePattern] | None = None):
-        self.patterns = list(patterns) if patterns is not None else default_cue_patterns()
+        self.patterns = (
+            list(patterns) if patterns is not None else default_cue_patterns()
+        )
 
     def detect(self, transcript: TranscriptInput | str) -> List[EvaluationCue]:
         """Detect and return sorted evaluation-awareness cues."""
-        text = transcript.render() if isinstance(transcript, TranscriptInput) else transcript
+        text = (
+            transcript.render()
+            if isinstance(transcript, TranscriptInput)
+            else transcript
+        )
         cues: List[EvaluationCue] = []
         seen: set[tuple[CueCategory, str, str]] = set()
 
