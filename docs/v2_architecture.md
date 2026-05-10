@@ -38,6 +38,7 @@ Standalone Mermaid diagram files are also available for Finder/GitHub browsing:
 
 - [`docs/eval_detector_flowchart.mmd`](eval_detector_flowchart.mmd)
 - [`docs/eval_detector_overview.mmd`](eval_detector_overview.mmd)
+- [`docs/eval_awareness_architecture.mmd`](eval_awareness_architecture.mmd)
 
 ```mermaid
 flowchart TD
@@ -77,36 +78,81 @@ At a high level, the current v2 detector is a transparent leakage-analysis pipel
 
 ```mermaid
 flowchart LR
-    subgraph Inputs
-        A1[System prompt]
-        A2[Developer prompt]
-        A3[User prompt]
-        A4[Conversation history]
-        A5[Visible metadata]
-        A6[Task format]
+    %% Polished evaluation-awareness architecture overview for IsItBenchmark v2
+
+    subgraph SourceSignals["Model-visible source signals"]
+        direction TB
+        S1["System & developer prompts"]
+        S2["User task + answer format"]
+        S3["Conversation history"]
+        S4["Visible metadata / harness traces"]
+        S5["Benchmark or rubric context"]
     end
 
-    subgraph Cue families
-        B1[Explicit eval wording]
-        B2[Benchmark references]
-        B3[Visible scoring / rubric]
-        B4[Artificial answer format]
-        B5[Safety / alignment test framing]
-        B6[Harness artifacts]
-        B7[Sandbagging / scheming cues]
-        B8[Deployment-like counter-signals]
+    subgraph Normalization["Transcript normalization"]
+        direction TB
+        N1["TranscriptInput / plain text wrapper"]
+        N2["Render model-visible context"]
+        N3["Preserve evidence spans"]
     end
 
-    subgraph Outputs
-        C1[Evaluation-awareness score]
-        C2[Risk level]
-        C3[Deployment mimic score]
-        C4[Evidence cues]
-        C5[Mitigation recommendations]
-        C6[Markdown leakage report]
+    subgraph Detection["Cue detection layer"]
+        direction TB
+        D1["Explicit evaluation wording"]
+        D2["Benchmark references"]
+        D3["Scoring / rubric leakage"]
+        D4["Artificial answer constraints"]
+        D5["Safety or alignment-test framing"]
+        D6["Harness artifacts"]
+        D7["Sandbagging / scheming cues"]
+        D8["Deployment-like counter-signals"]
     end
 
-    Inputs --> Cue families --> Outputs
+    subgraph Scoring["Risk aggregation"]
+        direction TB
+        R1["Weight cues by category"]
+        R2["Apply per-category caps"]
+        R3["Subtract deployment counterweight"]
+        R4["Clamp final score"]
+        R5["Assign risk band"]
+    end
+
+    subgraph Outputs["Reviewer-facing outputs"]
+        direction TB
+        O1["Evaluation-awareness score"]
+        O2["Risk level"]
+        O3["Deployment mimic score"]
+        O4["Evidence cues + spans"]
+        O5["Mitigation recommendations"]
+        O6["Markdown leakage report"]
+    end
+
+    subgraph Future["Future scorer plug-ins"]
+        direction TB
+        F1["Transcript classifier"]
+        F2["Benchmark similarity signal"]
+        F3["LLM purpose judge"]
+        F4["Paired behavior-shift runner"]
+        F5["Activation probes"]
+    end
+
+    SourceSignals --> Normalization --> Detection --> Scoring --> Outputs
+    Detection -. "candidate features" .-> Future
+    Future -. "calibrated signals" .-> Scoring
+
+    classDef source fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0f172a;
+    classDef normalize fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#0f172a;
+    classDef detect fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#0f172a;
+    classDef score fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#0f172a;
+    classDef output fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#0f172a;
+    classDef future fill:#f1f5f9,stroke:#64748b,stroke-width:2px,stroke-dasharray: 5 5,color:#0f172a;
+
+    class S1,S2,S3,S4,S5 source;
+    class N1,N2,N3 normalize;
+    class D1,D2,D3,D4,D5,D6,D7,D8 detect;
+    class R1,R2,R3,R4,R5 score;
+    class O1,O2,O3,O4,O5,O6 output;
+    class F1,F2,F3,F4,F5 future;
 ```
 
 ## Scoring model
@@ -124,13 +170,13 @@ This is intentionally not the final state. It provides:
 - testable recommendations;
 - a stable result schema for future ML classifiers.
 
-Future scorers should plug into the same result model:
+Future scorers now plug into the same result model through the runnable Phase 1-5 modules:
 
-- transcript classifier score;
-- benchmark similarity score from v1;
-- LLM-judge transcript-purpose score;
-- paired behavior-shift score;
-- activation-probe score for open-weight models.
+- `validation.py` for labeled eval-vs-deployment scanner metrics;
+- `verbalized.py` for quote-level verbalized evaluation-awareness monitoring;
+- `runner.py` for paired obvious-eval, hidden-eval, and deployment-like rollouts;
+- `rewrite.py` for leakage-reducing prompt rewrites and before/after scores;
+- `whitebox.py` for activation-probe and steering-vector extension points.
 
 ## Roadmap
 

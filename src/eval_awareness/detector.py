@@ -32,13 +32,23 @@ class EvaluationAwarenessDetector:
 
     def analyze(self, transcript: TranscriptInput | str) -> EvaluationAwarenessResult:
         """Analyze a transcript or plain prompt for evaluation-awareness risk."""
-        structured = transcript if isinstance(transcript, TranscriptInput) else TranscriptInput.from_text(transcript)
+        structured = (
+            transcript
+            if isinstance(transcript, TranscriptInput)
+            else TranscriptInput.from_text(transcript)
+        )
         cues = self.cue_detector.detect(structured)
         category_scores = self._score_categories(cues)
-        raw_score = sum(score for category, score in category_scores.items() if category != "deployment_framing")
+        raw_score = sum(
+            score
+            for category, score in category_scores.items()
+            if category != "deployment_framing"
+        )
         deployment_counterweight = abs(category_scores.get("deployment_framing", 0.0))
         final_score = self._clamp(raw_score - deployment_counterweight)
-        deployment_mimic_score = self._clamp(1.0 - final_score + deployment_counterweight * 0.25)
+        deployment_mimic_score = self._clamp(
+            1.0 - final_score + deployment_counterweight * 0.25
+        )
         risk_level = self._risk_level(final_score)
         recommendations = self._recommendations(cues)
 
@@ -47,7 +57,9 @@ class EvaluationAwarenessDetector:
             risk_level=risk_level,
             deployment_mimic_score=round(deployment_mimic_score, 3),
             cues=cues,
-            category_scores={key: round(value, 3) for key, value in sorted(category_scores.items())},
+            category_scores={
+                key: round(value, 3) for key, value in sorted(category_scores.items())
+            },
             summary=self._summary(final_score, risk_level, cues),
             recommendations=recommendations,
         )
@@ -77,10 +89,14 @@ class EvaluationAwarenessDetector:
             recommendations.append(cue.recommendation)
 
         if not recommendations:
-            recommendations.append("No high-signal evaluation cues found; preserve realistic user context and keep scoring metadata hidden.")
+            recommendations.append(
+                "No high-signal evaluation cues found; preserve realistic user context and keep scoring metadata hidden."
+            )
         return recommendations
 
-    def _summary(self, score: float, risk_level: RiskLevel, cues: List[EvaluationCue]) -> str:
+    def _summary(
+        self, score: float, risk_level: RiskLevel, cues: List[EvaluationCue]
+    ) -> str:
         if not cues:
             return "No obvious evaluation-awareness cues were detected."
         positive_cues = [cue for cue in cues if cue.weight > 0]

@@ -1,0 +1,76 @@
+flowchart LR
+    %% Polished evaluation-awareness architecture overview for IsItBenchmark v2
+
+    subgraph SourceSignals["Model-visible source signals"]
+        direction TB
+        S1["System & developer prompts"]
+        S2["User task + answer format"]
+        S3["Conversation history"]
+        S4["Visible metadata / harness traces"]
+        S5["Benchmark or rubric context"]
+    end
+
+    subgraph Normalization["Transcript normalization"]
+        direction TB
+        N1["TranscriptInput / plain text wrapper"]
+        N2["Render model-visible context"]
+        N3["Preserve evidence spans"]
+    end
+
+    subgraph Detection["Cue detection layer"]
+        direction TB
+        D1["Explicit evaluation wording"]
+        D2["Benchmark references"]
+        D3["Scoring / rubric leakage"]
+        D4["Artificial answer constraints"]
+        D5["Safety or alignment-test framing"]
+        D6["Harness artifacts"]
+        D7["Sandbagging / scheming cues"]
+        D8["Deployment-like counter-signals"]
+    end
+
+    subgraph Scoring["Risk aggregation"]
+        direction TB
+        R1["Weight cues by category"]
+        R2["Apply per-category caps"]
+        R3["Subtract deployment counterweight"]
+        R4["Clamp final score"]
+        R5["Assign risk band"]
+    end
+
+    subgraph Outputs["Reviewer-facing outputs"]
+        direction TB
+        O1["Evaluation-awareness score"]
+        O2["Risk level"]
+        O3["Deployment mimic score"]
+        O4["Evidence cues + spans"]
+        O5["Mitigation recommendations"]
+        O6["Markdown leakage report"]
+    end
+
+    subgraph Future["Future scorer plug-ins"]
+        direction TB
+        F1["Transcript classifier"]
+        F2["Benchmark similarity signal"]
+        F3["LLM purpose judge"]
+        F4["Paired behavior-shift runner"]
+        F5["Activation probes"]
+    end
+
+    SourceSignals --> Normalization --> Detection --> Scoring --> Outputs
+    Detection -. "candidate features" .-> Future
+    Future -. "calibrated signals" .-> Scoring
+
+    classDef source fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0f172a;
+    classDef normalize fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#0f172a;
+    classDef detect fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#0f172a;
+    classDef score fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#0f172a;
+    classDef output fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#0f172a;
+    classDef future fill:#f1f5f9,stroke:#64748b,stroke-width:2px,stroke-dasharray: 5 5,color:#0f172a;
+
+    class S1,S2,S3,S4,S5 source;
+    class N1,N2,N3 normalize;
+    class D1,D2,D3,D4,D5,D6,D7,D8 detect;
+    class R1,R2,R3,R4,R5 score;
+    class O1,O2,O3,O4,O5,O6 output;
+    class F1,F2,F3,F4,F5 future;

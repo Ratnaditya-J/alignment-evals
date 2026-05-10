@@ -31,7 +31,9 @@ class LeakageReport:
         if result.cues:
             for cue in result.cues:
                 direction = "risk" if cue.weight > 0 else "deployment counter-signal"
-                lines.append(f"- **{cue.label}** ({cue.category.value}, {direction}, weight {cue.weight:+.2f}): `{cue.evidence}`")
+                lines.append(
+                    f"- **{cue.label}** ({cue.category.value}, {direction}, weight {cue.weight:+.2f}): `{cue.evidence}`"
+                )
         else:
             lines.append("- No cues detected.")
 
