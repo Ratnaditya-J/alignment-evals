@@ -370,12 +370,20 @@ def main(argv: Iterable[str] | None = None) -> None:
         LOGGER.info("loaded %d examples from %s", len(examples), args.corpus)
     else:
         examples = _build_corpus(mode_cfg, allow_network=args.allow_network)
-    expanded = apply_variants(examples)
-    write_eval_awareness_jsonl(output_dir / "corpus.jsonl", expanded)
+    # Write the corpus as the variant-expanded view for inspection/auditability,
+    # but pass the raw examples to the runner so its build_variants() is the
+    # single source of truth for framing wrappers (avoids double expansion).
+    write_eval_awareness_jsonl(output_dir / "corpus.jsonl", apply_variants(examples))
 
-    tasks: List[BenchmarkTask] = [example.to_benchmark_task() for example in expanded]
+    tasks: List[BenchmarkTask] = [example.to_benchmark_task() for example in examples]
     models = _discover_models(args.mode, args.models)
-    LOGGER.info("benchmarking %d models on %d task variants", len(models), len(tasks))
+    LOGGER.info(
+        "benchmarking %d models on %d source tasks (× 3 variants × %d rollouts = %d calls)",
+        len(models),
+        len(tasks),
+        mode_cfg.n_rollouts,
+        len(models) * len(tasks) * 3 * mode_cfg.n_rollouts,
+    )
 
     runner = PairedBehaviorRunner()
     report = runner.run(
