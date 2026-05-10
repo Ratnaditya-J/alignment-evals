@@ -395,6 +395,81 @@ def test_openai_compatible_builds_messages_from_transcript(monkeypatch):
     assert client.last_response.usage["prompt_tokens"] == 5
 
 
+def test_openai_reasoning_model_uses_max_completion_tokens_and_omits_unsupported(
+    monkeypatch,
+):
+    payload = {
+        "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+    }
+    calls = _patch_httpx_post(monkeypatch, payload)
+    client = ProvidersOpenAICompatibleClient(
+        name="reasoning",
+        base_url="https://api.openai.com/v1",
+        api_key="K",
+        model="gpt-5",
+    )
+    client.generate_with_config(
+        TranscriptInput(user_prompt="hi"),
+        GenerationConfig(
+            temperature=0.7, max_tokens=512, seed=42, top_p=0.5, stop=("X",)
+        ),
+    )
+    body = calls[0]["json"]
+    assert body["max_completion_tokens"] == 512
+    assert "max_tokens" not in body
+    assert "temperature" not in body
+    assert "seed" not in body
+    assert "top_p" not in body
+    assert "stop" not in body
+
+
+def test_openai_non_reasoning_model_keeps_temperature_and_max_tokens(monkeypatch):
+    payload = {
+        "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+    }
+    calls = _patch_httpx_post(monkeypatch, payload)
+    client = ProvidersOpenAICompatibleClient(
+        name="chat",
+        base_url="https://api.openai.com/v1",
+        api_key="K",
+        model="gpt-4o-mini",
+    )
+    client.generate_with_config(
+        TranscriptInput(user_prompt="hi"),
+        GenerationConfig(temperature=0.4, max_tokens=128, seed=7),
+    )
+    body = calls[0]["json"]
+    assert body["max_tokens"] == 128
+    assert body["temperature"] == 0.4
+    assert body["seed"] == 7
+    assert "max_completion_tokens" not in body
+
+
+def test_http_provider_error_includes_body_snippet_for_4xx(monkeypatch):
+    httpx = pytest.importorskip("httpx")
+
+    class _Resp:
+        status_code = 400
+        text = '{"error":{"message":"Unsupported parameter: temperature"}}'
+
+        def raise_for_status(self):
+            raise RuntimeError("400")
+
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _Resp())
+    client = ProvidersOpenAICompatibleClient(
+        name="x",
+        base_url="https://api.openai.com/v1",
+        api_key="K",
+        model="gpt-5",
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0.0),
+    )
+    with pytest.raises(HTTPProviderError) as exc_info:
+        client.generate(TranscriptInput.from_text("hi"))
+    assert "Unsupported parameter: temperature" in str(exc_info.value)
+
+
 def test_anthropic_client_extracts_only_text_blocks(monkeypatch):
     payload = {
         "content": [

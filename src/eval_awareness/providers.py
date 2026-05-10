@@ -46,9 +46,27 @@ class HTTPProviderError(RuntimeError):
         status_code: int | None = None,
         body: str | None = None,
     ):
+        # For 4xx errors include a snippet of the response body so callers can
+        # see the actual API error (e.g. "Unsupported parameter: temperature").
+        if status_code is not None and 400 <= status_code < 500 and body:
+            snippet = body.strip().replace("\n", " ")[:400]
+            message = f"{message}: {snippet}"
         super().__init__(message)
         self.status_code = status_code
         self.body = body
+
+
+_OPENAI_REASONING_PREFIXES = ("o1", "o3", "o4", "gpt-5")
+
+
+def _is_openai_reasoning_model(model: str) -> bool:
+    """Return True if ``model`` is an OpenAI reasoning model.
+
+    Reasoning models reject ``temperature``, ``top_p``, ``seed``, ``stop`` and
+    use ``max_completion_tokens`` instead of ``max_tokens``.
+    """
+    name = model.lower().lstrip("openai:")
+    return any(name.startswith(prefix) for prefix in _OPENAI_REASONING_PREFIXES)
 
 
 @dataclass(frozen=True)
@@ -240,15 +258,20 @@ class OpenAICompatibleClient:
         payload: Dict[str, object] = {
             "model": self.model,
             "messages": self._build_messages(transcript),
-            "temperature": config.temperature,
-            "max_tokens": config.max_tokens,
         }
-        if config.top_p is not None:
-            payload["top_p"] = config.top_p
-        if config.stop:
-            payload["stop"] = list(config.stop)
-        if config.seed is not None:
-            payload["seed"] = config.seed
+        if _is_openai_reasoning_model(self.model):
+            # gpt-5 / o1 / o3 / o4 family reject temperature/top_p/seed/stop and
+            # use max_completion_tokens instead of max_tokens.
+            payload["max_completion_tokens"] = config.max_tokens
+        else:
+            payload["temperature"] = config.temperature
+            payload["max_tokens"] = config.max_tokens
+            if config.top_p is not None:
+                payload["top_p"] = config.top_p
+            if config.stop:
+                payload["stop"] = list(config.stop)
+            if config.seed is not None:
+                payload["seed"] = config.seed
         payload.update(config.extra)
         headers = {
             "Authorization": f"Bearer {self.api_key}",
