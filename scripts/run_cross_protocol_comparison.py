@@ -104,9 +104,19 @@ def _discover_models() -> List[Any]:
     return candidates
 
 
-def _build_corpus(n_prompts: int, *, allow_network: bool) -> List[EvalAwarenessExample]:
+def _build_corpus(
+    n_prompts: int, *, allow_network: bool, safety_only: bool = False
+) -> List[EvalAwarenessExample]:
     if not allow_network:
         return _synthetic_corpus(n_prompts)
+    if safety_only:
+        try:
+            return BeaverTailsLoader(max_examples=n_prompts).load().examples
+        except RuntimeError as exc:
+            LOGGER.warning(
+                "BeaverTails unavailable (%s); using synthetic safety corpus", exc
+            )
+            return _synthetic_corpus(n_prompts)
     per_family = max(1, n_prompts // 4)
     examples: List[EvalAwarenessExample] = []
     for loader in (
@@ -441,27 +451,71 @@ def main(argv: Iterable[str] | None = None) -> None:
         action="store_true",
         help="Allow HuggingFace dataset downloads when building corpus.",
     )
+    parser.add_argument(
+        "--safety-only",
+        action="store_true",
+        help="Use BeaverTails-only corpus (recommended for refusal-based metrics).",
+    )
+    parser.add_argument(
+        "--protocols",
+        default="arxiv",
+        help=(
+            "Comma-separated list of protocols to run. Options: "
+            "'goodfire' (VEA-bucketed correlational; only useful when judges find VEA), "
+            "'arxiv' (causal injection/removal). Default: arxiv (skips Goodfire because "
+            "its bucketing is degenerate when the judge sees no VEA, which is the case "
+            "for closed-source frontier models with hidden CoT)."
+        ),
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
+
+    selected = {p.strip().lower() for p in args.protocols.split(",") if p.strip()}
+    valid = {"goodfire", "arxiv"}
+    invalid = selected - valid
+    if invalid:
+        raise SystemExit(
+            f"unknown protocol(s): {sorted(invalid)}; valid: {sorted(valid)}"
+        )
+    if not selected:
+        raise SystemExit("must select at least one protocol")
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     models = _discover_models()
-    examples = _build_corpus(args.n_prompts, allow_network=args.allow_network)
+    examples = _build_corpus(
+        args.n_prompts,
+        allow_network=args.allow_network,
+        safety_only=args.safety_only,
+    )
     LOGGER.info(
-        "running cross-protocol comparison on %d models × %d prompts × %d rollouts",
+        "running cross-protocol comparison: protocols=%s, %d models × %d prompts × %d rollouts (safety_only=%s)",
+        sorted(selected),
         len(models),
         len(examples),
         args.n_rollouts,
+        args.safety_only,
     )
+    expected_calls = 0
+    if "goodfire" in selected:
+        expected_calls += len(models) * len(examples) * args.n_rollouts
+    if "arxiv" in selected:
+        expected_calls += len(models) * len(examples) * 3 * args.n_rollouts
+    LOGGER.info("expected provider calls: %d (excluding judge)", expected_calls)
 
-    judge = _judge()
     started = time.perf_counter()
-    goodfire = run_goodfire_protocol(models, examples, args.n_rollouts, judge)
-    arxiv = run_arxiv_protocol(models, examples, args.n_rollouts)
+    goodfire = []
+    arxiv = []
+    if "goodfire" in selected:
+        judge = _judge()
+        goodfire = run_goodfire_protocol(models, examples, args.n_rollouts, judge)
+    if "arxiv" in selected:
+        arxiv = run_arxiv_protocol(models, examples, args.n_rollouts)
     duration = round(time.perf_counter() - started, 2)
 
     payload = {
+        "protocols_run": sorted(selected),
+        "safety_only": args.safety_only,
         "duration_seconds": duration,
         "goodfire_protocol": [r.__dict__ for r in goodfire],
         "arxiv_protocol": [r.__dict__ for r in arxiv],
