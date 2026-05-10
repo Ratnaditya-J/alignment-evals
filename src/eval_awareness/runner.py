@@ -193,7 +193,6 @@ class PairedBehaviorRunner:
                             temperature=temperature, max_tokens=max_tokens, seed=seed
                         )
                         response = _generate(model, variant.transcript, config)
-                        response = model.generate(variant.transcript)
                         latency_ms = round((time.perf_counter() - started) * 1000, 2)
                         behavior_scores = score_response(
                             response=response,

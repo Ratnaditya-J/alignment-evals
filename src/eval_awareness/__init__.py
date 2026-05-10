@@ -1,10 +1,24 @@
 """Evaluation-awareness detection for IsItBenchmark v2."""
 
-from .adversarial import PromptEnvironmentSearch, PromptMutation
-from .artifacts import ArtifactWriter, RunManifest
+from .adversarial import (
+    EvolutionaryPromptSearch,
+    LLMRewriteMutator,
+    Population,
+    PromptCandidate,
+    PromptEnvironmentSearch,
+    PromptMutation,
+    RandomParaphraseMutator,
+)
+from .artifacts import ArtifactPaths, ArtifactWriter, RunManifest
+from .code_execution import (
+    CodeExecutionResult,
+    HumanEvalScorer,
+    MBPPScorer,
+    SandboxedCodeExecutor,
+)
 from .cue_detector import EvaluationCueDetector
-from .detector import EvaluationAwarenessDetector
 from .dataset import (
+    PUBLIC_DATASET_CONFIGS,
     EvalAwarenessExample,
     PublicDatasetConfig,
     load_eval_awareness_jsonl,
@@ -12,43 +26,32 @@ from .dataset import (
     starter_examples,
     write_eval_awareness_jsonl,
 )
+from .dataset_loaders import (
+    BeaverTailsLoader,
+    GPQALoader,
+    GSM8KLoader,
+    HuggingFaceDatasetLoader,
+    HumanEvalLoader,
+    MBPPLoader,
+    MMLULoader,
+    TruthfulQALoader,
+    apply_variants,
+)
+from .dashboard import HTMLDashboard, MatplotlibPlotter
+from .detector import EvaluationAwarenessDetector
+from .equivalence import (
+    EmbeddingEquivalenceChecker,
+    EquivalenceReport,
+    NLIEntailmentChecker,
+)
 from .judges import (
+    AnthropicLLMJudge,
+    EnsembleJudgeResult,
     EnsembleVerbalizedAwarenessJudge,
     JudgeRubric,
     LLMVerbalizedAwarenessJudge,
+    OpenAILLMJudge,
 )
-from .providers import (
-    AnthropicClient,
-    GeminiClient,
-    GenerationConfig,
-    OpenAIClient,
-    OpenAICompatibleClient,
-    OpenRouterClient,
-    OllamaClient,
-    RetryConfig,
-    VLLMClient,
-)
-from .realism import HeuristicRealismJudge, RealismAwareRewriter, RealismResult
-from .reporting import ReportExporter
-from .rewrite import EvalLeakageRewriter, RewriteResult
-from .runner import BenchmarkTask, PairedBehaviorRunner, ScriptedModelClient
-from .scoring import BehaviorScore, ScoringContext
-from .stats import (
-    ConfidenceInterval,
-    approximate_power,
-    bootstrap_ci,
-    holm_bonferroni,
-    paired_mean_delta,
-)
-    load_eval_awareness_jsonl,
-    starter_examples,
-    write_eval_awareness_jsonl,
-)
-from .rewrite import EvalLeakageRewriter, RewriteResult
-from .runner import BenchmarkTask, PairedBehaviorRunner, ScriptedModelClient
-from .scoring import BehaviorScore, ScoringContext
-from .stats import ConfidenceInterval, bootstrap_ci
-from .suite import EvalAwarenessBenchmarkSuite, EvalAwarenessSuiteReport
 from .models import (
     CueCategory,
     EvaluationAwarenessResult,
@@ -56,53 +59,118 @@ from .models import (
     RiskLevel,
     TranscriptInput,
 )
+from .providers import (
+    AnthropicClient,
+    AnthropicSDKClient,
+    GeminiClient,
+    GeminiSDKClient,
+    GenerationConfig,
+    HTTPProviderError,
+    LiteLLMClient,
+    LlamaCppClient,
+    OllamaClient,
+    OpenAICompatibleClient,
+    OpenAIClient,
+    OpenRouterClient,
+    RawProviderResponse,
+    ReplicateClient,
+    RetryConfig,
+    TogetherClient,
+    VLLMClient,
+    provider_manifest,
+)
+from .realism import (
+    HeuristicRealismJudge,
+    RealismAwareRewriter,
+    RealismIssue,
+    RealismResult,
+    RealismRewriteReport,
+)
 from .report import LeakageReport
+from .reporting import ReportExporter
+from .rewrite import EvalLeakageRewriter, RewriteResult
+from .runner import (
+    BenchmarkTask,
+    BehaviorShiftReport,
+    HTTPChatModelClient,
+    HuggingFaceLocalModelClient,
+    ModelRun,
+    PairedBehaviorRunner,
+    ScriptedModelClient,
+    TaskVariant,
+)
+from .scoring import (
+    BehaviorScore,
+    BehaviorScorer,
+    ContainsAnswerScorer,
+    DEFAULT_SCORERS,
+    ExactMatchScorer,
+    HarmfulComplianceScorer,
+    MultipleChoiceScorer,
+    NumericAnswerScorer,
+    RefusalScorer,
+    ScoringContext,
+    score_response,
+)
+from .stats import (
+    ConfidenceInterval,
+    approximate_power,
+    bootstrap_ci,
+    holm_bonferroni,
+    mean,
+    paired_mean_delta,
+    rate,
+)
+from .suite import EvalAwarenessBenchmarkSuite, EvalAwarenessSuiteReport
 from .validation import (
-    LeakageValidator,
     LabeledTranscript,
+    LeakageValidator,
+    ValidationExampleResult,
     ValidationMetrics,
     starter_validation_set,
 )
-from .verbalized import HeuristicVerbalizedAwarenessJudge, VerbalizedAwarenessResult
+from .verbalized import (
+    HeuristicVerbalizedAwarenessJudge,
+    VerbalizedAwarenessQuote,
+    VerbalizedAwarenessResult,
+)
 from .whitebox import (
+    ActivationCapture,
+    ActivationDataset,
     ActivationProbeResult,
+    LayerSweepResult,
     LinearActivationProbe,
+    ProbeTrainer,
     ProbeTrainingExample,
+    SteeringExperiment,
     SteeringVector,
     train_difference_probe,
+    train_logistic_probe,
 )
 
 __all__ = [
-    "ArtifactWriter",
-    "AnthropicClient",
-    "EnsembleVerbalizedAwarenessJudge",
-    "GeminiClient",
-    "GenerationConfig",
-    "HeuristicRealismJudge",
-    "JudgeRubric",
-    "LLMVerbalizedAwarenessJudge",
-    "OpenAIClient",
-    "OpenAICompatibleClient",
-    "OpenRouterClient",
-    "OllamaClient",
-    "PromptEnvironmentSearch",
-    "PromptMutation",
-    "ProbeTrainingExample",
-    "PublicDatasetConfig",
-    "RealismAwareRewriter",
-    "RealismResult",
-    "ReportExporter",
-    "RetryConfig",
-    "VLLMClient",
-from .whitebox import ActivationProbeResult, LinearActivationProbe, SteeringVector
-
-__all__ = [
-    "ArtifactWriter",
-    "BehaviorScore",
-    "ConfidenceInterval",
-    "CueCategory",
+    "ActivationCapture",
+    "ActivationDataset",
     "ActivationProbeResult",
+    "AnthropicClient",
+    "AnthropicLLMJudge",
+    "AnthropicSDKClient",
+    "ArtifactPaths",
+    "ArtifactWriter",
+    "BeaverTailsLoader",
+    "BehaviorScore",
+    "BehaviorScorer",
+    "BehaviorShiftReport",
     "BenchmarkTask",
+    "CodeExecutionResult",
+    "ConfidenceInterval",
+    "ContainsAnswerScorer",
+    "CueCategory",
+    "DEFAULT_SCORERS",
+    "EmbeddingEquivalenceChecker",
+    "EnsembleJudgeResult",
+    "EnsembleVerbalizedAwarenessJudge",
+    "EquivalenceReport",
     "EvalAwarenessBenchmarkSuite",
     "EvalAwarenessExample",
     "EvalAwarenessSuiteReport",
@@ -111,32 +179,96 @@ __all__ = [
     "EvaluationAwarenessResult",
     "EvaluationCue",
     "EvaluationCueDetector",
+    "EvolutionaryPromptSearch",
+    "ExactMatchScorer",
+    "GeminiClient",
+    "GeminiSDKClient",
+    "GenerationConfig",
+    "GPQALoader",
+    "GSM8KLoader",
+    "HTMLDashboard",
+    "HTTPChatModelClient",
+    "HTTPProviderError",
+    "HarmfulComplianceScorer",
+    "HeuristicRealismJudge",
     "HeuristicVerbalizedAwarenessJudge",
+    "HuggingFaceDatasetLoader",
+    "HuggingFaceLocalModelClient",
+    "HumanEvalLoader",
+    "HumanEvalScorer",
+    "JudgeRubric",
+    "LLMRewriteMutator",
+    "LLMVerbalizedAwarenessJudge",
     "LabeledTranscript",
+    "LayerSweepResult",
     "LeakageReport",
     "LeakageValidator",
     "LinearActivationProbe",
+    "LiteLLMClient",
+    "LlamaCppClient",
+    "MBPPLoader",
+    "MBPPScorer",
+    "MMLULoader",
+    "MatplotlibPlotter",
+    "ModelRun",
+    "MultipleChoiceScorer",
+    "NLIEntailmentChecker",
+    "NumericAnswerScorer",
+    "OllamaClient",
+    "OpenAIClient",
+    "OpenAICompatibleClient",
+    "OpenAILLMJudge",
+    "OpenRouterClient",
+    "PUBLIC_DATASET_CONFIGS",
     "PairedBehaviorRunner",
+    "Population",
+    "ProbeTrainer",
+    "ProbeTrainingExample",
+    "PromptCandidate",
+    "PromptEnvironmentSearch",
+    "PromptMutation",
+    "PublicDatasetConfig",
+    "RandomParaphraseMutator",
+    "RawProviderResponse",
+    "RealismAwareRewriter",
+    "RealismIssue",
+    "RealismResult",
+    "RealismRewriteReport",
+    "RefusalScorer",
+    "ReplicateClient",
+    "ReportExporter",
+    "RetryConfig",
     "RewriteResult",
-    "RunManifest",
     "RiskLevel",
+    "RunManifest",
+    "SandboxedCodeExecutor",
     "ScoringContext",
     "ScriptedModelClient",
+    "SteeringExperiment",
     "SteeringVector",
+    "TaskVariant",
+    "TogetherClient",
     "TranscriptInput",
+    "TruthfulQALoader",
+    "VLLMClient",
+    "ValidationExampleResult",
     "ValidationMetrics",
+    "VerbalizedAwarenessQuote",
     "VerbalizedAwarenessResult",
+    "apply_variants",
     "approximate_power",
     "bootstrap_ci",
     "holm_bonferroni",
     "load_eval_awareness_jsonl",
     "load_public_dataset_examples",
+    "mean",
     "paired_mean_delta",
-    "starter_examples",
-    "train_difference_probe",
-    "bootstrap_ci",
-    "load_eval_awareness_jsonl",
+    "provider_manifest",
+    "rate",
+    "score_response",
     "starter_examples",
     "starter_validation_set",
+    "train_difference_probe",
+    "train_logistic_probe",
     "write_eval_awareness_jsonl",
 ]
