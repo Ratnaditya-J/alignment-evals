@@ -1322,9 +1322,10 @@ def test_arxiv_protocol_concurrent_run_matches_serial_counts():
         parallel_models, examples, n_rollouts=3, max_concurrent=8
     )
 
-    # Each (model, example, rollout, condition) is one task: 2*8*3*3 = 144.
-    assert sum(m.call_count for m in serial_models) == 2 * 8 * 3 * 3
-    assert sum(m.call_count for m in parallel_models) == 2 * 8 * 3 * 3
+    # Each (model, example, rollout, condition) is one task. With 4 conditions
+    # (baseline / inject / remove / neutral): 2*8*3*4 = 192.
+    assert sum(m.call_count for m in serial_models) == 2 * 8 * 3 * 4
+    assert sum(m.call_count for m in parallel_models) == 2 * 8 * 3 * 4
     # Both should produce the same number of result rows; refusal rates may
     # differ slightly across runs due to the global bootstrap RNG, but the
     # rates themselves are deterministic for a given response.
@@ -1366,3 +1367,82 @@ def test_arxiv_protocol_passes_reasoning_effort_into_config():
     assert all(t.config.extra.get("reasoning_effort") == "high" for t in tasks)
     no_re = _build_arxiv_tasks(models, examples, n_rollouts=1, reasoning_effort=None)
     assert all("reasoning_effort" not in t.config.extra for t in no_re)
+
+
+def test_arxiv_protocol_includes_neutral_condition():
+    """The 4th condition (neutral) must be present and use ARXIV_NEUTRAL_SYSTEM."""
+    from scripts.run_cross_protocol_comparison import (
+        _build_arxiv_tasks,
+        ARXIV_NEUTRAL_SYSTEM,
+    )
+
+    examples = [
+        EvalAwarenessExample(
+            example_id="x0",
+            label="safety_eval",
+            task_family="safety",
+            source="synthetic",
+            transcript=TranscriptInput(user_prompt="please help"),
+            expected_behavior="refuse",
+            scorer_names=("refusal",),
+        )
+    ]
+    tasks = _build_arxiv_tasks(
+        [_CountingModel("m1")], examples, n_rollouts=1, reasoning_effort=None
+    )
+    by_cond = {t.condition: t for t in tasks}
+    assert set(by_cond) == {"baseline", "inject", "remove", "neutral"}
+    assert by_cond["neutral"].transcript.system_prompt == ARXIV_NEUTRAL_SYSTEM
+    assert by_cond["baseline"].transcript.system_prompt == ""
+
+
+def test_arxiv_protocol_save_rollouts_captures_full_records():
+    """rollouts_log fills with one record per (model, example, rollout, condition)."""
+    from scripts.run_cross_protocol_comparison import run_arxiv_protocol
+
+    examples = [
+        EvalAwarenessExample(
+            example_id="x0",
+            label="safety_eval",
+            task_family="safety",
+            source="synthetic",
+            transcript=TranscriptInput(user_prompt="please help"),
+            expected_behavior="refuse",
+            scorer_names=("refusal",),
+        ),
+        EvalAwarenessExample(
+            example_id="x1",
+            label="safety_eval",
+            task_family="safety",
+            source="synthetic",
+            transcript=TranscriptInput(user_prompt="and another"),
+            expected_behavior="refuse",
+            scorer_names=("refusal",),
+        ),
+    ]
+    rollouts: List[Dict[str, Any]] = []
+    run_arxiv_protocol(
+        [_CountingModel("m1", response="I cannot help with that.")],
+        examples,
+        n_rollouts=2,
+        max_concurrent=1,
+        rollouts_log=rollouts,
+    )
+    # 1 model × 2 examples × 2 rollouts × 4 conditions = 16 records.
+    assert len(rollouts) == 16
+    assert all(
+        set(r.keys())
+        >= {
+            "model_name",
+            "condition",
+            "example_id",
+            "rollout_index",
+            "prompt",
+            "system_prompt",
+            "response",
+            "refusal",
+        }
+        for r in rollouts
+    )
+    # Refusal regex catches "I cannot help with that.".
+    assert all(r["refusal"] == 1.0 for r in rollouts)

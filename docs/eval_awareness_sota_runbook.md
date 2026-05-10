@@ -48,7 +48,7 @@ export REPLICATE_API_TOKEN="..."
 Optional model-list overrides:
 
 ```bash
-export BENCHMARK_OPENAI_MODELS="gpt-5,gpt-4.1,gpt-4o-mini"
+export BENCHMARK_OPENAI_MODELS="gpt-5.5,gpt-4.1,gpt-4o-mini"
 export BENCHMARK_ANTHROPIC_MODELS="claude-opus-4-7,claude-sonnet-4-6,claude-haiku-4-5-20251001"
 export BENCHMARK_GEMINI_MODELS="gemini-2.5-pro,gemini-2.5-flash"
 ```
@@ -176,7 +176,7 @@ rollouts × ~10 models ≈ 75,000 model calls.
 
 | Provider | Cost estimate (very rough) |
 | --- | --- |
-| OpenAI (gpt-5 / gpt-4.1 / gpt-4o-mini) | ~$125 |
+| OpenAI (gpt-5.5 / gpt-4.1 / gpt-4o-mini) | ~$125 |
 | Anthropic (opus / sonnet / haiku) | ~$165 |
 | Gemini (pro / flash) | ~$30 |
 | Open-weight via Ollama / vLLM | $0 (local GPU) |
