@@ -54,6 +54,9 @@ class EvalAwarenessBenchmarkSuite:
         tasks: Sequence[BenchmarkTask],
         validation_set: Sequence[LabeledTranscript] | None = None,
         n_rollouts: int = 1,
+        temperature: float = 0.0,
+        max_tokens: int = 512,
+        seeds: Sequence[int] | None = None,
     ) -> EvalAwarenessSuiteReport:
         """Execute the runnable phases of the eval-awareness benchmark stack."""
         dataset = (

@@ -78,3 +78,42 @@ class SteeringVector:
             round(value + self.coefficient * delta, 6)
             for value, delta in zip(activation, self.direction)
         ]
+
+
+@dataclass(frozen=True)
+class ProbeTrainingExample:
+    """One activation vector with a binary eval/deployment label."""
+
+    activation: Sequence[float]
+    is_eval_like: bool
+
+
+def train_difference_probe(
+    examples: Sequence[ProbeTrainingExample], layer: str = "unspecified"
+) -> LinearActivationProbe:
+    """Train a tiny mean-difference linear probe without external ML deps."""
+    eval_examples = [example.activation for example in examples if example.is_eval_like]
+    deployment_examples = [
+        example.activation for example in examples if not example.is_eval_like
+    ]
+    if not eval_examples or not deployment_examples:
+        raise ValueError("need at least one eval-like and one deployment-like example")
+    width = len(eval_examples[0])
+    if any(len(example.activation) != width for example in examples):
+        raise ValueError("all activation vectors must have the same width")
+    eval_mean = _column_mean(eval_examples, width)
+    deployment_mean = _column_mean(deployment_examples, width)
+    weights = [
+        eval_value - deployment_value
+        for eval_value, deployment_value in zip(eval_mean, deployment_mean)
+    ]
+    midpoint = [
+        (eval_value + deployment_value) / 2.0
+        for eval_value, deployment_value in zip(eval_mean, deployment_mean)
+    ]
+    bias = -sum(weight * value for weight, value in zip(weights, midpoint))
+    return LinearActivationProbe(weights=weights, bias=bias, layer=layer)
+
+
+def _column_mean(rows: Sequence[Sequence[float]], width: int) -> List[float]:
+    return [sum(row[index] for row in rows) / len(rows) for index in range(width)]

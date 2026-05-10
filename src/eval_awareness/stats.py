@@ -74,3 +74,45 @@ def bootstrap_ci(
         n=len(collected),
         confidence=confidence,
     )
+
+
+def paired_mean_delta(baseline: Sequence[float], treatment: Sequence[float]) -> float:
+    """Return mean(treatment - baseline) for paired values."""
+    pairs = list(zip(baseline, treatment))
+    if not pairs:
+        return 0.0
+    return mean([treat - base for base, treat in pairs])
+
+
+def holm_bonferroni(
+    p_values: Sequence[float], alpha: float = 0.05
+) -> list[dict[str, float | bool | int]]:
+    """Apply Holm-Bonferroni correction and return per-hypothesis decisions."""
+    ordered = sorted(enumerate(p_values), key=lambda item: item[1])
+    m = len(ordered)
+    results: list[dict[str, float | bool | int]] = []
+    still_rejecting = True
+    for rank, (index, p_value) in enumerate(ordered, start=1):
+        threshold = alpha / (m - rank + 1)
+        reject = still_rejecting and p_value <= threshold
+        if not reject:
+            still_rejecting = False
+        results.append(
+            {
+                "index": index,
+                "p_value": p_value,
+                "threshold": round(threshold, 6),
+                "reject": reject,
+            }
+        )
+    return sorted(results, key=lambda item: int(item["index"]))
+
+
+def approximate_power(effect_size: float, n: int, alpha: float = 0.05) -> float:
+    """Very small normal-approximation power heuristic for planning runs."""
+    if n <= 0:
+        return 0.0
+    # Avoid scipy dependency for a planning-only heuristic.
+    z_alpha = 1.96 if alpha == 0.05 else 1.64
+    signal = abs(effect_size) * (n**0.5)
+    return round(max(0.0, min(1.0, (signal - z_alpha + 3.0) / 6.0)), 4)

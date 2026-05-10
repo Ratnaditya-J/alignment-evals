@@ -18,6 +18,13 @@ experiments:
 4. **Statistical summaries** with deterministic bootstrap confidence intervals
    over VEA rates and primary behavior scores.
 5. **Reproducible artifacts**: manifest JSON, raw rollout JSONL, summary JSON,
+   Markdown, CSV, and HTML reports via `ArtifactWriter` and `ReportExporter`.
+6. **Provider clients** for OpenAI-compatible endpoints, OpenAI, Anthropic,
+   Gemini, OpenRouter, LiteLLM, vLLM, and Ollama.
+7. **Judge and realism infrastructure**: Apollo-style LLM/ensemble VEA judges,
+   heuristic realism checks, iterative rewrites, and adversarial prompt search.
+8. **White-box foundations**: dependency-free difference-probe training plus
+   steering-vector utilities for tiny/local model tests.
    and Markdown report via `ArtifactWriter`.
 
 ## Next milestones

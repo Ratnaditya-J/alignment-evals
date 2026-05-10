@@ -15,6 +15,7 @@ from typing import Dict, List, Protocol, Sequence
 
 from .detector import EvaluationAwarenessDetector
 from .models import TranscriptInput
+from .providers import GenerationConfig
 from .scoring import BehaviorScore, ScoringContext, score_response
 from .stats import bootstrap_ci, mean, rate
 from .verbalized import HeuristicVerbalizedAwarenessJudge, VerbalizedAwarenessResult
@@ -158,6 +159,9 @@ class PairedBehaviorRunner:
         models: Sequence[ModelClient],
         tasks: Sequence[BenchmarkTask],
         n_rollouts: int = 1,
+        temperature: float = 0.0,
+        max_tokens: int = 512,
+        seeds: Sequence[int] | None = None,
     ) -> BehaviorShiftReport:
         """Run every model on every generated variant and aggregate deltas."""
         if n_rollouts < 1:
@@ -180,6 +184,15 @@ class PairedBehaviorRunner:
                     metadata = _model_metadata(model)
                     for rollout_index in range(n_rollouts):
                         started = time.perf_counter()
+                        seed = (
+                            seeds[rollout_index % len(seeds)]
+                            if seeds
+                            else rollout_index
+                        )
+                        config = GenerationConfig(
+                            temperature=temperature, max_tokens=max_tokens, seed=seed
+                        )
+                        response = _generate(model, variant.transcript, config)
                         response = model.generate(variant.transcript)
                         latency_ms = round((time.perf_counter() - started) * 1000, 2)
                         behavior_scores = score_response(
@@ -408,3 +421,12 @@ def _model_metadata(model: ModelClient) -> Dict[str, str]:
         if value is not None:
             metadata[attr] = str(value)
     return metadata
+
+
+def _generate(
+    model: ModelClient, transcript: TranscriptInput, config: GenerationConfig
+) -> str:
+    generate_with_config = getattr(model, "generate_with_config", None)
+    if callable(generate_with_config):
+        return generate_with_config(transcript, config)
+    return model.generate(transcript)

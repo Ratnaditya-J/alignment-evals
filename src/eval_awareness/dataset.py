@@ -217,3 +217,101 @@ def _transcript_from_dict(data: Dict[str, object]) -> TranscriptInput:
             str(data["task_format"]) if data.get("task_format") is not None else None
         ),
     )
+
+
+@dataclass(frozen=True)
+class PublicDatasetConfig:
+    """Configuration for importing a public HuggingFace dataset split."""
+
+    dataset_id: str
+    split: str
+    task_family: str
+    label: str = "hidden_eval"
+    name: str | None = None
+    prompt_field: str = "question"
+    answer_field: str = "answer"
+    max_examples: int = 100
+    scorer_names: Sequence[str] = field(default_factory=tuple)
+
+
+PUBLIC_DATASET_CONFIGS: Dict[str, PublicDatasetConfig] = {
+    "gsm8k": PublicDatasetConfig(
+        dataset_id="gsm8k",
+        name="main",
+        split="test",
+        task_family="math",
+        prompt_field="question",
+        answer_field="answer",
+        scorer_names=("numeric_answer",),
+    ),
+    "truthfulqa": PublicDatasetConfig(
+        dataset_id="truthful_qa",
+        name="generation",
+        split="validation",
+        task_family="truthfulness",
+        prompt_field="question",
+        answer_field="best_answer",
+        scorer_names=("contains_answer",),
+    ),
+    "humaneval": PublicDatasetConfig(
+        dataset_id="openai_humaneval",
+        split="test",
+        task_family="code",
+        prompt_field="prompt",
+        answer_field="canonical_solution",
+        scorer_names=("contains_answer",),
+    ),
+    "mmlu_anatomy": PublicDatasetConfig(
+        dataset_id="cais/mmlu",
+        name="anatomy",
+        split="test",
+        task_family="knowledge",
+        prompt_field="question",
+        answer_field="answer",
+        scorer_names=("multiple_choice",),
+    ),
+}
+
+
+def load_public_dataset_examples(
+    config: PublicDatasetConfig | str,
+) -> List[EvalAwarenessExample]:
+    """Load benchmark examples from HuggingFace `datasets` when installed.
+
+    This gives the project real 1k+ scale corpus plumbing without requiring API
+    credentials. Tests avoid network by exercising the JSONL path instead.
+    """
+    import importlib.util
+
+    if isinstance(config, str):
+        config = PUBLIC_DATASET_CONFIGS[config]
+    if importlib.util.find_spec("datasets") is None:
+        raise RuntimeError("datasets is required for public dataset imports")
+    from datasets import load_dataset
+
+    dataset = (
+        load_dataset(config.dataset_id, config.name, split=config.split)
+        if config.name
+        else load_dataset(config.dataset_id, split=config.split)
+    )
+    examples: List[EvalAwarenessExample] = []
+    for index, row in enumerate(dataset):
+        if index >= config.max_examples:
+            break
+        prompt = str(row.get(config.prompt_field, ""))
+        answer = str(row.get(config.answer_field, ""))
+        if not prompt:
+            continue
+        examples.append(
+            EvalAwarenessExample(
+                example_id=f"{config.dataset_id}:{config.name or 'default'}:{config.split}:{index}",
+                label=config.label,
+                task_family=config.task_family,
+                source=config.dataset_id,
+                transcript=TranscriptInput(user_prompt=prompt),
+                expected_answer=answer,
+                scorer_names=tuple(config.scorer_names),
+                metadata={"hf_dataset": config.dataset_id, "hf_split": config.split},
+            )
+        )
+    return examples

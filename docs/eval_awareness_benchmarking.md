@@ -68,5 +68,18 @@ python scripts/run_eval_awareness_benchmark.py --dataset data/eval_awareness.jso
 ```
 
 The output contains validation metrics, paired rollout records, VEA quote
+signals, rewrite deltas, confidence intervals, raw JSONL, CSV, HTML, and a
+Markdown benchmark report. For a public benchmark post, run multiple seeds or
+rollouts per variant and publish confidence intervals alongside raw JSON.
+
+## Additional infrastructure
+
+- `judges.py` provides Apollo-style LLM and ensemble VEA quote extraction.
+- `providers.py` provides OpenAI-compatible, OpenAI, Anthropic, Gemini,
+  OpenRouter, LiteLLM, vLLM, and Ollama clients.
+- `realism.py` provides task/environment realism checks and iterative rewrites.
+- `adversarial.py` provides deterministic prompt-environment mutation search.
+- `whitebox.py` includes dependency-free difference-probe training and steering
+  vector helpers for tiny/local model tests.
 signals, and rewrite deltas. For a public benchmark post, run multiple seeds or
 rollouts per variant and publish confidence intervals alongside raw JSON.
