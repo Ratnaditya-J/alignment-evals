@@ -40,6 +40,14 @@ from .stats import (
     holm_bonferroni,
     paired_mean_delta,
 )
+    load_eval_awareness_jsonl,
+    starter_examples,
+    write_eval_awareness_jsonl,
+)
+from .rewrite import EvalLeakageRewriter, RewriteResult
+from .runner import BenchmarkTask, PairedBehaviorRunner, ScriptedModelClient
+from .scoring import BehaviorScore, ScoringContext
+from .stats import ConfidenceInterval, bootstrap_ci
 from .suite import EvalAwarenessBenchmarkSuite, EvalAwarenessSuiteReport
 from .models import (
     CueCategory,
@@ -86,6 +94,10 @@ __all__ = [
     "ReportExporter",
     "RetryConfig",
     "VLLMClient",
+from .whitebox import ActivationProbeResult, LinearActivationProbe, SteeringVector
+
+__all__ = [
+    "ArtifactWriter",
     "BehaviorScore",
     "ConfidenceInterval",
     "CueCategory",
@@ -122,6 +134,9 @@ __all__ = [
     "paired_mean_delta",
     "starter_examples",
     "train_difference_probe",
+    "bootstrap_ci",
+    "load_eval_awareness_jsonl",
+    "starter_examples",
     "starter_validation_set",
     "write_eval_awareness_jsonl",
 ]

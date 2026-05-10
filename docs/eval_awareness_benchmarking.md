@@ -81,3 +81,5 @@ rollouts per variant and publish confidence intervals alongside raw JSON.
 - `adversarial.py` provides deterministic prompt-environment mutation search.
 - `whitebox.py` includes dependency-free difference-probe training and steering
   vector helpers for tiny/local model tests.
+signals, and rewrite deltas. For a public benchmark post, run multiple seeds or
+rollouts per variant and publish confidence intervals alongside raw JSON.

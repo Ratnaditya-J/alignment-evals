@@ -107,6 +107,17 @@ def main() -> None:
         artifact_dict["model_summary_csv"] = str(csv_path)
         artifact_dict["html_report"] = str(html_path)
         print(json.dumps({"artifacts": artifact_dict}, indent=2, sort_keys=True))
+        print(
+            json.dumps(
+                {
+                    "artifacts": {
+                        key: str(value) for key, value in paths.__dict__.items()
+                    }
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
 
 
 if __name__ == "__main__":

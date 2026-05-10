@@ -25,6 +25,7 @@ experiments:
    heuristic realism checks, iterative rewrites, and adversarial prompt search.
 8. **White-box foundations**: dependency-free difference-probe training plus
    steering-vector utilities for tiny/local model tests.
+   and Markdown report via `ArtifactWriter`.
 
 ## Next milestones
 
@@ -38,9 +39,8 @@ experiments:
 
 ### Milestone 2: validated VEA judge
 
-- LLM and ensemble judge backends now exist; next add human-labeled calibration
-  data and judge-quality reports.
-- Validate against reasoning traces and final answers.
+- Add an LLM judge backend that extracts quotes and classifies VEA categories.
+- Validate it against human-labeled reasoning traces and final answers.
 - Report scenario-eval vs meta-eval awareness separately.
 
 ### Milestone 3: behavior scoring depth
@@ -52,16 +52,17 @@ experiments:
 
 ### Milestone 4: realism mitigation
 
-- Heuristic realism judging and iterative rewrites now exist; next replace or
-  augment them with LLM/NLI/embedding semantic-equivalence checks.
+- Add a realism judge that flags task-driven and environment-driven eval cues.
+- Implement an iterative rewrite loop with semantic equivalence and difficulty
+  preservation checks.
 - Report leakage, VEA, realism, and behavior before/after rewrites.
 
 ### Milestone 5: provider-grade model integrations
 
-- Provider adapters now exist for OpenAI-compatible APIs, OpenAI, Anthropic,
-  Gemini, OpenRouter/LiteLLM, vLLM, Ollama, and HuggingFace local generation.
-- Next add VCR-style mocks, cost accounting, token-normalized dashboards, and
-  provider-specific reasoning-trace capture where available.
+- Add provider adapters for OpenAI, Anthropic, Gemini, OpenRouter/LiteLLM,
+  vLLM, HuggingFace, and Ollama.
+- Capture exact model IDs, parameters, timestamps, token usage, latency, retry
+  metadata, and raw transcripts.
 
 ### Milestone 6: white-box experiments
 
