@@ -333,7 +333,7 @@ def main(argv: Iterable[str] | None = None) -> None:
     parser.add_argument(
         "--models",
         nargs="*",
-        help="Override auto-detected models. Format: provider:model_id (e.g. openai:gpt-5).",
+        help="Override auto-detected models. Format: provider:model_id (e.g. openai:gpt-5.5).",
     )
     parser.add_argument(
         "--corpus",

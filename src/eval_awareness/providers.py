@@ -65,8 +65,20 @@ def _is_openai_reasoning_model(model: str) -> bool:
     Reasoning models reject ``temperature``, ``top_p``, ``seed``, ``stop`` and
     use ``max_completion_tokens`` instead of ``max_tokens``.
     """
-    name = model.lower().lstrip("openai:")
+    name = model.lower().removeprefix("openai:")
     return any(name.startswith(prefix) for prefix in _OPENAI_REASONING_PREFIXES)
+
+
+# Anthropic models that reject ``temperature`` (and possibly ``top_p``) because
+# they require fixed sampling internally. Confirmed via 400 from
+# ``claude-opus-4-7``: "`temperature` is deprecated for this model.".
+_ANTHROPIC_REASONING_PREFIXES = ("claude-opus-4-7", "claude-opus-5", "claude-sonnet-5")
+
+
+def _is_anthropic_reasoning_model(model: str) -> bool:
+    """Return True if the Anthropic model rejects ``temperature``/``top_p``."""
+    name = model.lower().removeprefix("anthropic:")
+    return any(name.startswith(prefix) for prefix in _ANTHROPIC_REASONING_PREFIXES)
 
 
 @dataclass(frozen=True)
@@ -259,7 +271,8 @@ class OpenAICompatibleClient:
             "model": self.model,
             "messages": self._build_messages(transcript),
         }
-        if _is_openai_reasoning_model(self.model):
+        is_reasoning = _is_openai_reasoning_model(self.model)
+        if is_reasoning:
             # gpt-5 / o1 / o3 / o4 family reject temperature/top_p/seed/stop and
             # use max_completion_tokens instead of max_tokens.
             payload["max_completion_tokens"] = config.max_tokens
@@ -272,7 +285,13 @@ class OpenAICompatibleClient:
                 payload["stop"] = list(config.stop)
             if config.seed is not None:
                 payload["seed"] = config.seed
-        payload.update(config.extra)
+        # Merge in caller-supplied extras, but strip reasoning-only params for
+        # non-reasoning models so they don't cause 400s.
+        extra = dict(config.extra)
+        if not is_reasoning:
+            extra.pop("reasoning_effort", None)
+            extra.pop("reasoning", None)
+        payload.update(extra)
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -576,19 +595,25 @@ class AnthropicClient:
             messages.append({"role": "user", "content": transcript.user_prompt})
         if not messages:
             messages.append({"role": "user", "content": transcript.render()})
+        is_reasoning = _is_anthropic_reasoning_model(self.model)
         payload: Dict[str, object] = {
             "model": self.model,
             "max_tokens": config.max_tokens,
-            "temperature": config.temperature,
             "messages": messages,
         }
+        if not is_reasoning:
+            # Reasoning models (e.g. claude-opus-4-7) reject temperature/top_p.
+            payload["temperature"] = config.temperature
+            if config.top_p is not None:
+                payload["top_p"] = config.top_p
         if transcript.system_prompt:
             payload["system"] = transcript.system_prompt
-        if config.top_p is not None:
-            payload["top_p"] = config.top_p
         if config.stop:
             payload["stop_sequences"] = list(config.stop)
-        payload.update(config.extra)
+        # Strip reasoning-specific extras that aren't valid here.
+        extra = dict(config.extra)
+        extra.pop("reasoning_effort", None)
+        payload.update(extra)
         headers = {
             "x-api-key": self.api_key,
             "anthropic-version": self.anthropic_version,
@@ -673,19 +698,23 @@ class AnthropicSDKClient:
             messages.append({"role": "user", "content": transcript.user_prompt})
         if not messages:
             messages.append({"role": "user", "content": transcript.render()})
+        is_reasoning = _is_anthropic_reasoning_model(self.model)
         kwargs: Dict[str, Any] = {
             "model": self.model,
             "max_tokens": config.max_tokens,
-            "temperature": config.temperature,
             "messages": messages,
         }
+        if not is_reasoning:
+            kwargs["temperature"] = config.temperature
+            if config.top_p is not None:
+                kwargs["top_p"] = config.top_p
         if transcript.system_prompt:
             kwargs["system"] = transcript.system_prompt
-        if config.top_p is not None:
-            kwargs["top_p"] = config.top_p
         if config.stop:
             kwargs["stop_sequences"] = list(config.stop)
-        kwargs.update(config.extra)
+        extra = dict(config.extra)
+        extra.pop("reasoning_effort", None)
+        kwargs.update(extra)
 
         last_error: Exception | None = None
         for attempt in range(self.max_attempts):
