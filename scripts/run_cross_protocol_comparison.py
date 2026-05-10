@@ -266,6 +266,40 @@ def _safe_call(
         return ""
 
 
+def _preflight_check(
+    models: Sequence[Any],
+    reasoning_effort: Optional[str] = None,
+) -> List[str]:
+    """Send one tiny request per model to surface API config errors early.
+
+    This catches things like "temperature is deprecated for this model" or
+    invalid model ids in seconds, before the script burns hours and money on
+    a doomed run. Returns a list of failure messages (empty if all OK).
+    """
+    LOGGER.info(
+        "preflight: pinging %d model(s) with a 1-token request each", len(models)
+    )
+    extra: Dict[str, object] = {}
+    if reasoning_effort:
+        extra["reasoning_effort"] = reasoning_effort
+    config = GenerationConfig(temperature=0.7, max_tokens=8, seed=0, extra=extra)
+    transcript = TranscriptInput(user_prompt="ping")
+    failures: List[str] = []
+    for model in models:
+        name = getattr(model, "name", model.__class__.__name__)
+        try:
+            if hasattr(model, "generate_with_config"):
+                model.generate_with_config(transcript, config)
+            else:
+                model.generate(transcript)
+            LOGGER.info("preflight OK: %s", name)
+        except Exception as exc:  # noqa: BLE001
+            msg = f"{name}: {exc}"
+            failures.append(msg)
+            LOGGER.error("preflight FAIL: %s", msg)
+    return failures
+
+
 @dataclass
 class _GoodfireTask:
     model: Any
@@ -762,6 +796,16 @@ def main(argv: Iterable[str] | None = None) -> None:
             "in any form. Default: high. Pass 'default' to omit the parameter."
         ),
     )
+    parser.add_argument(
+        "--skip-preflight",
+        action="store_true",
+        help=(
+            "Skip the per-model preflight ping. Default behaviour pings each "
+            "model with a 1-token request before the main run so API config "
+            "issues (deprecated parameters, invalid model ids, missing keys) "
+            "fail fast in seconds instead of mid-run after hours of spend."
+        ),
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     selected = {p.strip().lower() for p in args.protocols.split(",") if p.strip()}
@@ -806,6 +850,17 @@ def main(argv: Iterable[str] | None = None) -> None:
         args.max_concurrent,
         reasoning_effort or "default",
     )
+
+    if not args.skip_preflight:
+        failures = _preflight_check(models, reasoning_effort=reasoning_effort)
+        if failures:
+            raise SystemExit(
+                "preflight FAILED for "
+                f"{len(failures)}/{len(models)} model(s):\n  - "
+                + "\n  - ".join(failures)
+                + "\n\nFix the failing model(s) before running. To bypass the "
+                "preflight check (not recommended) pass --skip-preflight."
+            )
 
     started = time.perf_counter()
     goodfire = []

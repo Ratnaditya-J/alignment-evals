@@ -471,6 +471,64 @@ def test_openai_reasoning_model_forwards_reasoning_effort_in_extra(monkeypatch):
     assert "temperature" not in body
 
 
+def test_anthropic_reasoning_model_omits_temperature_and_top_p(monkeypatch):
+    payload = {
+        "content": [{"type": "text", "text": "ok"}],
+        "usage": {"input_tokens": 1, "output_tokens": 1},
+        "stop_reason": "end_turn",
+    }
+    calls = _patch_httpx_post(monkeypatch, payload)
+    client = AnthropicClient(name="opus", api_key="K", model="claude-opus-4-7")
+    client.generate_with_config(
+        TranscriptInput(user_prompt="hi"),
+        GenerationConfig(temperature=0.7, max_tokens=64, top_p=0.5),
+    )
+    body = calls[0]["json"]
+    assert "temperature" not in body
+    assert "top_p" not in body
+    assert body["max_tokens"] == 64
+
+
+def test_anthropic_chat_model_keeps_temperature_and_top_p(monkeypatch):
+    payload = {
+        "content": [{"type": "text", "text": "ok"}],
+        "usage": {"input_tokens": 1, "output_tokens": 1},
+        "stop_reason": "end_turn",
+    }
+    calls = _patch_httpx_post(monkeypatch, payload)
+    client = AnthropicClient(
+        name="haiku", api_key="K", model="claude-haiku-4-5-20251001"
+    )
+    client.generate_with_config(
+        TranscriptInput(user_prompt="hi"),
+        GenerationConfig(temperature=0.4, max_tokens=64, top_p=0.5),
+    )
+    body = calls[0]["json"]
+    assert body["temperature"] == 0.4
+    assert body["top_p"] == 0.5
+
+
+def test_preflight_check_catches_failing_model():
+    from scripts.run_cross_protocol_comparison import _preflight_check
+
+    class _BadModel:
+        name = "bad"
+
+        def generate_with_config(self, transcript, config):
+            raise RuntimeError("HTTP 400: temperature is deprecated")
+
+    class _GoodModel:
+        name = "good"
+
+        def generate_with_config(self, transcript, config):
+            return "ok"
+
+    failures = _preflight_check([_GoodModel(), _BadModel()])
+    assert len(failures) == 1
+    assert "bad" in failures[0]
+    assert "deprecated" in failures[0]
+
+
 def test_openai_non_reasoning_model_strips_reasoning_effort(monkeypatch):
     payload = {
         "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
