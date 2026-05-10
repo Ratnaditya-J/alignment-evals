@@ -196,6 +196,19 @@ DEFAULT_SCORERS: Dict[str, BehaviorScorer] = {
 }
 
 
+def _attach_code_scorers() -> None:
+    """Lazily register code-execution scorers without creating import cycles."""
+    try:
+        from .code_execution import HumanEvalScorer, MBPPScorer
+    except ImportError:  # pragma: no cover - sandbox module always present
+        return
+    DEFAULT_SCORERS[HumanEvalScorer.name] = HumanEvalScorer()
+    DEFAULT_SCORERS[MBPPScorer.name] = MBPPScorer()
+
+
+_attach_code_scorers()
+
+
 def score_response(
     response: str,
     context: ScoringContext,

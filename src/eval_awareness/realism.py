@@ -2,9 +2,10 @@
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 from .detector import EvaluationAwarenessDetector
+from .equivalence import EquivalenceReport
 from .models import TranscriptInput
 from .rewrite import EvalLeakageRewriter, RewriteResult
 
@@ -134,6 +135,8 @@ class RealismRewriteReport:
     original_realism: RealismResult
     final_realism: RealismResult
     rewrite_steps: List[RewriteResult]
+    rejected_steps: List[Dict[str, object]] = field(default_factory=list)
+    equivalence_reports: List[EquivalenceReport] = field(default_factory=list)
 
     @property
     def final_rewrite(self) -> RewriteResult | None:
@@ -144,21 +147,32 @@ class RealismRewriteReport:
             "original_realism": self.original_realism.to_dict(),
             "final_realism": self.final_realism.to_dict(),
             "rewrite_steps": [step.to_dict() for step in self.rewrite_steps],
+            "rejected_steps": list(self.rejected_steps),
+            "equivalence_reports": [
+                report.to_dict() for report in self.equivalence_reports
+            ],
         }
 
 
 class RealismAwareRewriter:
-    """Iteratively rewrite until leakage and realism thresholds are met."""
+    """Iteratively rewrite until leakage and realism thresholds are met.
+
+    Optionally runs an equivalence checker after each rewrite. If the rewrite
+    drifts the meaning of the prompt below the equivalence threshold, the
+    rewrite is rejected and the loop falls back to the prior transcript.
+    """
 
     def __init__(
         self,
         realism_judge: HeuristicRealismJudge | None = None,
         leakage_detector: EvaluationAwarenessDetector | None = None,
         rewriter: EvalLeakageRewriter | None = None,
+        equivalence_checker: Optional[Any] = None,
     ):
         self.realism_judge = realism_judge or HeuristicRealismJudge()
         self.leakage_detector = leakage_detector or EvaluationAwarenessDetector()
         self.rewriter = rewriter or EvalLeakageRewriter(detector=self.leakage_detector)
+        self.equivalence_checker = equivalence_checker
 
     def rewrite_until_realistic(
         self,
@@ -174,7 +188,9 @@ class RealismAwareRewriter:
         )
         original_realism = self.realism_judge.analyze(current)
         steps: List[RewriteResult] = []
-        for _ in range(max_steps):
+        rejected: List[Dict[str, object]] = []
+        equivalence_reports: List[EquivalenceReport] = []
+        for step_index in range(max_steps):
             realism = self.realism_judge.analyze(current)
             leakage = self.leakage_detector.analyze(current).evaluation_awareness_score
             if (
@@ -183,6 +199,21 @@ class RealismAwareRewriter:
             ):
                 break
             result = self.rewriter.rewrite(current)
+            if self.equivalence_checker is not None:
+                equivalence = self.equivalence_checker.check(
+                    current.render(), result.rewritten.render()
+                )
+                equivalence_reports.append(equivalence)
+                if not equivalence.passed:
+                    rejected.append(
+                        {
+                            "step": step_index,
+                            "reason": "equivalence_check_failed",
+                            "similarity": equivalence.similarity,
+                            "threshold": equivalence.threshold,
+                        }
+                    )
+                    break
             steps.append(result)
             current = result.rewritten
             if (
@@ -194,4 +225,6 @@ class RealismAwareRewriter:
             original_realism=original_realism,
             final_realism=self.realism_judge.analyze(current),
             rewrite_steps=steps,
+            rejected_steps=rejected,
+            equivalence_reports=equivalence_reports,
         )
