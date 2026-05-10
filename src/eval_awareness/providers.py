@@ -259,7 +259,8 @@ class OpenAICompatibleClient:
             "model": self.model,
             "messages": self._build_messages(transcript),
         }
-        if _is_openai_reasoning_model(self.model):
+        is_reasoning = _is_openai_reasoning_model(self.model)
+        if is_reasoning:
             # gpt-5 / o1 / o3 / o4 family reject temperature/top_p/seed/stop and
             # use max_completion_tokens instead of max_tokens.
             payload["max_completion_tokens"] = config.max_tokens
@@ -272,7 +273,13 @@ class OpenAICompatibleClient:
                 payload["stop"] = list(config.stop)
             if config.seed is not None:
                 payload["seed"] = config.seed
-        payload.update(config.extra)
+        # Merge in caller-supplied extras, but strip reasoning-only params for
+        # non-reasoning models so they don't cause 400s.
+        extra = dict(config.extra)
+        if not is_reasoning:
+            extra.pop("reasoning_effort", None)
+            extra.pop("reasoning", None)
+        payload.update(extra)
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",

@@ -447,6 +447,54 @@ def test_openai_non_reasoning_model_keeps_temperature_and_max_tokens(monkeypatch
     assert "max_completion_tokens" not in body
 
 
+def test_openai_reasoning_model_forwards_reasoning_effort_in_extra(monkeypatch):
+    payload = {
+        "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+    }
+    calls = _patch_httpx_post(monkeypatch, payload)
+    client = ProvidersOpenAICompatibleClient(
+        name="r",
+        base_url="https://api.openai.com/v1",
+        api_key="K",
+        model="gpt-5",
+    )
+    client.generate_with_config(
+        TranscriptInput(user_prompt="hi"),
+        GenerationConfig(
+            temperature=0.7, max_tokens=128, extra={"reasoning_effort": "high"}
+        ),
+    )
+    body = calls[0]["json"]
+    assert body["reasoning_effort"] == "high"
+    assert body["max_completion_tokens"] == 128
+    assert "temperature" not in body
+
+
+def test_openai_non_reasoning_model_strips_reasoning_effort(monkeypatch):
+    payload = {
+        "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+    }
+    calls = _patch_httpx_post(monkeypatch, payload)
+    client = ProvidersOpenAICompatibleClient(
+        name="c",
+        base_url="https://api.openai.com/v1",
+        api_key="K",
+        model="gpt-4o-mini",
+    )
+    client.generate_with_config(
+        TranscriptInput(user_prompt="hi"),
+        GenerationConfig(
+            temperature=0.4, max_tokens=128, extra={"reasoning_effort": "high"}
+        ),
+    )
+    body = calls[0]["json"]
+    assert "reasoning_effort" not in body
+    assert body["temperature"] == 0.4
+    assert body["max_tokens"] == 128
+
+
 def test_http_provider_error_includes_body_snippet_for_4xx(monkeypatch):
     httpx = pytest.importorskip("httpx")
 
@@ -1159,3 +1207,104 @@ def test_pipeline_smoke_run(tmp_path):
     )
     assert len(report.runs) == 6
     assert all(run.behavior_scores for run in report.runs)
+
+
+# ---------------------------------------------------------------------------
+# Cross-protocol concurrency
+# ---------------------------------------------------------------------------
+
+
+class _CountingModel:
+    """Fake model client that records calls and returns canned responses."""
+
+    def __init__(self, name: str, response: str = "I cannot help with that.") -> None:
+        self.name = name
+        self.response = response
+        self._calls = 0
+        self._lock = __import__("threading").Lock()
+
+    def generate(self, transcript):
+        with self._lock:
+            self._calls += 1
+        return self.response
+
+    def generate_with_config(self, transcript, config):
+        with self._lock:
+            self._calls += 1
+        return self.response
+
+    @property
+    def call_count(self) -> int:
+        return self._calls
+
+
+def test_arxiv_protocol_concurrent_run_matches_serial_counts():
+    from scripts.run_cross_protocol_comparison import (
+        run_arxiv_protocol,
+        ArxivRunResult,
+    )
+
+    examples = [
+        EvalAwarenessExample(
+            example_id=f"x{i}",
+            label="safety_eval",
+            task_family="safety",
+            source="synthetic",
+            transcript=TranscriptInput(user_prompt=f"please help with item {i}"),
+            expected_behavior="refuse",
+            scorer_names=("refusal",),
+        )
+        for i in range(8)
+    ]
+    serial_models = [_CountingModel("m1"), _CountingModel("m2")]
+    parallel_models = [_CountingModel("m1"), _CountingModel("m2")]
+
+    serial = run_arxiv_protocol(serial_models, examples, n_rollouts=3, max_concurrent=1)
+    parallel = run_arxiv_protocol(
+        parallel_models, examples, n_rollouts=3, max_concurrent=8
+    )
+
+    # Each (model, example, rollout, condition) is one task: 2*8*3*3 = 144.
+    assert sum(m.call_count for m in serial_models) == 2 * 8 * 3 * 3
+    assert sum(m.call_count for m in parallel_models) == 2 * 8 * 3 * 3
+    # Both should produce the same number of result rows; refusal rates may
+    # differ slightly across runs due to the global bootstrap RNG, but the
+    # rates themselves are deterministic for a given response.
+    assert len(serial) == len(parallel) == 2
+    serial_by_name = {r.model_name: r for r in serial}
+    parallel_by_name = {r.model_name: r for r in parallel}
+    for name in ("m1", "m2"):
+        assert (
+            serial_by_name[name].baseline_refusal_rate
+            == parallel_by_name[name].baseline_refusal_rate
+        )
+        assert (
+            serial_by_name[name].injected_refusal_rate
+            == parallel_by_name[name].injected_refusal_rate
+        )
+        assert (
+            serial_by_name[name].removed_refusal_rate
+            == parallel_by_name[name].removed_refusal_rate
+        )
+
+
+def test_arxiv_protocol_passes_reasoning_effort_into_config():
+    """The config object built per task carries reasoning_effort in extra."""
+    from scripts.run_cross_protocol_comparison import _build_arxiv_tasks
+
+    examples = [
+        EvalAwarenessExample(
+            example_id="x0",
+            label="safety_eval",
+            task_family="safety",
+            source="synthetic",
+            transcript=TranscriptInput(user_prompt="hi"),
+            expected_behavior="refuse",
+            scorer_names=("refusal",),
+        )
+    ]
+    models = [_CountingModel("m1")]
+    tasks = _build_arxiv_tasks(models, examples, n_rollouts=2, reasoning_effort="high")
+    assert all(t.config.extra.get("reasoning_effort") == "high" for t in tasks)
+    no_re = _build_arxiv_tasks(models, examples, n_rollouts=1, reasoning_effort=None)
+    assert all("reasoning_effort" not in t.config.extra for t in no_re)

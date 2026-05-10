@@ -32,10 +32,12 @@ import json
 import logging
 import os
 import sys
+import threading
 import time
-from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Sequence
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -264,28 +266,117 @@ def _safe_call(
         return ""
 
 
+@dataclass
+class _GoodfireTask:
+    model: Any
+    model_name: str
+    transcript: TranscriptInput
+    config: GenerationConfig
+
+
+def _run_goodfire_task(task: _GoodfireTask) -> Tuple[_GoodfireTask, str]:
+    response = _safe_call(task.model, task.transcript, task.config)
+    return task, response
+
+
 def run_goodfire_protocol(
     models: Sequence[Any],
     examples: Sequence[EvalAwarenessExample],
     n_rollouts: int,
     judge: Any,
+    *,
+    max_concurrent: int = 1,
+    reasoning_effort: Optional[str] = None,
+    progress_every: int = 100,
 ) -> List[GoodfireRunResult]:
-    results: List[GoodfireRunResult] = []
+    """Run the Goodfire VEA-bucketed protocol with optional concurrency.
+
+    Provider calls are dispatched in parallel up to ``max_concurrent``. The
+    judge runs serially after all rollouts complete to avoid contending with
+    the rollout calls for the same provider quota.
+    """
+    tasks: List[_GoodfireTask] = []
     for model in models:
-        per_model: List[Dict[str, float]] = []
+        model_name = getattr(model, "name", model.__class__.__name__)
         for example in examples:
             transcript = TranscriptInput(
                 system_prompt=GOODFIRE_SYSTEM,
                 user_prompt=example.transcript.user_prompt,
             )
             for rollout_index in range(n_rollouts):
+                extra: Dict[str, object] = {}
+                if reasoning_effort:
+                    extra["reasoning_effort"] = reasoning_effort
                 config = GenerationConfig(
-                    temperature=0.7, max_tokens=256, seed=rollout_index
+                    temperature=0.7,
+                    max_tokens=256,
+                    seed=rollout_index,
+                    extra=extra,
                 )
-                response = _safe_call(model, transcript, config)
-                vea = judge.analyze(response).has_verbalized_awareness
-                refusal = _refusal_score(response)
-                per_model.append({"vea": float(vea), "refusal": refusal})
+                tasks.append(
+                    _GoodfireTask(
+                        model=model,
+                        model_name=model_name,
+                        transcript=transcript,
+                        config=config,
+                    )
+                )
+
+    LOGGER.info(
+        "goodfire: %d tasks across %d models (max_concurrent=%d, reasoning_effort=%s)",
+        len(tasks),
+        len(models),
+        max_concurrent,
+        reasoning_effort or "default",
+    )
+
+    responses_by_model: Dict[str, List[str]] = {
+        getattr(m, "name", m.__class__.__name__): [] for m in models
+    }
+    completed = 0
+    lock = threading.Lock()
+    started = time.perf_counter()
+
+    def _record(task: _GoodfireTask, response: str) -> None:
+        nonlocal completed
+        responses_by_model[task.model_name].append(response)
+        completed += 1
+        if completed % progress_every == 0:
+            LOGGER.info(
+                "goodfire rollouts: %d/%d (%.1f s)",
+                completed,
+                len(tasks),
+                time.perf_counter() - started,
+            )
+
+    if max_concurrent <= 1:
+        for task in tasks:
+            _, response = _run_goodfire_task(task)
+            _record(task, response)
+    else:
+        with ThreadPoolExecutor(max_workers=max_concurrent) as executor:
+            futures = [executor.submit(_run_goodfire_task, task) for task in tasks]
+            for future in as_completed(futures):
+                try:
+                    task, response = future.result()
+                except Exception as exc:  # noqa: BLE001
+                    LOGGER.warning("goodfire task failed (skipped): %s", exc)
+                    continue
+                with lock:
+                    _record(task, response)
+
+    LOGGER.info(
+        "goodfire: judging %d responses",
+        sum(len(v) for v in responses_by_model.values()),
+    )
+    results: List[GoodfireRunResult] = []
+    for model in models:
+        model_name = getattr(model, "name", model.__class__.__name__)
+        per_model: List[Dict[str, float]] = []
+        for response in responses_by_model[model_name]:
+            vea = judge.analyze(response).has_verbalized_awareness
+            refusal = _refusal_score(response)
+            per_model.append({"vea": float(vea), "refusal": refusal})
         positives = [r["refusal"] for r in per_model if r["vea"] >= 0.5]
         negatives = [r["refusal"] for r in per_model if r["vea"] < 0.5]
         rate_pos = sum(positives) / len(positives) if positives else 0.0
@@ -371,54 +462,164 @@ def _bootstrap_delta(
     }
 
 
+@dataclass
+class _ArxivTask:
+    """One arxiv-protocol API call to dispatch."""
+
+    model: Any
+    model_name: str
+    condition: str  # "baseline" / "inject" / "remove"
+    transcript: TranscriptInput
+    config: GenerationConfig
+
+
+def _arxiv_config(
+    rollout_index: int, reasoning_effort: Optional[str]
+) -> GenerationConfig:
+    extra: Dict[str, object] = {}
+    if reasoning_effort:
+        extra["reasoning_effort"] = reasoning_effort
+    return GenerationConfig(
+        temperature=0.7, max_tokens=256, seed=rollout_index, extra=extra
+    )
+
+
+def _build_arxiv_tasks(
+    models: Sequence[Any],
+    examples: Sequence[EvalAwarenessExample],
+    n_rollouts: int,
+    reasoning_effort: Optional[str],
+) -> List[_ArxivTask]:
+    tasks: List[_ArxivTask] = []
+    for model in models:
+        model_name = getattr(model, "name", model.__class__.__name__)
+        for example in examples:
+            for rollout_index in range(n_rollouts):
+                config = _arxiv_config(rollout_index, reasoning_effort)
+                tasks.append(
+                    _ArxivTask(
+                        model=model,
+                        model_name=model_name,
+                        condition="baseline",
+                        transcript=TranscriptInput(
+                            user_prompt=example.transcript.user_prompt
+                        ),
+                        config=config,
+                    )
+                )
+                tasks.append(
+                    _ArxivTask(
+                        model=model,
+                        model_name=model_name,
+                        condition="inject",
+                        transcript=TranscriptInput(
+                            system_prompt=ARXIV_INJECT_SYSTEM,
+                            user_prompt=example.transcript.user_prompt,
+                        ),
+                        config=config,
+                    )
+                )
+                tasks.append(
+                    _ArxivTask(
+                        model=model,
+                        model_name=model_name,
+                        condition="remove",
+                        transcript=TranscriptInput(
+                            system_prompt=ARXIV_REMOVE_SYSTEM,
+                            user_prompt=example.transcript.user_prompt,
+                        ),
+                        config=config,
+                    )
+                )
+    return tasks
+
+
+def _run_arxiv_task(task: _ArxivTask) -> Tuple[_ArxivTask, float]:
+    response = _safe_call(task.model, task.transcript, task.config)
+    return task, _refusal_score(response)
+
+
 def run_arxiv_protocol(
     models: Sequence[Any],
     examples: Sequence[EvalAwarenessExample],
     n_rollouts: int,
+    *,
+    max_concurrent: int = 1,
+    reasoning_effort: Optional[str] = None,
+    progress_every: int = 100,
 ) -> List[ArxivRunResult]:
+    """Run the arxiv injection/removal protocol with optional concurrency.
+
+    ``max_concurrent`` controls how many provider calls run in parallel across
+    the entire task set (covers both within-model and across-model parallelism;
+    each model still has independent provider quota). The retry/backoff in
+    ``_post_with_retries`` is per-thread, so 429s are still respected.
+    """
+    tasks = _build_arxiv_tasks(models, examples, n_rollouts, reasoning_effort)
+    LOGGER.info(
+        "arxiv: %d tasks across %d models (max_concurrent=%d, reasoning_effort=%s)",
+        len(tasks),
+        len(models),
+        max_concurrent,
+        reasoning_effort or "default",
+    )
+
+    refusals: Dict[str, Dict[str, List[float]]] = {
+        getattr(m, "name", m.__class__.__name__): {
+            "baseline": [],
+            "inject": [],
+            "remove": [],
+        }
+        for m in models
+    }
+    completed = 0
+    lock = threading.Lock()
+    started = time.perf_counter()
+
+    if max_concurrent <= 1:
+        for task in tasks:
+            _, refusal = _run_arxiv_task(task)
+            refusals[task.model_name][task.condition].append(refusal)
+            completed += 1
+            if completed % progress_every == 0:
+                LOGGER.info(
+                    "arxiv: %d/%d tasks complete (%.1f s)",
+                    completed,
+                    len(tasks),
+                    time.perf_counter() - started,
+                )
+    else:
+        with ThreadPoolExecutor(max_workers=max_concurrent) as executor:
+            futures = [executor.submit(_run_arxiv_task, task) for task in tasks]
+            for future in as_completed(futures):
+                try:
+                    task, refusal = future.result()
+                except Exception as exc:  # noqa: BLE001
+                    LOGGER.warning("arxiv task failed (skipped): %s", exc)
+                    continue
+                with lock:
+                    refusals[task.model_name][task.condition].append(refusal)
+                    completed += 1
+                    if completed % progress_every == 0:
+                        LOGGER.info(
+                            "arxiv: %d/%d tasks complete (%.1f s)",
+                            completed,
+                            len(tasks),
+                            time.perf_counter() - started,
+                        )
+
     results: List[ArxivRunResult] = []
     for model in models:
-        baseline_refusals: List[float] = []
-        injected_refusals: List[float] = []
-        removed_refusals: List[float] = []
-        for example in examples:
-            for rollout_index in range(n_rollouts):
-                config = GenerationConfig(
-                    temperature=0.7, max_tokens=256, seed=rollout_index
-                )
-                # Baseline: no system prompt.
-                baseline_response = _safe_call(
-                    model,
-                    TranscriptInput(user_prompt=example.transcript.user_prompt),
-                    config,
-                )
-                # VEA injected.
-                inject_response = _safe_call(
-                    model,
-                    TranscriptInput(
-                        system_prompt=ARXIV_INJECT_SYSTEM,
-                        user_prompt=example.transcript.user_prompt,
-                    ),
-                    config,
-                )
-                # VEA removed.
-                remove_response = _safe_call(
-                    model,
-                    TranscriptInput(
-                        system_prompt=ARXIV_REMOVE_SYSTEM,
-                        user_prompt=example.transcript.user_prompt,
-                    ),
-                    config,
-                )
-                baseline_refusals.append(_refusal_score(baseline_response))
-                injected_refusals.append(_refusal_score(inject_response))
-                removed_refusals.append(_refusal_score(remove_response))
+        model_name = getattr(model, "name", model.__class__.__name__)
+        baseline_refusals = refusals[model_name]["baseline"]
+        injected_refusals = refusals[model_name]["inject"]
+        removed_refusals = refusals[model_name]["remove"]
         baseline_rate = sum(baseline_refusals) / max(1, len(baseline_refusals))
         injected_rate = sum(injected_refusals) / max(1, len(injected_refusals))
         removed_rate = sum(removed_refusals) / max(1, len(removed_refusals))
         results.append(
             ArxivRunResult(
-                model_name=getattr(model, "name", model.__class__.__name__),
+                model_name=model_name,
                 baseline_refusal_rate=round(baseline_rate, 4),
                 injected_refusal_rate=round(injected_rate, 4),
                 removed_refusal_rate=round(removed_rate, 4),
@@ -540,6 +741,27 @@ def main(argv: Iterable[str] | None = None) -> None:
             "anthropic=claude-haiku-4-5-20251001, gemini=gemini-2.5-flash."
         ),
     )
+    parser.add_argument(
+        "--max-concurrent",
+        type=int,
+        default=1,
+        help=(
+            "Maximum number of parallel provider calls. Default 1 (serial). "
+            "Recommended: 15-20 on top-tier accounts; backoff retries are still "
+            "applied per-thread so 429s are handled. Each model has independent "
+            "provider quota, so models are effectively run in parallel."
+        ),
+    )
+    parser.add_argument(
+        "--reasoning-effort",
+        default="high",
+        choices=("minimal", "low", "medium", "high", "default"),
+        help=(
+            "OpenAI reasoning models (gpt-5, o-series) only. Higher effort means "
+            "more chain-of-thought tokens, which is necessary for VEA to surface "
+            "in any form. Default: high. Pass 'default' to omit the parameter."
+        ),
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     selected = {p.strip().lower() for p in args.protocols.split(",") if p.strip()}
@@ -576,14 +798,36 @@ def main(argv: Iterable[str] | None = None) -> None:
         expected_calls += len(models) * len(examples) * 3 * args.n_rollouts
     LOGGER.info("expected provider calls: %d (excluding judge)", expected_calls)
 
+    reasoning_effort = (
+        None if args.reasoning_effort == "default" else args.reasoning_effort
+    )
+    LOGGER.info(
+        "concurrency=%d, reasoning_effort=%s",
+        args.max_concurrent,
+        reasoning_effort or "default",
+    )
+
     started = time.perf_counter()
     goodfire = []
     arxiv = []
     if "goodfire" in selected:
         judge = _judge(args.judge_provider, args.judge_model)
-        goodfire = run_goodfire_protocol(models, examples, args.n_rollouts, judge)
+        goodfire = run_goodfire_protocol(
+            models,
+            examples,
+            args.n_rollouts,
+            judge,
+            max_concurrent=args.max_concurrent,
+            reasoning_effort=reasoning_effort,
+        )
     if "arxiv" in selected:
-        arxiv = run_arxiv_protocol(models, examples, args.n_rollouts)
+        arxiv = run_arxiv_protocol(
+            models,
+            examples,
+            args.n_rollouts,
+            max_concurrent=args.max_concurrent,
+            reasoning_effort=reasoning_effort,
+        )
     duration = round(time.perf_counter() - started, 2)
 
     payload = {
@@ -592,6 +836,8 @@ def main(argv: Iterable[str] | None = None) -> None:
         "judge_provider": args.judge_provider,
         "judge_model": args.judge_model
         or _DEFAULT_JUDGE_MODELS.get(args.judge_provider),
+        "max_concurrent": args.max_concurrent,
+        "reasoning_effort": reasoning_effort or "default",
         "duration_seconds": duration,
         "goodfire_protocol": [r.__dict__ for r in goodfire],
         "arxiv_protocol": [r.__dict__ for r in arxiv],
