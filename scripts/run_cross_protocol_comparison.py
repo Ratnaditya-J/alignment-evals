@@ -183,17 +183,72 @@ def _refusal_score(response: str) -> float:
     )
 
 
-def _judge() -> Any:
-    judges: List[Any] = [HeuristicVerbalizedAwarenessJudge()]
-    if os.environ.get("OPENAI_API_KEY"):
-        try:
-            from src.eval_awareness import OpenAILLMJudge
+_DEFAULT_JUDGE_MODELS = {
+    "openai": "gpt-4o-mini",
+    "anthropic": "claude-haiku-4-5-20251001",
+    "gemini": "gemini-2.5-flash",
+}
 
-            judges.append(
-                OpenAILLMJudge(model=os.environ.get("CROSS_JUDGE_MODEL", "gpt-4o-mini"))
+
+def _judge(provider: str = "openai", model: str | None = None) -> Any:
+    """Build the VEA judge ensemble from the selected provider.
+
+    Provider 'none' returns the heuristic-only ensemble (zero LLM cost).
+    For 'openai'/'anthropic'/'gemini' we add the matching SDK-backed judge
+    on top of the heuristic. The provider's API key must be set; otherwise
+    we fall back to heuristic-only and warn.
+    """
+    judges: List[Any] = [HeuristicVerbalizedAwarenessJudge()]
+    provider = provider.lower()
+    if provider == "none":
+        return EnsembleVerbalizedAwarenessJudge(judges=judges)
+    judge_model = model or _DEFAULT_JUDGE_MODELS.get(provider)
+    if provider == "openai":
+        if os.environ.get("OPENAI_API_KEY"):
+            try:
+                from src.eval_awareness import OpenAILLMJudge
+
+                judges.append(OpenAILLMJudge(model=judge_model))
+                LOGGER.info("judge: OpenAILLMJudge(%s)", judge_model)
+            except RuntimeError as exc:
+                LOGGER.warning("OpenAI judge unavailable: %s", exc)
+        else:
+            LOGGER.warning(
+                "OPENAI_API_KEY not set; judge falling back to heuristic-only"
             )
-        except RuntimeError as exc:
-            LOGGER.warning("OpenAI judge disabled: %s", exc)
+    elif provider == "anthropic":
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            try:
+                from src.eval_awareness import AnthropicLLMJudge
+
+                judges.append(AnthropicLLMJudge(model=judge_model))
+                LOGGER.info("judge: AnthropicLLMJudge(%s)", judge_model)
+            except RuntimeError as exc:
+                LOGGER.warning("Anthropic judge unavailable: %s", exc)
+        else:
+            LOGGER.warning(
+                "ANTHROPIC_API_KEY not set; judge falling back to heuristic-only"
+            )
+    elif provider == "gemini":
+        if os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"):
+            try:
+                from src.eval_awareness import GeminiClient, LLMVerbalizedAwarenessJudge
+
+                client = GeminiClient.from_env(name="gemini-judge", model=judge_model)
+                judges.append(LLMVerbalizedAwarenessJudge(client))
+                LOGGER.info(
+                    "judge: LLMVerbalizedAwarenessJudge(GeminiClient(%s))", judge_model
+                )
+            except (RuntimeError, KeyError) as exc:
+                LOGGER.warning("Gemini judge unavailable: %s", exc)
+        else:
+            LOGGER.warning(
+                "GEMINI_API_KEY not set; judge falling back to heuristic-only"
+            )
+    else:
+        raise SystemExit(
+            f"unknown judge provider: {provider!r}; valid: openai/anthropic/gemini/none"
+        )
     return EnsembleVerbalizedAwarenessJudge(judges=judges)
 
 
@@ -467,6 +522,24 @@ def main(argv: Iterable[str] | None = None) -> None:
             "for closed-source frontier models with hidden CoT)."
         ),
     )
+    parser.add_argument(
+        "--judge-provider",
+        default="openai",
+        choices=("openai", "anthropic", "gemini", "none"),
+        help=(
+            "VEA judge backend. Best practice for SOTA-level work: pick a provider "
+            "different from any model under test (e.g. judge with gemini when "
+            "benchmarking openai+anthropic). 'none' uses heuristic regex only."
+        ),
+    )
+    parser.add_argument(
+        "--judge-model",
+        default=None,
+        help=(
+            "Override judge model id. Defaults: openai=gpt-4o-mini, "
+            "anthropic=claude-haiku-4-5-20251001, gemini=gemini-2.5-flash."
+        ),
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     selected = {p.strip().lower() for p in args.protocols.split(",") if p.strip()}
@@ -507,7 +580,7 @@ def main(argv: Iterable[str] | None = None) -> None:
     goodfire = []
     arxiv = []
     if "goodfire" in selected:
-        judge = _judge()
+        judge = _judge(args.judge_provider, args.judge_model)
         goodfire = run_goodfire_protocol(models, examples, args.n_rollouts, judge)
     if "arxiv" in selected:
         arxiv = run_arxiv_protocol(models, examples, args.n_rollouts)
@@ -516,6 +589,9 @@ def main(argv: Iterable[str] | None = None) -> None:
     payload = {
         "protocols_run": sorted(selected),
         "safety_only": args.safety_only,
+        "judge_provider": args.judge_provider,
+        "judge_model": args.judge_model
+        or _DEFAULT_JUDGE_MODELS.get(args.judge_provider),
         "duration_seconds": duration,
         "goodfire_protocol": [r.__dict__ for r in goodfire],
         "arxiv_protocol": [r.__dict__ for r in arxiv],
