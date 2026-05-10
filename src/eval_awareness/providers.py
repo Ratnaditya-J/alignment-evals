@@ -273,9 +273,14 @@ class OpenAICompatibleClient:
         }
         is_reasoning = _is_openai_reasoning_model(self.model)
         if is_reasoning:
-            # gpt-5 / o1 / o3 / o4 family reject temperature/top_p/seed/stop and
-            # use max_completion_tokens instead of max_tokens.
-            payload["max_completion_tokens"] = config.max_tokens
+            # gpt-5 / o1 / o3 / o4 family reject temperature/top_p/seed/stop
+            # and use max_completion_tokens instead of max_tokens. Critically,
+            # max_completion_tokens covers BOTH the hidden reasoning tokens AND
+            # the visible output. With reasoning_effort=high, reasoning alone
+            # often consumes 500-2000 tokens, so a chat-style cap of 256 leaves
+            # zero budget for visible content (responses come back empty).
+            # Floor at 2048 so reasoning has room and we still see the answer.
+            payload["max_completion_tokens"] = max(config.max_tokens, 2048)
         else:
             payload["temperature"] = config.temperature
             payload["max_tokens"] = config.max_tokens
