@@ -717,6 +717,9 @@ def test_validate_score_mode_computes_metrics(tmp_path):
         ("deepseek-ai/deepseek-r1-distill", True),
         ("deepseek/deepseek-r2", True),
         ("deepseek/deepseek-v3.2-exp", True),
+        ("deepseek/deepseek-v4", True),
+        ("deepseek/deepseek-v4-thinking", True),
+        ("deepseek-ai/deepseek-v4", True),
         # Qwen family (explicit + "thinking" heuristic)
         ("qwen/qwq-32b", True),
         ("qwen-qwq", True),

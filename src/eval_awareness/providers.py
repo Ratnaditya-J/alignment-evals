@@ -97,6 +97,7 @@ _OPEN_REASONING_MODEL_TOKENS = (
     "deepseek-ai/deepseek-r1",
     "deepseek-r2",
     "deepseek-v3.2",  # V3.2-Exp / hybrid thinking variants
+    "deepseek-v4",  # V4 line (hybrid w/ thinking by default per upstream)
     # Qwen
     "qwen/qwq",
     "qwen-qwq",
