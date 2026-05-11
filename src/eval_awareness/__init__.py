@@ -91,6 +91,7 @@ from .run_metadata import (
     ModelTier,
     classify_model,
     reasoning_tier_bucket,
+    source_type_bucket,
     task_family_from_example_id,
 )
 from .reporting import ReportExporter
@@ -278,6 +279,7 @@ __all__ = [
     "provider_manifest",
     "rate",
     "reasoning_tier_bucket",
+    "source_type_bucket",
     "score_response",
     "starter_examples",
     "starter_validation_set",

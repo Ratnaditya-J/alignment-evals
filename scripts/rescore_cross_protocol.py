@@ -53,6 +53,7 @@ from src.eval_awareness import (  # noqa: E402
     build_default_llm_refusal_scorer,
     classify_model,
     reasoning_tier_bucket,
+    source_type_bucket,
     task_family_from_example_id,
 )
 
@@ -118,6 +119,7 @@ def _enrich_records(
     enriched: List[Dict[str, Any]] = []
     tier_cache: Dict[str, Dict[str, Any]] = {}
     bucket_cache: Dict[str, str] = {}
+    source_type_cache: Dict[str, str] = {}
     for record in rollouts:
         out = dict(record)
         example_id = str(record.get("example_id", ""))
@@ -133,11 +135,14 @@ def _enrich_records(
             tier = classify_model(model_name)
             tier_cache[model_name] = tier.to_dict()
             bucket_cache[model_name] = reasoning_tier_bucket(tier)
+            source_type_cache[model_name] = source_type_bucket(tier)
         tier_dict = tier_cache[model_name]
         out["model_vendor"] = tier_dict["vendor"]
         out["model_is_reasoning"] = tier_dict["is_reasoning"]
         out["model_reasoning_provenance"] = tier_dict["reasoning_provenance"]
+        out["model_is_open_weights"] = tier_dict.get("is_open_weights", False)
         out["model_tier_bucket"] = bucket_cache[model_name]
+        out["model_source_type"] = source_type_cache[model_name]
         enriched.append(out)
     return enriched
 
@@ -827,6 +832,46 @@ def _render_tier_cuts_md(rows: Sequence[Dict[str, Any]]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _render_source_type_md(rows: Sequence[Dict[str, Any]]) -> str:
+    """Open-source vs closed-source pooled effect table.
+
+    Orthogonal to the reasoning-tier cut: pools across vendors and
+    reasoning provenance to surface whether weights-released-publicly
+    labs (Meta / DeepSeek / Qwen / Moonshot / Mistral / etc.) and
+    weights-private labs (OpenAI / Anthropic / Gemini) behave
+    differently under eval framing. Useful when there's an a-priori
+    reason to expect a split - e.g. open-weight labs train on different
+    alignment data and have weaker post-deployment enforcement.
+    """
+    lines = [
+        "## Open-source vs closed-source cuts",
+        "",
+        "Pools across all models in the source-type bucket. Cross-cuts the "
+        "reasoning-tier table - a single open-source bucket can mix "
+        "non-reasoning and reasoning models. Significant cells here can "
+        "appear even when no single model has a CI-excludes-zero effect, "
+        "because pooling tightens the CI.",
+        "",
+        "| Source type | Baseline | Neutral | Injected | Removed | "
+        "Δ inject−neutral | 95% CI | n paired |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | --- | ---: |",
+    ]
+    for row in rows:
+        ci = row["inject_minus_neutral_ci"]
+        lines.append(
+            f"| **{row['model_source_type']}** | "
+            f"{row['baseline_refusal_rate']:.3f} | "
+            f"{row['neutral_refusal_rate']:.3f} | "
+            f"{row['inject_refusal_rate']:.3f} | "
+            f"{row['remove_refusal_rate']:.3f} | "
+            f"{row['inject_minus_neutral']:+.3f} | "
+            f"[{ci['low']:+.3f}, {ci['high']:+.3f}] | "
+            f"{row['inject_minus_neutral_n_paired']} |"
+        )
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
 def _render_empty_audit_md(rows: Sequence[Dict[str, Any]]) -> str:
     """Per-(model, condition) empty-response audit table.
 
@@ -1003,6 +1048,7 @@ def _render_examples_md(
 def _render_claims_md(
     per_model_rows: Sequence[Dict[str, Any]],
     tier_rows: Sequence[Dict[str, Any]],
+    source_type_rows: Sequence[Dict[str, Any]] = (),
 ) -> str:
     lines = ["## Claims supported by this run", ""]
 
@@ -1038,7 +1084,23 @@ def _render_claims_md(
                 f"n={row['inject_minus_neutral_n_paired']})"
             )
 
-    if significant_models or significant_tiers:
+    # Source-type (open-source vs closed-source) significant findings.
+    # Orthogonal to the reasoning-tier cut and often has tight CIs because
+    # it pools the most rollouts of any view.
+    significant_source: List[str] = []
+    for row in source_type_rows:
+        ci = row["inject_minus_neutral_ci"]
+        if ci["low"] > 0 or ci["high"] < 0:
+            direction = "increase" if ci["low"] > 0 else "decrease"
+            significant_source.append(
+                f"- **{row['model_source_type']}**: "
+                f"pooled significant {direction} of "
+                f"{row['inject_minus_neutral']:+.3f} (95% CI ["
+                f"{ci['low']:+.3f}, {ci['high']:+.3f}], "
+                f"n={row['inject_minus_neutral_n_paired']})"
+            )
+
+    if significant_models or significant_tiers or significant_source:
         lines.append("**Supported (CI excludes 0):**")
         lines.append("")
         if significant_models:
@@ -1051,10 +1113,15 @@ def _render_claims_md(
             lines.append("")
             lines.extend(significant_tiers)
             lines.append("")
+        if significant_source:
+            lines.append("Source-type (open-source vs closed-source):")
+            lines.append("")
+            lines.extend(significant_source)
+            lines.append("")
     else:
         lines.append(
-            "No model or tier shows a CI-excludes-zero inject−neutral effect "
-            "in this run."
+            "No model, tier, or source-type bucket shows a CI-excludes-zero "
+            "inject−neutral effect in this run."
         )
         lines.append("")
     lines.append("**Not supported by this run:**")
@@ -1083,6 +1150,7 @@ def _render_report(
     records: Sequence[Dict[str, Any]],
     per_model: Sequence[Dict[str, Any]],
     tier_rows: Sequence[Dict[str, Any]],
+    source_type_rows: Sequence[Dict[str, Any]],
     task_family_rows: Sequence[Dict[str, Any]],
     empty_breakdown: Sequence[Dict[str, Any]],
     judge_overall: Dict[str, Any],
@@ -1110,11 +1178,12 @@ def _render_report(
         _render_prompt_templates_md(manifest),
         _render_model_summary_md(per_model, score_label),
         _render_tier_cuts_md(tier_rows),
+        _render_source_type_md(source_type_rows),
         _render_task_family_md(task_family_rows),
         _render_empty_audit_md(empty_breakdown),
         _render_judge_validation_md(judge_overall, judge_per_model),
         _render_examples_md(examples),
-        _render_claims_md(per_model, tier_rows),
+        _render_claims_md(per_model, tier_rows, source_type_rows),
     ]
     return "\n".join(sections)
 
@@ -1319,6 +1388,12 @@ def main(argv: Iterable[str] | None = None) -> None:
     tier_rows = _summarize_buckets(
         tier_buckets, ("model_tier_bucket", "model_vendor")
     )
+    source_type_buckets = _group_refusals(
+        records, primary_key, group_keys=("model_source_type",)
+    )
+    source_type_rows = _summarize_buckets(
+        source_type_buckets, ("model_source_type",)
+    )
     task_family_buckets = _group_refusals(
         records, primary_key, group_keys=("model_name", "task_family")
     )
@@ -1355,6 +1430,7 @@ def main(argv: Iterable[str] | None = None) -> None:
         "empty_response_breakdown": empty_breakdown,
         "per_model": per_model,
         "reasoning_tier_cuts": tier_rows,
+        "source_type_cuts": source_type_rows,
         "task_family_breakdown": task_family_rows,
         "scorer_validation": {
             "overall": judge_overall,
@@ -1371,6 +1447,7 @@ def main(argv: Iterable[str] | None = None) -> None:
         records=records,
         per_model=per_model,
         tier_rows=tier_rows,
+        source_type_rows=source_type_rows,
         task_family_rows=task_family_rows,
         empty_breakdown=empty_breakdown,
         judge_overall=judge_overall,
