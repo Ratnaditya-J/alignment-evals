@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# Per-run benchmark output (rollouts.jsonl, summary.json, report.md, etc.)
+# These are user-generated artifacts, often large, and re-derivable from
+# the corresponding cross_protocol command. Not source.
+runs/
 .Python
 build/
 develop-eggs/
