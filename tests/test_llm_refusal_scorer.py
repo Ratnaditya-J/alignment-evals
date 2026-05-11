@@ -305,6 +305,89 @@ def _write_jsonl(path: Path, records: List[Dict[str, Any]]) -> None:
             handle.write(json.dumps(record, sort_keys=True) + "\n")
 
 
+def test_render_claims_surfaces_per_model_and_tier_level():
+    """The claims-supported section must surface significant tier-level
+    findings, not just per-model. Regression guard for the v5 case where
+    open_full_reasoning was +3.3pp (CI excludes 0) pooled across 3 open
+    reasoning models, but no individual model's CI excluded zero - so the
+    finding was invisible in the previous version of the report."""
+    from scripts.rescore_cross_protocol import _render_claims_md
+
+    per_model_rows = [
+        # One CI-excludes-zero per-model row + one null row.
+        {
+            "model_name": "openai:gpt-4o-mini",
+            "inject_minus_neutral": 0.056,
+            "inject_minus_neutral_ci": {"low": 0.017, "high": 0.106},
+            "inject_minus_neutral_n_paired": 500,
+        },
+        {
+            "model_name": "anthropic:claude-haiku",
+            "inject_minus_neutral": -0.014,
+            "inject_minus_neutral_ci": {"low": -0.080, "high": 0.056},
+            "inject_minus_neutral_n_paired": 500,
+        },
+    ]
+    tier_rows = [
+        # One CI-excludes-zero tier row (open_full_reasoning pooled) + null.
+        {
+            "model_tier_bucket": "open_full_reasoning",
+            "model_vendor": "openrouter",
+            "inject_minus_neutral": 0.033,
+            "inject_minus_neutral_ci": {"low": 0.008, "high": 0.060},
+            "inject_minus_neutral_n_paired": 1493,
+        },
+        {
+            "model_tier_bucket": "closed_polished_reasoning",
+            "model_vendor": "anthropic",
+            "inject_minus_neutral": -0.043,
+            "inject_minus_neutral_ci": {"low": -0.093, "high": 0.017},
+            "inject_minus_neutral_n_paired": 497,
+        },
+    ]
+    rendered = _render_claims_md(per_model_rows, tier_rows)
+
+    # Per-model section
+    assert "Per-model:" in rendered
+    assert "openai:gpt-4o-mini" in rendered
+    assert "+0.056" in rendered
+
+    # Tier-level section (this was previously missing)
+    assert "Tier-level (pooled across models in the bucket):" in rendered
+    assert "open_full_reasoning / openrouter" in rendered
+    assert "+0.033" in rendered
+    assert "n=1493" in rendered
+
+    # Non-significant rows must NOT be surfaced
+    assert "anthropic:claude-haiku" not in rendered
+    assert "closed_polished_reasoning" not in rendered
+
+
+def test_render_claims_empty_when_nothing_significant():
+    """Claims section says so explicitly when no CI excludes zero anywhere."""
+    from scripts.rescore_cross_protocol import _render_claims_md
+
+    per_model_rows = [
+        {
+            "model_name": "openai:gpt-4o-mini",
+            "inject_minus_neutral": 0.020,
+            "inject_minus_neutral_ci": {"low": -0.040, "high": 0.080},
+            "inject_minus_neutral_n_paired": 100,
+        }
+    ]
+    tier_rows = [
+        {
+            "model_tier_bucket": "non_reasoning",
+            "model_vendor": "openai",
+            "inject_minus_neutral": 0.020,
+            "inject_minus_neutral_ci": {"low": -0.040, "high": 0.080},
+            "inject_minus_neutral_n_paired": 100,
+        }
+    ]
+    rendered = _render_claims_md(per_model_rows, tier_rows)
+    assert "No model or tier shows a CI-excludes-zero" in rendered
+
+
 def test_rescore_end_to_end_writes_all_artifacts(tmp_path):
     from scripts.rescore_cross_protocol import main as rescore_main
 

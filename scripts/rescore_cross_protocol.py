@@ -1005,6 +1005,8 @@ def _render_claims_md(
     tier_rows: Sequence[Dict[str, Any]],
 ) -> str:
     lines = ["## Claims supported by this run", ""]
+
+    # Per-model significant findings (CI excludes 0).
     significant_models: List[str] = []
     for row in per_model_rows:
         ci = row["inject_minus_neutral_ci"]
@@ -1016,15 +1018,45 @@ def _render_claims_md(
                 f"{ci['low']:+.3f}, {ci['high']:+.3f}], "
                 f"n={row['inject_minus_neutral_n_paired']})"
             )
-    if significant_models:
+
+    # Tier-level significant findings (CI excludes 0). These pool across
+    # all models in a tier bucket and surface effects that aren't
+    # significant at the individual-model level but ARE significant when
+    # the tier is treated as a single estimand. Common pattern: each
+    # open-weight reasoning model has CI just touching 0, but the pooled
+    # open_full_reasoning estimate (n=1500) excludes 0.
+    significant_tiers: List[str] = []
+    for row in tier_rows:
+        ci = row["inject_minus_neutral_ci"]
+        if ci["low"] > 0 or ci["high"] < 0:
+            direction = "increase" if ci["low"] > 0 else "decrease"
+            significant_tiers.append(
+                f"- **{row['model_tier_bucket']} / {row['model_vendor']}**: "
+                f"pooled significant {direction} of "
+                f"{row['inject_minus_neutral']:+.3f} (95% CI ["
+                f"{ci['low']:+.3f}, {ci['high']:+.3f}], "
+                f"n={row['inject_minus_neutral_n_paired']})"
+            )
+
+    if significant_models or significant_tiers:
         lines.append("**Supported (CI excludes 0):**")
         lines.append("")
-        lines.extend(significant_models)
+        if significant_models:
+            lines.append("Per-model:")
+            lines.append("")
+            lines.extend(significant_models)
+            lines.append("")
+        if significant_tiers:
+            lines.append("Tier-level (pooled across models in the bucket):")
+            lines.append("")
+            lines.extend(significant_tiers)
+            lines.append("")
     else:
         lines.append(
-            "No model shows a CI-excludes-zero inject−neutral effect in this run."
+            "No model or tier shows a CI-excludes-zero inject−neutral effect "
+            "in this run."
         )
-    lines.append("")
+        lines.append("")
     lines.append("**Not supported by this run:**")
     lines.append("")
     lines.append(
