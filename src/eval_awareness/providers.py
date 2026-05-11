@@ -81,24 +81,57 @@ def _is_anthropic_reasoning_model(model: str) -> bool:
     return any(name.startswith(prefix) for prefix in _ANTHROPIC_REASONING_PREFIXES)
 
 
-# Open-weight reasoning models with visible chain-of-thought (e.g. DeepSeek R1,
-# Qwen QwQ, OLMo 3 Think, Kimi K2.5). They need a high ``max_tokens`` budget
-# because the visible response shares the budget with the reasoning trace -
-# at the default 512 cap, a hot reasoning trace consumes the budget and the
-# visible answer comes back near-empty.
+# Open-weight reasoning models with visible chain-of-thought. They need a high
+# ``max_tokens`` budget because the visible response shares the budget with the
+# reasoning trace - at the default cap the reasoning trace consumes the budget
+# and the visible answer comes back near-empty.
+#
+# Substring tokens (matched anywhere in the lower-cased model id). Keep this
+# list focused on stable family identifiers; the ``thinking`` heuristic below
+# catches newer dated variants like ``qwen3-235b-a22b-thinking-2507`` without
+# needing a list update every time a release drops.
 _OPEN_REASONING_MODEL_TOKENS = (
+    # DeepSeek
     "deepseek-r1",
     "deepseek/deepseek-r1",
     "deepseek-ai/deepseek-r1",
+    "deepseek-r2",
+    "deepseek-v3.2",  # V3.2-Exp / hybrid thinking variants
+    # Qwen
     "qwen/qwq",
     "qwen-qwq",
     "qwq-32b",
+    "qwq-max",
+    # Kimi / Moonshot
+    "kimi-k2",
+    "kimi-k2.5",
+    "moonshotai/kimi",
+    # OpenThinker / Open Thoughts
     "open-thoughts",
     "openthinker",
+    # OLMo
     "olmo-2-think",
     "olmo-3",
-    "kimi-k2.5",
-    "kimi-k2",
+    # GLM
+    "glm-4.5",
+    "glm-4.6",
+)
+
+# Open-weight vendor tokens used by the "thinking" heuristic below. A model
+# that mentions both ``thinking`` and one of these vendors is treated as a
+# visible-CoT reasoning model. This forward-proofs detection against new
+# dated releases (e.g. ``qwen3-235b-a22b-thinking-2507``,
+# ``moonshotai/kimi-k2-thinking``, ``glm-4.6-thinking``).
+_OPEN_REASONING_VENDOR_TOKENS = (
+    "qwen",
+    "qwen3",
+    "deepseek",
+    "kimi",
+    "moonshot",
+    "moonshotai",
+    "glm",
+    "olmo",
+    "zhipu",
 )
 
 
@@ -108,9 +141,19 @@ def _is_open_reasoning_model(model: str) -> bool:
     Used by ``OpenAICompatibleClient`` (and therefore ``OpenRouterClient`` /
     ``LiteLLMClient`` / ``VLLMClient``) to bump ``max_tokens`` so the visible
     response isn't crowded out by the reasoning trace.
+
+    Detection combines an explicit family list with a ``thinking`` heuristic
+    keyed on known open-weight vendors so new dated variants light up
+    without code changes.
     """
     name = model.lower()
-    return any(token in name for token in _OPEN_REASONING_MODEL_TOKENS)
+    if any(token in name for token in _OPEN_REASONING_MODEL_TOKENS):
+        return True
+    if "thinking" in name and any(
+        vendor in name for vendor in _OPEN_REASONING_VENDOR_TOKENS
+    ):
+        return True
+    return False
 
 
 @dataclass(frozen=True)
