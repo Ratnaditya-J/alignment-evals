@@ -446,7 +446,7 @@ def run_goodfire_protocol(
     *,
     max_concurrent: int = 1,
     reasoning_effort: Optional[str] = None,
-    progress_every: int = 100,
+    progress_every: int = 25,
 ) -> List[GoodfireRunResult]:
     """Run the Goodfire VEA-bucketed protocol with optional concurrency.
 
@@ -512,16 +512,18 @@ def run_goodfire_protocol(
         if completed % progress_every == 0:
             elapsed = time.perf_counter() - started
             pct = 100 * completed / max(1, len(tasks))
+            eta = _format_eta(elapsed, completed, len(tasks))
             per_model = " | ".join(
                 f"{name}={completed_per_model[name]}/{tasks_per_model[name]}"
                 for name in tasks_per_model
             )
             LOGGER.info(
-                "goodfire: %d/%d (%.1f%%, %.1fs) -- %s",
+                "goodfire: %d/%d (%.1f%%, %.1fs elapsed, ETA %s) -- %s",
                 completed,
                 len(tasks),
                 pct,
                 elapsed,
+                eta,
                 per_model,
             )
 
@@ -741,7 +743,7 @@ def run_arxiv_protocol(
     *,
     max_concurrent: int = 1,
     reasoning_effort: Optional[str] = None,
-    progress_every: int = 100,
+    progress_every: int = 25,
     rollouts_log: Optional[List[Dict[str, object]]] = None,
 ) -> List[ArxivRunResult]:
     """Run the arxiv injection/removal/neutral protocol with optional concurrency.
@@ -819,16 +821,18 @@ def run_arxiv_protocol(
         if completed % progress_every == 0:
             elapsed = time.perf_counter() - started
             pct = 100 * completed / max(1, len(tasks))
+            eta = _format_eta(elapsed, completed, len(tasks))
             per_model = " | ".join(
                 f"{name}={completed_per_model[name]}/{tasks_per_model[name]}"
                 for name in tasks_per_model
             )
             LOGGER.info(
-                "arxiv: %d/%d (%.1f%%, %.1fs) -- %s",
+                "arxiv: %d/%d (%.1f%%, %.1fs elapsed, ETA %s) -- %s",
                 completed,
                 len(tasks),
                 pct,
                 elapsed,
+                eta,
                 per_model,
             )
 
@@ -1002,10 +1006,29 @@ def _render_comparison_md(
     return "\n".join(lines) + "\n"
 
 
+def _format_eta(elapsed: float, completed: int, total: int) -> str:
+    """Format an ETA string from elapsed-time + progress, or '?' if unknown."""
+    if completed <= 0:
+        return "?"
+    rate = completed / elapsed
+    remaining = max(0, total - completed)
+    seconds = remaining / rate if rate > 0 else 0
+    if seconds < 90:
+        return f"{seconds:.0f}s"
+    if seconds < 5400:
+        return f"{seconds / 60:.1f}m"
+    return f"{seconds / 3600:.1f}h"
+
+
 def main(argv: Iterable[str] | None = None) -> None:
     logging.basicConfig(
         level=logging.INFO, format="%(levelname)s %(name)s: %(message)s"
     )
+    # httpx is INFO-by-default and logs one line per HTTP request, which
+    # drowns the per-model progress lines on a 14k-call run. Silence it
+    # unless --verbose is passed so the LOGGER.info("arxiv: ...") lines
+    # are the dominant signal in the terminal.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", default="runs/cross-protocol")
     parser.add_argument("--n-prompts", type=int, default=20)
@@ -1102,7 +1125,29 @@ def main(argv: Iterable[str] | None = None) -> None:
             "phrase, not the model actually complying)."
         ),
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help=(
+            "Re-enable httpx INFO logs (one line per HTTP request). Useful "
+            "for debugging when a single call hangs; otherwise the per-model "
+            "progress lines are dominated by httpx noise on a 14k-call run."
+        ),
+    )
+    parser.add_argument(
+        "--progress-every",
+        type=int,
+        default=25,
+        help=(
+            "Emit a progress line every N completed tasks (default 25). "
+            "Each line includes overall %% complete, elapsed, ETA, and the "
+            "per-model x/y breakdown."
+        ),
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
+
+    if args.verbose:
+        logging.getLogger("httpx").setLevel(logging.INFO)
 
     selected = {p.strip().lower() for p in args.protocols.split(",") if p.strip()}
     valid = {"goodfire", "arxiv"}
@@ -1250,6 +1295,7 @@ def main(argv: Iterable[str] | None = None) -> None:
             judge,
             max_concurrent=args.max_concurrent,
             reasoning_effort=reasoning_effort,
+            progress_every=args.progress_every,
         )
     if "arxiv" in selected:
         arxiv = run_arxiv_protocol(
@@ -1259,6 +1305,7 @@ def main(argv: Iterable[str] | None = None) -> None:
             max_concurrent=args.max_concurrent,
             reasoning_effort=reasoning_effort,
             rollouts_log=rollouts_log,
+            progress_every=args.progress_every,
         )
     duration = round(time.perf_counter() - started, 2)
 
