@@ -257,6 +257,42 @@ def test_classify_anthropic_non_reasoning():
     assert tier.is_reasoning is False
 
 
+def test_run_script_judge_provider_accepts_openrouter():
+    """The rollout-time --judge-provider flag must accept 'openrouter'
+    so it stays consistent with rescore_cross_protocol.py's
+    --llm-judge-provider. Mismatched choice sets between the two scripts
+    are a footgun (user follows a recommendation that works in one
+    script but errors in the other).
+
+    Regression guard for the v6 rollout-launch failure.
+    """
+    from scripts.run_cross_protocol_comparison import _judge
+
+    # 'none' bypass works (heuristic-only ensemble; no API).
+    judge = _judge("none")
+    assert judge is not None
+
+    # 'openrouter' must be a recognised provider. Without an API key
+    # it should fall back to heuristic-only with a warning, NOT raise
+    # SystemExit (which is the unknown-provider behaviour).
+    import os
+
+    saved = os.environ.pop("OPENROUTER_API_KEY", None)
+    try:
+        judge = _judge("openrouter", model="google/gemini-2.5-flash")
+        assert judge is not None  # heuristic-only fallback, not a SystemExit
+    finally:
+        if saved is not None:
+            os.environ["OPENROUTER_API_KEY"] = saved
+
+    # Truly unknown providers still raise so users get a clear error
+    # if they typo a provider name.
+    import pytest as _pytest
+
+    with _pytest.raises(SystemExit):
+        _judge("not-a-real-provider")
+
+
 def test_openai_reasoning_detection_handles_openrouter_slug():
     """OpenAI reasoning models routed through OpenRouter use the
     'openai/' slug prefix. The reasoning detection must strip that
