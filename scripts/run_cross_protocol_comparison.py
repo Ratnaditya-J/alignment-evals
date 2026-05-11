@@ -300,15 +300,45 @@ def _safe_call(
         return ""
 
 
+@dataclass
+class PreflightResult:
+    """Per-model result from a preflight ping."""
+
+    name: str
+    ok: bool
+    requested_model: str
+    returned_model: str
+    latency_ms: float
+    response_snippet: str
+    error: str = ""
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "name": self.name,
+            "ok": self.ok,
+            "requested_model": self.requested_model,
+            "returned_model": self.returned_model,
+            "latency_ms": self.latency_ms,
+            "response_snippet": self.response_snippet,
+            "error": self.error,
+        }
+
+
 def _preflight_check(
     models: Sequence[Any],
     reasoning_effort: Optional[str] = None,
-) -> List[str]:
+) -> List[PreflightResult]:
     """Send one tiny request per model to surface API config errors early.
 
     This catches things like "temperature is deprecated for this model" or
     invalid model ids in seconds, before the script burns hours and money on
-    a doomed run. Returns a list of failure messages (empty if all OK).
+    a doomed run. The prompt is intentionally trivial ("ping" -> 1-token
+    reply) so the cost is fractions of a cent per model.
+
+    Returns a list of ``PreflightResult`` (one per model) with latency,
+    requested vs returned model id (catches OpenRouter alias routing), and
+    a response snippet. Use ``[r for r in results if not r.ok]`` to find
+    failures.
     """
     LOGGER.info(
         "preflight: pinging %d model(s) with a 1-token request each", len(models)
@@ -316,22 +346,83 @@ def _preflight_check(
     extra: Dict[str, object] = {}
     if reasoning_effort:
         extra["reasoning_effort"] = reasoning_effort
+    # Reasoning models internally consume ~hundreds of tokens before producing
+    # any visible output, so max_tokens=8 starves them. The
+    # OpenAICompatibleClient floors the budget for known reasoning models,
+    # but the conservative cap here means the visible response is still
+    # tiny - we only need a confirmation, not the full reply.
     config = GenerationConfig(temperature=0.7, max_tokens=8, seed=0, extra=extra)
-    transcript = TranscriptInput(user_prompt="ping")
-    failures: List[str] = []
+    transcript = TranscriptInput(user_prompt="Reply with 'pong' and nothing else.")
+    results: List[PreflightResult] = []
     for model in models:
         name = getattr(model, "name", model.__class__.__name__)
+        requested_model = getattr(model, "model", "") or ""
+        started = time.perf_counter()
         try:
             if hasattr(model, "generate_with_config"):
-                model.generate_with_config(transcript, config)
+                response = model.generate_with_config(transcript, config)
             else:
-                model.generate(transcript)
-            LOGGER.info("preflight OK: %s", name)
-        except Exception as exc:  # noqa: BLE001
-            msg = f"{name}: {exc}"
-            failures.append(msg)
-            LOGGER.error("preflight FAIL: %s", msg)
-    return failures
+                response = model.generate(transcript)
+        except Exception as exc:  # noqa: BLE001 - want to capture any provider error
+            latency_ms = round((time.perf_counter() - started) * 1000, 1)
+            err_msg = f"{type(exc).__name__}: {exc}"
+            LOGGER.error("preflight FAIL: %s -- %s", name, err_msg)
+            results.append(
+                PreflightResult(
+                    name=name,
+                    ok=False,
+                    requested_model=requested_model,
+                    returned_model="",
+                    latency_ms=latency_ms,
+                    response_snippet="",
+                    error=err_msg,
+                )
+            )
+            continue
+        latency_ms = round((time.perf_counter() - started) * 1000, 1)
+        last = getattr(model, "last_response", None)
+        returned_model = (getattr(last, "model", "") or "") if last is not None else ""
+        snippet = (response or "").strip().replace("\n", " ")
+        if len(snippet) > 80:
+            snippet = snippet[:77] + "..."
+        LOGGER.info(
+            "preflight OK: %s (%.0f ms, returned=%s)",
+            name,
+            latency_ms,
+            returned_model or "<not echoed>",
+        )
+        results.append(
+            PreflightResult(
+                name=name,
+                ok=True,
+                requested_model=requested_model,
+                returned_model=returned_model,
+                latency_ms=latency_ms,
+                response_snippet=snippet,
+            )
+        )
+    return results
+
+
+def _render_preflight_table(results: Sequence[PreflightResult]) -> str:
+    """Render preflight results as a human-readable per-model table."""
+    if not results:
+        return "(no models)"
+    lines = [
+        f"{'STATUS':<6}  {'NAME':<55}  {'LATENCY':>10}  {'RETURNED':<35}  RESPONSE",
+        f"{'-' * 6}  {'-' * 55}  {'-' * 10}  {'-' * 35}  {'-' * 8}",
+    ]
+    for result in results:
+        status = "OK" if result.ok else "FAIL"
+        latency = f"{result.latency_ms:.0f} ms"
+        returned = result.returned_model or "<not echoed>"
+        body = result.response_snippet if result.ok else result.error
+        if len(body) > 80:
+            body = body[:77] + "..."
+        lines.append(
+            f"{status:<6}  {result.name[:55]:<55}  {latency:>10}  {returned[:35]:<35}  {body}"
+        )
+    return "\n".join(lines)
 
 
 @dataclass
@@ -955,6 +1046,16 @@ def main(argv: Iterable[str] | None = None) -> None:
         ),
     )
     parser.add_argument(
+        "--preflight-only",
+        action="store_true",
+        help=(
+            "Run only the per-model preflight ping (1 tiny request per model) "
+            "and exit with a pass/fail table. Use this to verify API keys + "
+            "model ids are valid before launching a real run. Costs are "
+            "fractions of a cent per model."
+        ),
+    )
+    parser.add_argument(
         "--save-rollouts",
         action="store_true",
         help=(
@@ -1058,13 +1159,44 @@ def main(argv: Iterable[str] | None = None) -> None:
         reasoning_effort or "default",
     )
 
-    if not args.skip_preflight:
-        failures = _preflight_check(models, reasoning_effort=reasoning_effort)
+    if args.preflight_only or not args.skip_preflight:
+        results = _preflight_check(models, reasoning_effort=reasoning_effort)
+        failures = [r for r in results if not r.ok]
+        # Always print the per-model table when running --preflight-only,
+        # since that's the entire point. For ordinary runs we only need to
+        # surface the table when there's a failure.
+        if args.preflight_only or failures:
+            print()
+            print(_render_preflight_table(results))
+            print()
+        if args.preflight_only:
+            # Write a machine-readable copy alongside any prior artefacts so
+            # repeat runs can diff against last time and you can grep
+            # returned_model to spot OpenRouter alias routing.
+            output_dir = Path(args.output_dir)
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / "preflight.json").write_text(
+                json.dumps(
+                    [r.to_dict() for r in results], indent=2, sort_keys=True
+                )
+                + "\n"
+            )
+            LOGGER.info("wrote %s", output_dir / "preflight.json")
+            if failures:
+                raise SystemExit(
+                    f"preflight FAILED for {len(failures)}/{len(models)} model(s); "
+                    "fix the failing model(s) above before running the eval."
+                )
+            print(
+                f"preflight OK for all {len(results)} model(s); "
+                "ready for the full eval."
+            )
+            return
         if failures:
             raise SystemExit(
                 "preflight FAILED for "
                 f"{len(failures)}/{len(models)} model(s):\n  - "
-                + "\n  - ".join(failures)
+                + "\n  - ".join(f"{r.name}: {r.error}" for r in failures)
                 + "\n\nFix the failing model(s) before running. To bypass the "
                 "preflight check (not recommended) pass --skip-preflight."
             )
