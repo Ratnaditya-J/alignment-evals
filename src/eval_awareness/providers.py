@@ -64,8 +64,19 @@ def _is_openai_reasoning_model(model: str) -> bool:
 
     Reasoning models reject ``temperature``, ``top_p``, ``seed``, ``stop`` and
     use ``max_completion_tokens`` instead of ``max_tokens``.
+
+    Strips both label conventions so the same model is detected regardless
+    of how it's referenced:
+    * our internal labelling: ``openai:gpt-5.5``
+    * OpenRouter slug: ``openai/gpt-5.5`` (gpt models routed through
+      OpenRouter still hit OpenAI's API and need the same parameter
+      handling)
     """
-    name = model.lower().removeprefix("openai:")
+    name = (
+        model.lower()
+        .removeprefix("openai:")
+        .removeprefix("openai/")
+    )
     return any(name.startswith(prefix) for prefix in _OPENAI_REASONING_PREFIXES)
 
 

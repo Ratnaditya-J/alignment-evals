@@ -257,6 +257,34 @@ def test_classify_anthropic_non_reasoning():
     assert tier.is_reasoning is False
 
 
+def test_openai_reasoning_detection_handles_openrouter_slug():
+    """OpenAI reasoning models routed through OpenRouter use the
+    'openai/' slug prefix. The reasoning detection must strip that
+    prefix too, otherwise the request gets dispatched as a non-reasoning
+    model (sends temperature) and OpenAI 400s.
+
+    Regression guard for the gpt-5.5 dispatch bug seen during v6
+    preflight.
+    """
+    from src.eval_awareness.providers import _is_openai_reasoning_model
+
+    # Direct API path (our internal labelling)
+    assert _is_openai_reasoning_model("openai:gpt-5.5") is True
+    assert _is_openai_reasoning_model("openai:gpt-5") is True
+    assert _is_openai_reasoning_model("openai:o3-mini") is True
+    assert _is_openai_reasoning_model("openai:gpt-4o-mini") is False
+
+    # OpenRouter slug path - same models, different prefix
+    assert _is_openai_reasoning_model("openai/gpt-5.5") is True
+    assert _is_openai_reasoning_model("openai/gpt-5") is True
+    assert _is_openai_reasoning_model("openai/o3-mini") is True
+    assert _is_openai_reasoning_model("openai/gpt-4o-mini") is False
+
+    # Bare model id also works
+    assert _is_openai_reasoning_model("gpt-5.5") is True
+    assert _is_openai_reasoning_model("gpt-4o-mini") is False
+
+
 def test_anthropic_reasoning_prefixes_match_actual_lineup():
     """Pin the actual Anthropic production lineup so we don't re-introduce
     hallucinated slugs (e.g. 'claude-sonnet-5', 'claude-opus-5' which
@@ -2434,6 +2462,72 @@ def test_preflight_only_fails_loudly_on_broken_model(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 # Comprehensive pipeline preflight (scripts/preflight_full_pipeline.py)
 # ---------------------------------------------------------------------------
+
+
+def test_preflight_full_pipeline_converts_default_reasoning_effort(
+    tmp_path, monkeypatch
+):
+    """--reasoning-effort 'default' is a sentinel meaning 'omit the
+    parameter'. The preflight tool must convert it to None before
+    handing off to _preflight_check, otherwise the OpenAI API rejects
+    gpt-5.x with HTTP 400 because 'default' isn't a valid value for
+    the reasoning_effort parameter.
+
+    Regression guard for the v6 preflight failure on gpt-5.5.
+    """
+    monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "fake-key")
+
+    from scripts import preflight_full_pipeline as preflight
+
+    # Capture the reasoning_effort actually passed to _preflight_check.
+    captured: Dict[str, Any] = {}
+    real_preflight = preflight._check_models  # noqa: SLF001
+
+    def fake_check_models(report, args):  # noqa: ARG001
+        # Route directly to the preflight wrapper so we can intercept
+        # the reasoning_effort kwarg that gets passed downstream.
+        from scripts.run_cross_protocol_comparison import _preflight_check as cp
+
+        def wrapped(models, reasoning_effort=None):
+            captured["reasoning_effort"] = reasoning_effort
+            return []
+
+        monkeypatch.setattr(
+            "scripts.run_cross_protocol_comparison._preflight_check", wrapped
+        )
+        # Pass empty model list so the captured value reflects the kwarg
+        # and the test doesn't try to dispatch real model calls.
+        from scripts.run_cross_protocol_comparison import _discover_models
+
+        monkeypatch.setattr(
+            "scripts.run_cross_protocol_comparison._discover_models",
+            lambda: [type("Stub", (), {"name": "stub"})()],
+        )
+        return real_preflight(report, args)
+
+    monkeypatch.setattr(preflight, "_check_models", fake_check_models)
+
+    out_dir = tmp_path / "preflight"
+    preflight.main(
+        [
+            "--judge-provider",
+            "none",
+            "--sandbagging-judge-provider",
+            "none",
+            "--skip-datasets",
+            "--reasoning-effort",
+            "default",
+            "--output-dir",
+            str(out_dir),
+        ]
+    )
+    # 'default' must convert to None before being passed downstream.
+    assert captured["reasoning_effort"] is None, (
+        f"preflight should convert 'default' to None; got "
+        f"{captured['reasoning_effort']!r}"
+    )
 
 
 def test_preflight_full_pipeline_skip_paths(tmp_path, monkeypatch):

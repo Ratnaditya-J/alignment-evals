@@ -241,8 +241,15 @@ def _check_models(report: PreflightReport, args: argparse.Namespace) -> None:
         )
         return
 
+    # 'default' is a sentinel for 'don't pass reasoning_effort at all'
+    # (matches run_cross_protocol_comparison.py's main(); without this
+    # conversion the OpenAI API rejects gpt-5.x with HTTP 400 because
+    # 'default' isn't a valid reasoning_effort value).
+    reasoning_effort = (
+        None if args.reasoning_effort == "default" else args.reasoning_effort
+    )
     started = time.perf_counter()
-    results = _preflight_check(models, reasoning_effort=args.reasoning_effort)
+    results = _preflight_check(models, reasoning_effort=reasoning_effort)
     latency_ms = (time.perf_counter() - started) * 1000
     failed = [r for r in results if not r.ok]
     if failed:
