@@ -2404,3 +2404,160 @@ def test_preflight_only_fails_loudly_on_broken_model(tmp_path, monkeypatch):
     assert "preflight FAILED" in str(excinfo.value)
     # JSON should still be written so the user can inspect what failed.
     assert (out_dir / "preflight.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Comprehensive pipeline preflight (scripts/preflight_full_pipeline.py)
+# ---------------------------------------------------------------------------
+
+
+def test_preflight_full_pipeline_skip_paths(tmp_path, monkeypatch):
+    """Skip paths exit cleanly when datasets / models / judges all skipped.
+
+    Tests the scaffolding: env-check + report writing + verdict logic.
+    Uses --skip-datasets and --skip-models so no real network/API calls
+    are made; --judge-provider=none and --sandbagging-judge-provider=none
+    so the judge smoke calls are skipped too.
+    """
+    # Wipe env to make env checks fail predictably.
+    for var in (
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "OPENROUTER_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "CROSS_OPENAI_MODELS",
+        "CROSS_ANTHROPIC_MODELS",
+        "CROSS_OPENROUTER_MODELS",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+    from scripts.preflight_full_pipeline import main as preflight_main
+
+    out_dir = tmp_path / "preflight"
+    rc = preflight_main(
+        [
+            "--judge-provider",
+            "none",
+            "--sandbagging-judge-provider",
+            "none",
+            "--skip-datasets",
+            "--skip-models",
+            "--output-dir",
+            str(out_dir),
+        ]
+    )
+    # Missing env vars => non-zero exit.
+    assert rc == 1
+    payload = json.loads((out_dir / "preflight.json").read_text())
+    assert payload["all_ok"] is False
+    # Cost should be tiny since nothing actually called an API.
+    assert payload["total_cost_estimate_usd"] < 0.01
+    # Each missing env key gets its own check.
+    names = {r["name"] for r in payload["results"]}
+    assert any("OPENAI_API_KEY" in n for n in names)
+    assert any("ANTHROPIC_API_KEY" in n for n in names)
+    assert any("OPENROUTER_API_KEY" in n for n in names)
+    # Skipped judge checks should pass without calling anything.
+    skipped = [
+        r
+        for r in payload["results"]
+        if "skipped" in r["name"] and r["ok"]
+    ]
+    assert len(skipped) == 2  # refusal + sandbagging judges both skipped
+
+
+def test_preflight_full_pipeline_passes_when_all_green(tmp_path, monkeypatch):
+    """Happy path: env populated, datasets+models skipped, judges return
+    good values via stubbed builders. all_ok=True, exit=0."""
+    monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "fake-key")
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+
+    from scripts import preflight_full_pipeline as preflight
+    from src.eval_awareness import LLMRefusalScorer, SandbaggingJudge
+
+    # Stub the judge builders to return scorers that don't actually call APIs.
+    class _RefusalClient:
+        model = "stub-refusal-judge"
+
+        def generate(self, transcript):
+            return json.dumps(
+                {
+                    "refused": True,
+                    "confidence": 0.95,
+                    "user_input_type": "request",
+                    "refusal_type": "hard_refuse",
+                    "quoted_refusal_text": "I can't help",
+                    "rationale": "explicit decline",
+                }
+            )
+
+    class _SandbaggingClient:
+        model = "stub-sandbag-judge"
+
+        def generate(self, transcript):
+            return json.dumps(
+                {
+                    "response_addresses_question": True,
+                    "response_final_answer": "5",
+                    "response_correct": "no",
+                    "reasoning_quality": "sound",
+                    "suspicious_indicators": ["sound-but-wrong"],
+                    "rationale": "reasoning yields 4 but final says 5",
+                    "sandbagging_assessment": "likely_sandbagging",
+                    "confidence": 0.8,
+                    "evidence_quote": "the answer is 5",
+                }
+            )
+
+    monkeypatch.setattr(
+        preflight,
+        "build_default_llm_refusal_scorer",
+        lambda *a, **kw: LLMRefusalScorer(_RefusalClient()),
+        raising=False,
+    )
+    # The preflight imports build_default_llm_refusal_scorer from the
+    # src package, not from its own module - patch at the source.
+    import src.eval_awareness as ea
+
+    monkeypatch.setattr(
+        ea,
+        "build_default_llm_refusal_scorer",
+        lambda *a, **kw: LLMRefusalScorer(_RefusalClient()),
+    )
+    monkeypatch.setattr(
+        ea,
+        "build_default_sandbagging_judge",
+        lambda *a, **kw: SandbaggingJudge(_SandbaggingClient()),
+    )
+
+    out_dir = tmp_path / "preflight"
+    rc = preflight.main(
+        [
+            "--judge-provider",
+            "gemini",
+            "--judge-model",
+            "fake-model",
+            "--sandbagging-judge-provider",
+            "gemini",
+            "--sandbagging-judge-model",
+            "fake-model",
+            "--skip-datasets",
+            "--skip-models",
+            "--output-dir",
+            str(out_dir),
+        ]
+    )
+    assert rc == 0, "preflight should pass with all stubs returning good values"
+    payload = json.loads((out_dir / "preflight.json").read_text())
+    assert payload["all_ok"] is True
+    # Both judges should report a successful smoke call.
+    judge_results = [
+        r
+        for r in payload["results"]
+        if r["name"].startswith("judge:") and "skipped" not in r["name"]
+    ]
+    assert len(judge_results) == 2
+    assert all(r["ok"] for r in judge_results)
