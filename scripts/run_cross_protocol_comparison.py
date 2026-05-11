@@ -52,6 +52,7 @@ from src.eval_awareness import (  # noqa: E402
     LLMVerbalizedAwarenessJudge,
     OllamaClient,
     OpenAIClient,
+    OpenRouterClient,
     RefusalScorer,
     ScoringContext,
     ScriptedModelClient,
@@ -93,6 +94,29 @@ def _discover_models() -> List[Any]:
                 candidates.append(
                     AnthropicClient.from_env(name=f"anthropic:{model}", model=model)
                 )
+    if os.environ.get("OPENROUTER_API_KEY"):
+        # OpenRouter has thousands of models, so we require an explicit
+        # CROSS_OPENROUTER_MODELS list - there's no sensible default. This is
+        # how we bring open-weight reasoning models (DeepSeek R1, Qwen QwQ,
+        # Kimi K2.5, Llama 3.3 70B Instruct) into the comparison. The provider
+        # client handles the OpenRouter-specific HTTP headers; the open-
+        # reasoning token-budget bump is handled in providers.py.
+        openrouter_models = os.environ.get("CROSS_OPENROUTER_MODELS", "").strip()
+        if openrouter_models:
+            for model in openrouter_models.split(","):
+                model = model.strip()
+                if model:
+                    candidates.append(
+                        OpenRouterClient.from_env(
+                            name=f"openrouter:{model}", model=model
+                        )
+                    )
+        else:
+            LOGGER.warning(
+                "OPENROUTER_API_KEY is set but CROSS_OPENROUTER_MODELS is empty; "
+                "skipping OpenRouter. Set CROSS_OPENROUTER_MODELS to a comma-"
+                "separated list (e.g. 'deepseek/deepseek-r1,qwen/qwq-32b')."
+            )
     if os.environ.get("CROSS_OLLAMA_MODELS"):
         for model in os.environ["CROSS_OLLAMA_MODELS"].split(","):
             model = model.strip()

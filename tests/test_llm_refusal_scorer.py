@@ -14,13 +14,17 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.eval_awareness import (
+    GenerationConfig,
     LLMRefusalScorer,
+    OpenRouterClient,
     RefusalScorer,
     ScoringContext,
+    TranscriptInput,
     classify_model,
     reasoning_tier_bucket,
     task_family_from_example_id,
 )
+from src.eval_awareness.providers import _is_open_reasoning_model
 
 
 # ---------------------------------------------------------------------------
@@ -697,3 +701,173 @@ def test_validate_score_mode_computes_metrics(tmp_path):
     assert llm["false_positive"] == 0
     assert llm["false_negative"] == 0
     assert llm["agreement"] == 1.0
+
+
+# ---------------------------------------------------------------------------
+# Track B - OpenRouter dispatch + open-reasoning token-budget bump
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "model_id, expected",
+    [
+        ("deepseek/deepseek-r1", True),
+        ("deepseek-ai/deepseek-r1-distill", True),
+        ("qwen/qwq-32b", True),
+        ("qwen-qwq", True),
+        ("openthinker-32b", True),
+        ("kimi-k2.5", True),
+        ("olmo-3-think", True),
+        ("meta-llama/llama-3.3-70b-instruct", False),
+        ("mistralai/mistral-large", False),
+        ("gpt-4o-mini", False),
+        ("", False),
+    ],
+)
+def test_is_open_reasoning_model(model_id: str, expected: bool):
+    assert _is_open_reasoning_model(model_id) is expected
+
+
+def test_cross_protocol_discover_models_picks_up_openrouter(monkeypatch):
+    """Setting OPENROUTER_API_KEY + CROSS_OPENROUTER_MODELS dispatches OpenRouter clients."""
+    from scripts.run_cross_protocol_comparison import _discover_models
+
+    # Wipe any provider keys that might add unrelated clients.
+    for var in (
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "CROSS_OLLAMA_MODELS",
+        "CROSS_OPENAI_MODELS",
+        "CROSS_ANTHROPIC_MODELS",
+    ):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-fake")
+    monkeypatch.setenv(
+        "CROSS_OPENROUTER_MODELS",
+        "deepseek/deepseek-r1, qwen/qwq-32b ,meta-llama/llama-3.3-70b-instruct",
+    )
+    models = _discover_models()
+    names = [m.name for m in models]
+    assert names == [
+        "openrouter:deepseek/deepseek-r1",
+        "openrouter:qwen/qwq-32b",
+        "openrouter:meta-llama/llama-3.3-70b-instruct",
+    ]
+    assert all(isinstance(m, OpenRouterClient) for m in models)
+
+
+def test_cross_protocol_discover_models_skips_openrouter_without_model_list(
+    monkeypatch, caplog
+):
+    """OPENROUTER_API_KEY without CROSS_OPENROUTER_MODELS logs a warning and falls through."""
+    from scripts.run_cross_protocol_comparison import _discover_models
+
+    for var in (
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "CROSS_OLLAMA_MODELS",
+        "CROSS_OPENROUTER_MODELS",
+    ):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-fake")
+    with caplog.at_level("WARNING"):
+        models = _discover_models()
+    # Should fall back to scripted, and warn.
+    assert any("CROSS_OPENROUTER_MODELS is empty" in r.message for r in caplog.records)
+    assert all(not isinstance(m, OpenRouterClient) for m in models)
+
+
+def test_openai_compatible_open_reasoning_token_budget_floor(monkeypatch):
+    """Open-reasoning models routed through OpenRouter get max_tokens floored to 2048.
+
+    Without the floor, the visible response shares a too-small budget with the
+    reasoning trace and comes back near-empty. This test asserts the payload
+    sent to the upstream API has the bumped budget.
+    """
+    captured: Dict[str, Any] = {}
+
+    class FakeResponse:
+        status_code = 200
+        headers = {"x-request-id": "rid-1"}
+
+        def json(self):
+            return {
+                "choices": [
+                    {"message": {"content": "ok"}, "finish_reason": "stop"}
+                ],
+                "usage": {},
+            }
+
+    def fake_post(url, headers, payload, timeout_seconds, retry):
+        captured["payload"] = dict(payload)
+        return FakeResponse()
+
+    import src.eval_awareness.providers as providers_module
+
+    monkeypatch.setattr(providers_module, "_post_with_retries", fake_post)
+    client = OpenRouterClient(
+        name="openrouter:deepseek/deepseek-r1",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="fake",
+        model="deepseek/deepseek-r1",
+    )
+    transcript = TranscriptInput(user_prompt="hello")
+    config = GenerationConfig(temperature=0.0, max_tokens=256)
+    client.generate_with_config(transcript, config)
+    payload = captured["payload"]
+    # Reasoning models keep max_tokens (OpenRouter accepts it), but the floor
+    # is 2048 so visible output isn't crowded out by the reasoning trace.
+    assert "max_completion_tokens" not in payload
+    assert payload["max_tokens"] == 2048
+    # Temperature should still be passed (DeepSeek R1 accepts it).
+    assert payload["temperature"] == 0.0
+
+
+def test_openai_compatible_non_reasoning_token_budget_unchanged(monkeypatch):
+    """Non-reasoning models keep the caller's max_tokens verbatim."""
+    captured: Dict[str, Any] = {}
+
+    class FakeResponse:
+        status_code = 200
+        headers = {}
+
+        def json(self):
+            return {
+                "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
+                "usage": {},
+            }
+
+    def fake_post(url, headers, payload, timeout_seconds, retry):
+        captured["payload"] = dict(payload)
+        return FakeResponse()
+
+    import src.eval_awareness.providers as providers_module
+
+    monkeypatch.setattr(providers_module, "_post_with_retries", fake_post)
+    client = OpenRouterClient(
+        name="openrouter:meta-llama/llama-3.3-70b-instruct",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="fake",
+        model="meta-llama/llama-3.3-70b-instruct",
+    )
+    transcript = TranscriptInput(user_prompt="hello")
+    config = GenerationConfig(temperature=0.0, max_tokens=256)
+    client.generate_with_config(transcript, config)
+    payload = captured["payload"]
+    # Non-reasoning model: no floor applied.
+    assert payload["max_tokens"] == 256
+    assert "max_completion_tokens" not in payload
+
+
+def test_corpus_manifest_classifies_openrouter_open_reasoning():
+    """OpenRouter open-reasoning models classify into the open_full bucket."""
+    tier = classify_model("openrouter:qwen/qwq-32b")
+    assert tier.vendor == "openrouter"
+    assert tier.is_reasoning is True
+    assert tier.reasoning_provenance == "open_full"
+    assert reasoning_tier_bucket(tier) == "open_full_reasoning"
+
+    tier_non = classify_model("openrouter:meta-llama/llama-3.3-70b-instruct")
+    assert tier_non.vendor == "openrouter"
+    assert tier_non.is_reasoning is False
+    assert reasoning_tier_bucket(tier_non) == "non_reasoning"

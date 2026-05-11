@@ -23,7 +23,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from .providers import _is_anthropic_reasoning_model, _is_openai_reasoning_model
+from .providers import (
+    _is_anthropic_reasoning_model,
+    _is_open_reasoning_model,
+    _is_openai_reasoning_model,
+)
 
 # ---------------------------------------------------------------------------
 # Task family inference
@@ -89,31 +93,6 @@ class ModelTier:
             "reasoning_provenance": self.reasoning_provenance,
             "notes": self.notes,
         }
-
-
-# Open-weight reasoning models with VISIBLE chain-of-thought. These are the
-# "open-source full reasoning" tier - the CoT is in the response, so VEA and
-# eval-framing effects can be measured directly on the reasoning trace.
-_OPEN_REASONING_MODELS = (
-    "deepseek-r1",
-    "deepseek/deepseek-r1",
-    "deepseek-ai/deepseek-r1",
-    "qwen/qwq",
-    "qwen-qwq",
-    "qwq-32b",
-    "open-thoughts",
-    "openthinker",
-    "olmo-2-think",
-    "olmo-3",
-    "kimi-k2.5",
-    "kimi-k2",
-)
-
-
-def _is_open_reasoning_model(model_id: str) -> bool:
-    """Detect open-weight reasoning models with visible CoT."""
-    lower = model_id.lower()
-    return any(token in lower for token in _OPEN_REASONING_MODELS)
 
 
 def classify_model(label: str) -> ModelTier:
