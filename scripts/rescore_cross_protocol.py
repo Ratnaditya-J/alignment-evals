@@ -539,6 +539,7 @@ def _render_run_config_md(
     judge_provider: str,
     judge_model: str,
     llm_sample_rate: float,
+    primary_scorer: str = "regex",
 ) -> str:
     lines = ["## Run configuration", ""]
     lines.append("| Field | Value |")
@@ -577,14 +578,24 @@ def _render_run_config_md(
         lines.append(
             "| corpus_manifest.json | _absent — methodology partially inferred from rollouts_ |"
         )
-    lines.append("| Refusal scorer (primary) | regex (RefusalScorer) |")
-    if judge_provider != "none":
-        lines.append(
-            f"| Refusal scorer (LLM cross-check) | {judge_provider} / {judge_model} "
-            f"(sample_rate={llm_sample_rate}) |"
-        )
+    # Reflect the actual --primary-scorer choice; previously hardcoded to
+    # "regex (RefusalScorer)" even when LLM judge drove the headline tables.
+    if primary_scorer == "llm":
+        if judge_provider != "none":
+            primary_desc = f"LLM judge ({judge_provider} / {judge_model})"
+        else:
+            primary_desc = "LLM judge (reused from prior rescore)"
+        lines.append(f"| Refusal scorer (primary) | {primary_desc} |")
+        lines.append("| Refusal scorer (cross-check) | regex (RefusalScorer) |")
     else:
-        lines.append("| Refusal scorer (LLM cross-check) | _disabled_ |")
+        lines.append("| Refusal scorer (primary) | regex (RefusalScorer) |")
+        if judge_provider != "none":
+            lines.append(
+                f"| Refusal scorer (LLM cross-check) | {judge_provider} / "
+                f"{judge_model} (sample_rate={llm_sample_rate}) |"
+            )
+        else:
+            lines.append("| Refusal scorer (LLM cross-check) | _disabled_ |")
     lines.append("| CI method | bootstrap (B=200, paired by condition) |")
     lines.append("")
     return "\n".join(lines) + "\n"
@@ -957,6 +968,7 @@ def _render_report(
     judge_model: str,
     llm_sample_rate: float,
     score_label: str,
+    primary_scorer: str = "regex",
 ) -> str:
     sections = [
         "# Cross-protocol VEA effect comparison",
@@ -968,6 +980,7 @@ def _render_report(
             judge_provider,
             judge_model,
             llm_sample_rate,
+            primary_scorer=primary_scorer,
         ),
         _render_model_identity_md(manifest, records),
         _render_prompt_templates_md(manifest),
@@ -1239,6 +1252,7 @@ def main(argv: Iterable[str] | None = None) -> None:
         judge_model=judge_model,
         llm_sample_rate=args.llm_judge_sample_rate,
         score_label=score_label,
+        primary_scorer=args.primary_scorer,
     )
     out_report.write_text(report, encoding="utf-8")
 
