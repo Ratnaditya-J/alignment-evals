@@ -281,9 +281,38 @@ def _judge(provider: str = "openai", model: str | None = None) -> Any:
             LOGGER.warning(
                 "GEMINI_API_KEY not set; judge falling back to heuristic-only"
             )
+    elif provider == "openrouter":
+        if os.environ.get("OPENROUTER_API_KEY"):
+            if not judge_model:
+                LOGGER.warning(
+                    "openrouter judge requires --judge-model (e.g. "
+                    "google/gemini-2.5-flash); falling back to heuristic-only"
+                )
+            else:
+                try:
+                    from src.eval_awareness import (
+                        LLMVerbalizedAwarenessJudge,
+                        OpenRouterClient,
+                    )
+
+                    client = OpenRouterClient.from_env(
+                        name=f"openrouter-judge:{judge_model}", model=judge_model
+                    )
+                    judges.append(LLMVerbalizedAwarenessJudge(client))
+                    LOGGER.info(
+                        "judge: LLMVerbalizedAwarenessJudge(OpenRouterClient(%s))",
+                        judge_model,
+                    )
+                except (RuntimeError, KeyError) as exc:
+                    LOGGER.warning("OpenRouter judge unavailable: %s", exc)
+        else:
+            LOGGER.warning(
+                "OPENROUTER_API_KEY not set; judge falling back to heuristic-only"
+            )
     else:
         raise SystemExit(
-            f"unknown judge provider: {provider!r}; valid: openai/anthropic/gemini/none"
+            f"unknown judge provider: {provider!r}; "
+            "valid: openai/anthropic/gemini/openrouter/none"
         )
     return EnsembleVerbalizedAwarenessJudge(judges=judges)
 
@@ -1057,7 +1086,7 @@ def main(argv: Iterable[str] | None = None) -> None:
     parser.add_argument(
         "--judge-provider",
         default="openai",
-        choices=("openai", "anthropic", "gemini", "none"),
+        choices=("openai", "anthropic", "gemini", "openrouter", "none"),
         help=(
             "VEA judge backend. Best practice for SOTA-level work: pick a provider "
             "different from any model under test (e.g. judge with gemini when "
