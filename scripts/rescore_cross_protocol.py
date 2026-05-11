@@ -1043,11 +1043,48 @@ def main(argv: Iterable[str] | None = None) -> None:
         default=0,
         help="Random seed for LLM sampling and bootstrap.",
     )
+    parser.add_argument(
+        "--primary-scorer",
+        default="regex",
+        choices=("regex", "llm"),
+        help=(
+            "Which refusal score drives the headline per-model / tier / "
+            "task-family tables. 'regex' (default) is fast and free but "
+            "miscalibrated for modern aligned models that use third-person "
+            "refusal phrasing ('the assistant should not...'). 'llm' uses "
+            "the LLM judge as primary - recommended for any publishable "
+            "run. When --primary-scorer llm is combined with "
+            "--llm-judge-provider none, the script tries to reuse LLM "
+            "scores from an existing rollouts_scored.jsonl in the run dir "
+            "so you don't double-pay the judge."
+        ),
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
+
+    primary_key = "refusal_llm" if args.primary_scorer == "llm" else "refusal_regex"
 
     run_dir = Path(args.run_dir)
     rollouts_path = run_dir / "rollouts.jsonl"
+    scored_path = run_dir / "rollouts_scored.jsonl"
     manifest_path = run_dir / "corpus_manifest.json"
+
+    # When --primary-scorer llm AND no judge will run THIS pass, try to
+    # reuse prior LLM scores from rollouts_scored.jsonl (the script writes
+    # this file every time it runs with a judge). That makes "re-aggregate
+    # with LLM as primary" a free operation after the LLM judge has been
+    # paid for once.
+    reuse_scored = (
+        args.primary_scorer == "llm"
+        and args.llm_judge_provider == "none"
+        and scored_path.exists()
+    )
+    if reuse_scored:
+        LOGGER.info(
+            "primary-scorer=llm with no judge provider; loading from %s "
+            "to reuse prior LLM scores",
+            scored_path,
+        )
+        rollouts_path = scored_path
 
     LOGGER.info("loading rollouts from %s", rollouts_path)
     rollouts = _load_rollouts(rollouts_path)
@@ -1111,32 +1148,55 @@ def main(argv: Iterable[str] | None = None) -> None:
             )
             score_label = "regex RefusalScorer (LLM judge cross-check available)"
 
+    # If LLM is the primary scorer, make sure we actually have LLM scores
+    # to aggregate. Bail out clearly otherwise instead of silently producing
+    # an all-zero report.
+    if args.primary_scorer == "llm":
+        llm_scored = sum(1 for r in records if r.get("refusal_llm") is not None)
+        if llm_scored == 0:
+            raise SystemExit(
+                "--primary-scorer llm requires LLM judge scores in the input. "
+                "Either pass --llm-judge-provider so the judge runs this pass, "
+                "or point the script at a rollouts_scored.jsonl that already "
+                "has refusal_llm values from a prior LLM-judged rescore."
+            )
+        LOGGER.info(
+            "primary scorer: LLM judge (%d/%d records have llm scores)",
+            llm_scored,
+            len(records),
+        )
+        if judge_provider != "none":
+            score_label = f"LLM judge ({judge_provider} / {judge_model})"
+        else:
+            score_label = "LLM judge (reused from prior rescore)"
+
     per_model_buckets = _group_refusals(
-        records, "refusal_regex", group_keys=("model_name",)
+        records, primary_key, group_keys=("model_name",)
     )
     per_model = _summarize_buckets(per_model_buckets, ("model_name",))
     tier_buckets = _group_refusals(
-        records, "refusal_regex", group_keys=("model_tier_bucket", "model_vendor")
+        records, primary_key, group_keys=("model_tier_bucket", "model_vendor")
     )
     tier_rows = _summarize_buckets(
         tier_buckets, ("model_tier_bucket", "model_vendor")
     )
     task_family_buckets = _group_refusals(
-        records, "refusal_regex", group_keys=("model_name", "task_family")
+        records, primary_key, group_keys=("model_name", "task_family")
     )
     task_family_rows = _summarize_buckets(
         task_family_buckets, ("model_name", "task_family")
     )
 
-    judge_overall = (
-        _confusion_matrix(records) if judge_provider != "none" else {"n": 0}
-    )
-    judge_per_model = (
-        _confusion_by_model(records) if judge_provider != "none" else []
-    )
+    # Confusion matrix is always regex vs LLM regardless of which is primary;
+    # it surfaces the disagreement either way. Available iff some records
+    # have BOTH scores, which is true after the LLM judge has run (this
+    # pass or a previous one captured in rollouts_scored.jsonl).
+    has_llm_scores = any(r.get("refusal_llm") is not None for r in records)
+    judge_overall = _confusion_matrix(records) if has_llm_scores else {"n": 0}
+    judge_per_model = _confusion_by_model(records) if has_llm_scores else []
 
     examples = _sample_examples(
-        records, "refusal_regex", per_bucket=args.example_count
+        records, primary_key, per_bucket=args.example_count
     )
 
     suffix = "" if args.in_place else ".rescored"
@@ -1147,6 +1207,8 @@ def main(argv: Iterable[str] | None = None) -> None:
     summary_payload = {
         "rescored": True,
         "rescored_records": len(records),
+        "primary_scorer": args.primary_scorer,
+        "primary_score_key": primary_key,
         "judge_provider": judge_provider,
         "judge_model": judge_model,
         "judge_sample_rate": args.llm_judge_sample_rate,

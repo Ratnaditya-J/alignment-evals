@@ -534,6 +534,154 @@ def test_rescore_runs_with_llm_judge_via_fake(tmp_path, monkeypatch):
     assert all(record["refusal_llm"] is not None for record in scored)
 
 
+def test_rescore_primary_scorer_llm_uses_llm_for_aggregation(tmp_path, monkeypatch):
+    """--primary-scorer llm flips the headline numbers to use refusal_llm."""
+    from scripts import rescore_cross_protocol as rescore
+
+    # Fake judge: marks every response as refused with high confidence so the
+    # LLM-based refusal rate diverges from the regex-based rate (which is 0
+    # since the responses don't contain regex-matching tokens like "I can't").
+    def _make_scorer(provider, model=None, **kwargs):
+        class JudgeClient:
+            model = "fake-judge"
+
+            def generate(self, transcript):
+                return json.dumps(
+                    {
+                        "refused": True,
+                        "confidence": 0.95,
+                        "refusal_type": "hard_refuse",
+                        "quoted_refusal_text": "decline",
+                        "rationale": "fake",
+                    }
+                )
+
+        return LLMRefusalScorer(JudgeClient())
+
+    monkeypatch.setattr(rescore, "build_default_llm_refusal_scorer", _make_scorer)
+
+    run_dir = tmp_path / "run"
+    rollouts = []
+    for i in range(5):
+        for cond in ("baseline", "neutral", "inject", "remove"):
+            # Response that has NO regex-matching refusal phrasing; only the
+            # LLM judge will recognise it as a refusal.
+            rollouts.append(
+                _make_rollout(
+                    model="openai:gpt-4o-mini",
+                    condition=cond,
+                    example_id=f"beavertails:30k_train:{i}",
+                    response="No, the assistant should not help with that request.",
+                    rollout_index=i,
+                )
+            )
+    _write_jsonl(run_dir / "rollouts.jsonl", rollouts)
+
+    rescore.main(
+        [
+            str(run_dir),
+            "--in-place",
+            "--llm-judge-provider",
+            "openai",
+            "--llm-judge-model",
+            "gpt-4o-mini",
+            "--primary-scorer",
+            "llm",
+        ]
+    )
+
+    summary = json.loads((run_dir / "cross_protocol_summary.json").read_text())
+    assert summary["primary_scorer"] == "llm"
+    assert summary["primary_score_key"] == "refusal_llm"
+    per_model = {row["model_name"]: row for row in summary["per_model"]}
+    mini = per_model["openai:gpt-4o-mini"]
+    # LLM judge says every response is a refusal -> rate ~ 0.95 across all
+    # conditions. Regex would have said 0.0 across all conditions.
+    assert mini["baseline_refusal_rate"] > 0.9
+    assert mini["inject_refusal_rate"] > 0.9
+
+
+def test_rescore_primary_scorer_llm_reuses_prior_scored_jsonl(tmp_path):
+    """primary=llm + no judge provider -> loads rollouts_scored.jsonl."""
+    from scripts import rescore_cross_protocol as rescore
+
+    run_dir = tmp_path / "run"
+    # Pre-populate rollouts_scored.jsonl with refusal_llm already set, AND a
+    # mismatched rollouts.jsonl with no LLM scores. The reuse logic should
+    # prefer the scored file.
+    rollouts_with_llm = []
+    for i in range(5):
+        for cond in ("baseline", "neutral", "inject", "remove"):
+            rollouts_with_llm.append(
+                {
+                    "model_name": "openai:gpt-4o-mini",
+                    "condition": cond,
+                    "example_id": f"beavertails:30k_train:{i}",
+                    "task_family": "safety",
+                    "rollout_index": i,
+                    "prompt": "x",
+                    "system_prompt": "",
+                    "response": "No, the assistant should not.",
+                    "refusal": 0.0,
+                    "refusal_regex": 0.0,
+                    "refusal_llm": 0.93,
+                    "llm_refusal_type": "hard_refuse",
+                    "llm_quote": "should not",
+                }
+            )
+    _write_jsonl(run_dir / "rollouts_scored.jsonl", rollouts_with_llm)
+    # rollouts.jsonl deliberately has different data so we can tell which
+    # was loaded.
+    rollouts_no_llm = [
+        {**r, "refusal_llm": None, "llm_refusal_type": None, "llm_quote": ""}
+        for r in rollouts_with_llm
+    ]
+    _write_jsonl(run_dir / "rollouts.jsonl", rollouts_no_llm)
+
+    rescore.main(
+        [
+            str(run_dir),
+            "--in-place",
+            "--primary-scorer",
+            "llm",
+        ]
+    )
+
+    summary = json.loads((run_dir / "cross_protocol_summary.json").read_text())
+    assert summary["primary_scorer"] == "llm"
+    assert summary["judge_provider"] == "none"
+    per_model = {row["model_name"]: row for row in summary["per_model"]}
+    mini = per_model["openai:gpt-4o-mini"]
+    # All conditions get LLM rate 0.93 from the scored file (none from
+    # rollouts.jsonl, which had None).
+    assert mini["baseline_refusal_rate"] > 0.9
+
+
+def test_rescore_primary_scorer_llm_errors_when_no_llm_data(tmp_path):
+    """--primary-scorer llm with no judge AND no scored file -> SystemExit."""
+    from scripts import rescore_cross_protocol as rescore
+
+    run_dir = tmp_path / "run"
+    rollouts = [
+        _make_rollout(
+            model="openai:gpt-4o-mini",
+            condition=cond,
+            example_id=f"beavertails:30k_train:{i}",
+            response="No.",
+            rollout_index=i,
+        )
+        for i in range(3)
+        for cond in ("baseline", "neutral", "inject", "remove")
+    ]
+    _write_jsonl(run_dir / "rollouts.jsonl", rollouts)
+
+    with pytest.raises(SystemExit) as excinfo:
+        rescore.main(
+            [str(run_dir), "--in-place", "--primary-scorer", "llm"]
+        )
+    assert "primary-scorer llm" in str(excinfo.value)
+
+
 # ---------------------------------------------------------------------------
 # validate_refusal_scorer.py — sample mode + score mode
 # ---------------------------------------------------------------------------
