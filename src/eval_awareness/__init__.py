@@ -94,6 +94,15 @@ from .run_metadata import (
     source_type_bucket,
     task_family_from_example_id,
 )
+from .sandbagging import (
+    SandbaggingCell,
+    SandbaggingJudge,
+    SandbaggingRecord,
+    aggregate_cell as aggregate_sandbagging_cell,
+    assign_verdict as assign_sandbagging_verdict,
+    build_default_sandbagging_judge,
+    classify_evidence_tier as classify_sandbagging_evidence_tier,
+)
 from .reporting import ReportExporter
 from .rewrite import EvalLeakageRewriter, RewriteResult
 from .runner import (
@@ -279,6 +288,13 @@ __all__ = [
     "provider_manifest",
     "rate",
     "reasoning_tier_bucket",
+    "SandbaggingCell",
+    "SandbaggingJudge",
+    "SandbaggingRecord",
+    "aggregate_sandbagging_cell",
+    "assign_sandbagging_verdict",
+    "build_default_sandbagging_judge",
+    "classify_sandbagging_evidence_tier",
     "source_type_bucket",
     "score_response",
     "starter_examples",
