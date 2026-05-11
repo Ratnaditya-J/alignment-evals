@@ -492,6 +492,12 @@ def run_goodfire_protocol(
     responses_by_model: Dict[str, List[str]] = {
         getattr(m, "name", m.__class__.__name__): [] for m in models
     }
+    tasks_per_model: Dict[str, int] = {
+        getattr(m, "name", m.__class__.__name__): 0 for m in models
+    }
+    for task in tasks:
+        tasks_per_model[task.model_name] = tasks_per_model.get(task.model_name, 0) + 1
+    completed_per_model: Dict[str, int] = {name: 0 for name in tasks_per_model}
     completed = 0
     lock = threading.Lock()
     started = time.perf_counter()
@@ -500,12 +506,23 @@ def run_goodfire_protocol(
         nonlocal completed
         responses_by_model[task.model_name].append(response)
         completed += 1
+        completed_per_model[task.model_name] = (
+            completed_per_model.get(task.model_name, 0) + 1
+        )
         if completed % progress_every == 0:
+            elapsed = time.perf_counter() - started
+            pct = 100 * completed / max(1, len(tasks))
+            per_model = " | ".join(
+                f"{name}={completed_per_model[name]}/{tasks_per_model[name]}"
+                for name in tasks_per_model
+            )
             LOGGER.info(
-                "goodfire rollouts: %d/%d (%.1f s)",
+                "goodfire: %d/%d (%.1f%%, %.1fs) -- %s",
                 completed,
                 len(tasks),
-                time.perf_counter() - started,
+                pct,
+                elapsed,
+                per_model,
             )
 
     if max_concurrent <= 1:
@@ -758,6 +775,13 @@ def run_arxiv_protocol(
         }
         for m in models
     }
+    # Per-model task totals (used to render the x/y progress breakdown).
+    tasks_per_model: Dict[str, int] = {
+        getattr(m, "name", m.__class__.__name__): 0 for m in models
+    }
+    for task in tasks:
+        tasks_per_model[task.model_name] = tasks_per_model.get(task.model_name, 0) + 1
+    completed_per_model: Dict[str, int] = {name: 0 for name in tasks_per_model}
     completed = 0
     lock = threading.Lock()
     started = time.perf_counter()
@@ -789,12 +813,23 @@ def run_arxiv_protocol(
                 }
             )
         completed += 1
+        completed_per_model[task.model_name] = (
+            completed_per_model.get(task.model_name, 0) + 1
+        )
         if completed % progress_every == 0:
+            elapsed = time.perf_counter() - started
+            pct = 100 * completed / max(1, len(tasks))
+            per_model = " | ".join(
+                f"{name}={completed_per_model[name]}/{tasks_per_model[name]}"
+                for name in tasks_per_model
+            )
             LOGGER.info(
-                "arxiv: %d/%d tasks complete (%.1f s)",
+                "arxiv: %d/%d (%.1f%%, %.1fs) -- %s",
                 completed,
                 len(tasks),
-                time.perf_counter() - started,
+                pct,
+                elapsed,
+                per_model,
             )
 
     if max_concurrent <= 1:
@@ -1017,12 +1052,13 @@ def main(argv: Iterable[str] | None = None) -> None:
     parser.add_argument(
         "--max-concurrent",
         type=int,
-        default=1,
+        default=10,
         help=(
-            "Maximum number of parallel provider calls. Default 1 (serial). "
+            "Maximum number of parallel provider calls. Default 10. "
             "Recommended: 15-20 on top-tier accounts; backoff retries are still "
             "applied per-thread so 429s are handled. Each model has independent "
-            "provider quota, so models are effectively run in parallel."
+            "provider quota, so models are effectively run in parallel. Set to "
+            "1 for serial debugging."
         ),
     )
     parser.add_argument(
