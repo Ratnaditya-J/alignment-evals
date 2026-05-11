@@ -82,6 +82,7 @@ class ModelTier:
     model_id: str  # the bare model id, e.g. "gpt-5.5"
     is_reasoning: bool
     reasoning_provenance: str  # "closed_polished" / "open_full" / "none"
+    is_open_weights: bool  # True for Meta/Mistral/DeepSeek/Qwen/Moonshot/etc.
     notes: str = ""
 
     def to_dict(self) -> Dict[str, object]:
@@ -91,8 +92,56 @@ class ModelTier:
             "model_id": self.model_id,
             "is_reasoning": self.is_reasoning,
             "reasoning_provenance": self.reasoning_provenance,
+            "is_open_weights": self.is_open_weights,
             "notes": self.notes,
         }
+
+
+# Closed-source labs ship API-only. Their models can be served through
+# OpenRouter or other gateways but they're still 'closed_source' from a
+# weights-release standpoint. The first-party vendor strings are detected
+# below; routed access via openrouter is detected by model_id prefix.
+_CLOSED_SOURCE_VENDORS = {
+    "openai",
+    "openai_compatible",
+    "anthropic",
+    "anthropic_sdk",
+    "gemini",
+    "gemini_sdk",
+    "cohere",
+}
+
+# When a closed-source model is served via OpenRouter, the model_id keeps
+# the originating lab's prefix (e.g. "openai/gpt-4o-mini",
+# "anthropic/claude-opus-4-7", "google/gemini-2.5-pro"). Detect those so
+# bucketing isn't fooled by the routing layer.
+_CLOSED_SOURCE_MODEL_PREFIXES_VIA_ROUTER = (
+    "openai/",
+    "anthropic/",
+    "google/gemini",
+    "cohere/",
+)
+
+
+def _is_open_weights_model(vendor: str, model_id: str) -> bool:
+    """Detect whether a model's weights are publicly released.
+
+    Open-weights = Meta Llama, DeepSeek, Qwen, Mistral, Moonshot Kimi,
+    Zhipu GLM, Allen AI OLMo, 01.AI Yi, Google Gemma (NOT Gemini), etc.
+    Closed-source = OpenAI, Anthropic, Gemini (proper), Cohere closed.
+
+    Defaults to True (open-weights) when uncertain - on the rationale
+    that an unknown OpenRouter-routed model is more likely an open
+    fine-tune than a routed closed-source product. Override by adding
+    new vendor strings to ``_CLOSED_SOURCE_VENDORS`` or model-id prefixes
+    to ``_CLOSED_SOURCE_MODEL_PREFIXES_VIA_ROUTER``.
+    """
+    if vendor.lower() in _CLOSED_SOURCE_VENDORS:
+        return False
+    lower_id = model_id.lower()
+    if any(lower_id.startswith(p) for p in _CLOSED_SOURCE_MODEL_PREFIXES_VIA_ROUTER):
+        return False
+    return True
 
 
 def classify_model(label: str) -> ModelTier:
@@ -159,6 +208,7 @@ def classify_model(label: str) -> ModelTier:
         model_id=model_id,
         is_reasoning=is_reasoning,
         reasoning_provenance=provenance,
+        is_open_weights=_is_open_weights_model(vendor, model_id),
         notes=notes,
     )
 
@@ -172,3 +222,16 @@ def reasoning_tier_bucket(tier: ModelTier) -> str:
     if tier.reasoning_provenance == "closed_polished":
         return "closed_polished_reasoning"
     return "reasoning_unknown"
+
+
+def source_type_bucket(tier: ModelTier) -> str:
+    """Open vs closed source bucketing for a separate analysis dimension.
+
+    Returns ``open_source`` for models whose weights are publicly released
+    (Meta, Mistral, DeepSeek, Qwen, Moonshot, Zhipu, etc.) and
+    ``closed_source`` for API-only models (OpenAI, Anthropic, Gemini,
+    Cohere closed). This is orthogonal to the reasoning-tier bucket -
+    Anthropic Claude can be closed_source AND reasoning, DeepSeek R1 is
+    open_source AND reasoning.
+    """
+    return "open_source" if tier.is_open_weights else "closed_source"
