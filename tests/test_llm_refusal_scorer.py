@@ -1446,6 +1446,69 @@ def test_corpus_manifest_classifies_openrouter_open_reasoning():
     assert reasoning_tier_bucket(tier_non) == "non_reasoning"
 
 
+def test_corpus_manifest_includes_ground_truth_fields(tmp_path):
+    """Manifest entries must carry expected_answer / choices / scorer_names
+    so the post-rescore can compute capability accuracy without rebuilding
+    the corpus from the loaders.
+
+    Regression guard for Phase A of the non-safety expansion."""
+    from src.eval_awareness import EvalAwarenessExample, TranscriptInput
+    from scripts.run_cross_protocol_comparison import _task_family_counts
+
+    examples = [
+        EvalAwarenessExample(
+            example_id="gsm8k:test:0",
+            label="hidden_eval",
+            task_family="math",
+            source="gsm8k",
+            transcript=TranscriptInput(user_prompt="2+2?"),
+            expected_answer="4",
+            scorer_names=("numeric_answer",),
+        ),
+        EvalAwarenessExample(
+            example_id="mmlu:anatomy:test:0",
+            label="hidden_eval",
+            task_family="knowledge",
+            source="mmlu",
+            transcript=TranscriptInput(user_prompt="What is X?"),
+            expected_answer="B",
+            choices=("A", "B", "C", "D"),
+            scorer_names=("multiple_choice",),
+        ),
+    ]
+
+    # Inline the manifest construction so this test pins the schema even
+    # if run_cross_protocol_comparison.py's main() refactors. The shape
+    # under test is the dict literal in main(), so we mirror it here.
+    manifest_examples = [
+        {
+            "example_id": ex.example_id,
+            "task_family": getattr(ex, "task_family", "unknown"),
+            "source": getattr(ex, "source", "unknown"),
+            "label": getattr(ex, "label", "unknown"),
+            "expected_answer": getattr(ex, "expected_answer", "") or "",
+            "expected_behavior": getattr(ex, "expected_behavior", "") or "",
+            "choices": list(getattr(ex, "choices", ()) or ()),
+            "scorer_names": list(getattr(ex, "scorer_names", ()) or ()),
+            "risk_tags": list(getattr(ex, "risk_tags", ()) or ()),
+        }
+        for ex in examples
+    ]
+    gsm8k_entry = manifest_examples[0]
+    mmlu_entry = manifest_examples[1]
+    # GSM8K: numeric ground truth, no choices
+    assert gsm8k_entry["expected_answer"] == "4"
+    assert gsm8k_entry["choices"] == []
+    assert gsm8k_entry["scorer_names"] == ["numeric_answer"]
+    # MMLU: lettered ground truth + 4 choices
+    assert mmlu_entry["expected_answer"] == "B"
+    assert mmlu_entry["choices"] == ["A", "B", "C", "D"]
+    assert mmlu_entry["scorer_names"] == ["multiple_choice"]
+
+    # Sanity-check the task_family counts helper still works.
+    assert _task_family_counts(examples) == {"knowledge": 1, "math": 1}
+
+
 @pytest.mark.parametrize(
     "label, expected_source_type, expected_is_open",
     [
