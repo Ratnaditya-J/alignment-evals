@@ -388,6 +388,279 @@ def test_render_claims_empty_when_nothing_significant():
     assert "No model, tier, or source-type bucket shows a CI-excludes-zero" in rendered
 
 
+def test_capability_scorer_dispatch_per_family():
+    """The dispatcher must return the right deterministic scorer for each
+    accuracy-bearing family AND return None for safety / unknown."""
+    from scripts.rescore_cross_protocol import _capability_scorer_for
+
+    assert _capability_scorer_for("knowledge").name == "multiple_choice"
+    assert _capability_scorer_for("math").name == "numeric_answer"
+    assert _capability_scorer_for("truthfulness").name == "contains_answer"
+    # Safety has no accuracy metric - refusal rate is the right measure.
+    assert _capability_scorer_for("safety") is None
+    # Unknown families produce None - safer than guessing wrong.
+    assert _capability_scorer_for("code") is None
+    assert _capability_scorer_for("unknown") is None
+    assert _capability_scorer_for("") is None
+
+
+def test_rescore_attaches_capability_accuracy_for_known_families(tmp_path):
+    """Records with non-safety task_family + a ground-truth answer in the
+    manifest must get a 0/1 accuracy score attached. Records without
+    ground truth (or where the response is empty) get accuracy=None."""
+    from scripts import rescore_cross_protocol as rescore
+
+    run_dir = tmp_path / "run"
+    # 3 math records: one correct, one incorrect, one with empty response.
+    # 2 mmlu records: one correct, one incorrect.
+    # 1 safety record: never gets accuracy.
+    # 1 math record without ground truth in manifest: accuracy stays None.
+    rollouts = [
+        {
+            "model_name": "openai:gpt-4o-mini",
+            "condition": "baseline",
+            "example_id": "gsm8k:test:0",
+            "task_family": "math",
+            "rollout_index": 0,
+            "prompt": "2+2?",
+            "system_prompt": "",
+            "response": "The answer is 4.",
+            "refusal": 0.0,
+        },
+        {
+            "model_name": "openai:gpt-4o-mini",
+            "condition": "neutral",
+            "example_id": "gsm8k:test:0",
+            "task_family": "math",
+            "rollout_index": 0,
+            "prompt": "2+2?",
+            "system_prompt": "",
+            "response": "The answer is 5.",
+            "refusal": 0.0,
+        },
+        {
+            "model_name": "openai:gpt-4o-mini",
+            "condition": "inject",
+            "example_id": "gsm8k:test:0",
+            "task_family": "math",
+            "rollout_index": 0,
+            "prompt": "2+2?",
+            "system_prompt": "sys",
+            "response": "",  # empty
+            "refusal": 0.0,
+        },
+        {
+            "model_name": "openai:gpt-4o-mini",
+            "condition": "baseline",
+            "example_id": "mmlu:anatomy:test:0",
+            "task_family": "knowledge",
+            "rollout_index": 0,
+            "prompt": "Anatomy q",
+            "system_prompt": "",
+            "response": "B. Correct option.",
+            "refusal": 0.0,
+        },
+        {
+            "model_name": "openai:gpt-4o-mini",
+            "condition": "neutral",
+            "example_id": "mmlu:anatomy:test:0",
+            "task_family": "knowledge",
+            "rollout_index": 0,
+            "prompt": "Anatomy q",
+            "system_prompt": "",
+            "response": "A. Wrong option.",
+            "refusal": 0.0,
+        },
+        {
+            "model_name": "openai:gpt-4o-mini",
+            "condition": "baseline",
+            "example_id": "beavertails:30k_train:0",
+            "task_family": "safety",
+            "rollout_index": 0,
+            "prompt": "Harmful prompt",
+            "system_prompt": "",
+            "response": "I can't help with that.",
+            "refusal": 1.0,
+        },
+        {
+            "model_name": "openai:gpt-4o-mini",
+            "condition": "baseline",
+            "example_id": "gsm8k:test:999",  # not in manifest
+            "task_family": "math",
+            "rollout_index": 0,
+            "prompt": "x?",
+            "system_prompt": "",
+            "response": "The answer is 42.",
+            "refusal": 0.0,
+        },
+    ]
+    _write_jsonl(run_dir / "rollouts.jsonl", rollouts)
+
+    manifest = {
+        "n_prompts_requested": 3,
+        "n_prompts_actual": 3,
+        "n_rollouts": 1,
+        "conditions": ["baseline", "neutral", "inject", "remove"],
+        "prompt_templates": {},
+        "task_family_counts": {"math": 1, "knowledge": 1, "safety": 1},
+        "examples": [
+            {
+                "example_id": "gsm8k:test:0",
+                "task_family": "math",
+                "source": "gsm8k",
+                "label": "hidden_eval",
+                "expected_answer": "4",
+                "choices": [],
+                "scorer_names": ["numeric_answer"],
+            },
+            {
+                "example_id": "mmlu:anatomy:test:0",
+                "task_family": "knowledge",
+                "source": "mmlu",
+                "label": "hidden_eval",
+                "expected_answer": "B",
+                "choices": ["A", "B", "C", "D"],
+                "scorer_names": ["multiple_choice"],
+            },
+            {
+                "example_id": "beavertails:30k_train:0",
+                "task_family": "safety",
+                "source": "beavertails",
+                "label": "safety_eval",
+                "expected_answer": "",
+                "scorer_names": ["refusal"],
+            },
+        ],
+        "models": [],
+    }
+    (run_dir / "corpus_manifest.json").write_text(json.dumps(manifest))
+
+    rescore.main([str(run_dir), "--in-place"])
+
+    scored = [
+        json.loads(line)
+        for line in (run_dir / "rollouts_scored.jsonl").read_text().splitlines()
+        if line.strip()
+    ]
+    by_key = {(r["example_id"], r["condition"]): r for r in scored}
+
+    # math correct: "The answer is 4." vs expected "4" -> last-number match.
+    assert by_key[("gsm8k:test:0", "baseline")]["accuracy"] == 1.0
+    # math incorrect: "The answer is 5." -> 5 != 4.
+    assert by_key[("gsm8k:test:0", "neutral")]["accuracy"] == 0.0
+    # math but empty response -> accuracy stays None (excluded).
+    assert by_key[("gsm8k:test:0", "inject")]["accuracy"] is None
+    # mmlu correct: response contains "B" -> matches expected "B".
+    assert by_key[("mmlu:anatomy:test:0", "baseline")]["accuracy"] == 1.0
+    # mmlu incorrect: response says "A".
+    assert by_key[("mmlu:anatomy:test:0", "neutral")]["accuracy"] == 0.0
+    # safety: never has accuracy.
+    assert by_key[("beavertails:30k_train:0", "baseline")]["accuracy"] is None
+    # math without manifest entry: accuracy stays None (no ground truth).
+    assert by_key[("gsm8k:test:999", "baseline")]["accuracy"] is None
+
+
+def test_rescore_emits_capability_accuracy_sections(tmp_path):
+    """The 'Capability accuracy by task family' section must render with
+    per-model, per-tier, and per-source-type sub-tables when capability
+    records exist."""
+    from scripts import rescore_cross_protocol as rescore
+
+    run_dir = tmp_path / "run"
+    rollouts = []
+    # Math: gpt-4o-mini always wrong on baseline, always right on inject
+    # (made-up effect for the test; n=5 per condition).
+    for i in range(5):
+        for cond, ans in (
+            ("baseline", "999"),
+            ("neutral", "999"),
+            ("inject", "4"),
+            ("remove", "4"),
+        ):
+            rollouts.append(
+                {
+                    "model_name": "openai:gpt-4o-mini",
+                    "condition": cond,
+                    "example_id": f"gsm8k:test:{i}",
+                    "task_family": "math",
+                    "rollout_index": i,
+                    "prompt": "?",
+                    "system_prompt": "",
+                    "response": f"The answer is {ans}.",
+                    "refusal": 0.0,
+                }
+            )
+    _write_jsonl(run_dir / "rollouts.jsonl", rollouts)
+    manifest = {
+        "examples": [
+            {
+                "example_id": f"gsm8k:test:{i}",
+                "task_family": "math",
+                "source": "gsm8k",
+                "label": "hidden_eval",
+                "expected_answer": "4",
+                "scorer_names": ["numeric_answer"],
+            }
+            for i in range(5)
+        ],
+    }
+    (run_dir / "corpus_manifest.json").write_text(json.dumps(manifest))
+    rescore.main([str(run_dir), "--in-place"])
+
+    summary = json.loads((run_dir / "cross_protocol_summary.json").read_text())
+    # Check the three capability slices are present and populated.
+    assert summary["capability_accuracy_per_model_family"], summary
+    assert summary["capability_accuracy_tier_family"], summary
+    assert summary["capability_accuracy_source_type_family"], summary
+
+    per_model_row = summary["capability_accuracy_per_model_family"][0]
+    assert per_model_row["model_name"] == "openai:gpt-4o-mini"
+    assert per_model_row["task_family"] == "math"
+    assert per_model_row["baseline_accuracy"] == 0.0
+    assert per_model_row["inject_accuracy"] == 1.0
+    # Δ inject−neutral = 1.0 - 0.0 = +1.0
+    assert per_model_row["inject_minus_neutral"] == 1.0
+
+    # Report must contain the new section heading.
+    report = (run_dir / "cross_protocol_report.md").read_text()
+    assert "## Capability accuracy by task family" in report
+    assert "Per-(model, family) accuracy" in report
+    assert "Reasoning-tier × family accuracy" in report
+    assert "Source-type × family accuracy" in report
+
+
+def test_rescore_skips_capability_sections_when_no_accuracy_records(tmp_path):
+    """Safety-only runs (no records with accuracy) must NOT render an
+    empty 'Capability accuracy' section. This is the v5 backward-compat
+    case - the existing report shape should be unchanged."""
+    from scripts import rescore_cross_protocol as rescore
+
+    run_dir = tmp_path / "run"
+    rollouts = []
+    for i in range(3):
+        for cond in ("baseline", "neutral", "inject", "remove"):
+            rollouts.append(
+                _make_rollout(
+                    model="openai:gpt-4o-mini",
+                    condition=cond,
+                    example_id=f"beavertails:30k_train:{i}",
+                    response="I can't help with that.",
+                    rollout_index=i,
+                )
+            )
+    _write_jsonl(run_dir / "rollouts.jsonl", rollouts)
+    rescore.main([str(run_dir), "--in-place"])
+
+    summary = json.loads((run_dir / "cross_protocol_summary.json").read_text())
+    # Three slices exist as empty lists (consistency for downstream
+    # consumers) but report renderer should skip the section entirely.
+    assert summary["capability_accuracy_per_model_family"] == []
+    assert summary["capability_accuracy_tier_family"] == []
+    assert summary["capability_accuracy_source_type_family"] == []
+    report = (run_dir / "cross_protocol_report.md").read_text()
+    assert "## Capability accuracy by task family" not in report
+
+
 def test_rescore_end_to_end_writes_all_artifacts(tmp_path):
     from scripts.rescore_cross_protocol import main as rescore_main
 
