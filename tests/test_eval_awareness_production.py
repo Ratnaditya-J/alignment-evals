@@ -516,20 +516,28 @@ def test_preflight_check_catches_failing_model():
 
     class _BadModel:
         name = "bad"
+        model = "bad-model"
+        last_response = None
 
         def generate_with_config(self, transcript, config):
             raise RuntimeError("HTTP 400: temperature is deprecated")
 
     class _GoodModel:
         name = "good"
+        model = "good-model"
+        last_response = None
 
         def generate_with_config(self, transcript, config):
             return "ok"
 
-    failures = _preflight_check([_GoodModel(), _BadModel()])
+    results = _preflight_check([_GoodModel(), _BadModel()])
+    assert len(results) == 2
+    assert results[0].ok is True
+    assert results[0].name == "good"
+    failures = [r for r in results if not r.ok]
     assert len(failures) == 1
-    assert "bad" in failures[0]
-    assert "deprecated" in failures[0]
+    assert failures[0].name == "bad"
+    assert "deprecated" in failures[0].error
 
 
 def test_openai_non_reasoning_model_strips_reasoning_effort(monkeypatch):

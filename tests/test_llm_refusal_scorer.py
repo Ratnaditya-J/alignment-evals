@@ -893,3 +893,104 @@ def test_corpus_manifest_classifies_openrouter_open_reasoning():
     assert tier_non.vendor == "openrouter"
     assert tier_non.is_reasoning is False
     assert reasoning_tier_bucket(tier_non) == "non_reasoning"
+
+
+# ---------------------------------------------------------------------------
+# --preflight-only mode (model smoke-check before the full eval)
+# ---------------------------------------------------------------------------
+
+
+class _StubModelOK:
+    name = "stub:happy"
+    model = "stub-happy-1"
+
+    class _LastResponse:
+        model = "stub-happy-1-actual"
+
+    def __init__(self):
+        self.last_response = _StubModelOK._LastResponse()
+
+    def generate_with_config(self, transcript, config):
+        return "pong"
+
+
+class _StubModelFail:
+    name = "stub:broken"
+    model = "stub-broken-1"
+    last_response = None
+
+    def generate_with_config(self, transcript, config):
+        raise RuntimeError("400: invalid api key")
+
+
+def test_preflight_check_reports_per_model_results():
+    from scripts.run_cross_protocol_comparison import (
+        _preflight_check,
+        _render_preflight_table,
+    )
+
+    results = _preflight_check([_StubModelOK(), _StubModelFail()])
+    assert len(results) == 2
+    assert results[0].ok is True
+    assert results[0].returned_model == "stub-happy-1-actual"
+    assert "pong" in results[0].response_snippet
+    assert results[1].ok is False
+    assert "invalid api key" in results[1].error
+    table = _render_preflight_table(results)
+    assert "stub:happy" in table
+    assert "stub:broken" in table
+    assert "FAIL" in table
+    assert "OK" in table
+
+
+def test_preflight_only_short_circuits_main(tmp_path, monkeypatch):
+    """--preflight-only exits before the main run loop and writes preflight.json."""
+    from scripts import run_cross_protocol_comparison as cross
+
+    monkeypatch.setattr(cross, "_discover_models", lambda: [_StubModelOK()])
+    out_dir = tmp_path / "preflight"
+    cross.main(
+        [
+            "--output-dir",
+            str(out_dir),
+            "--preflight-only",
+            "--n-prompts",
+            "1",
+            "--n-rollouts",
+            "1",
+            "--safety-only",
+        ]
+    )
+    preflight_path = out_dir / "preflight.json"
+    assert preflight_path.exists()
+    payload = json.loads(preflight_path.read_text())
+    assert len(payload) == 1
+    assert payload[0]["ok"] is True
+    assert payload[0]["name"] == "stub:happy"
+    # Importantly, the main run loop should NOT have written its summary.
+    assert not (out_dir / "cross_protocol_summary.json").exists()
+
+
+def test_preflight_only_fails_loudly_on_broken_model(tmp_path, monkeypatch):
+    from scripts import run_cross_protocol_comparison as cross
+
+    monkeypatch.setattr(
+        cross, "_discover_models", lambda: [_StubModelOK(), _StubModelFail()]
+    )
+    out_dir = tmp_path / "preflight"
+    with pytest.raises(SystemExit) as excinfo:
+        cross.main(
+            [
+                "--output-dir",
+                str(out_dir),
+                "--preflight-only",
+                "--n-prompts",
+                "1",
+                "--n-rollouts",
+                "1",
+                "--safety-only",
+            ]
+        )
+    assert "preflight FAILED" in str(excinfo.value)
+    # JSON should still be written so the user can inspect what failed.
+    assert (out_dir / "preflight.json").exists()
