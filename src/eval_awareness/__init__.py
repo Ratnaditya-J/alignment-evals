@@ -87,6 +87,12 @@ from .realism import (
     RealismRewriteReport,
 )
 from .report import LeakageReport
+from .run_metadata import (
+    ModelTier,
+    classify_model,
+    reasoning_tier_bucket,
+    task_family_from_example_id,
+)
 from .reporting import ReportExporter
 from .rewrite import EvalLeakageRewriter, RewriteResult
 from .runner import (
@@ -106,10 +112,12 @@ from .scoring import (
     DEFAULT_SCORERS,
     ExactMatchScorer,
     HarmfulComplianceScorer,
+    LLMRefusalScorer,
     MultipleChoiceScorer,
     NumericAnswerScorer,
     RefusalScorer,
     ScoringContext,
+    build_default_llm_refusal_scorer,
     score_response,
 )
 from .stats import (
@@ -197,6 +205,7 @@ __all__ = [
     "HumanEvalLoader",
     "HumanEvalScorer",
     "JudgeRubric",
+    "LLMRefusalScorer",
     "LLMRewriteMutator",
     "LLMVerbalizedAwarenessJudge",
     "LabeledTranscript",
@@ -211,6 +220,7 @@ __all__ = [
     "MMLULoader",
     "MatplotlibPlotter",
     "ModelRun",
+    "ModelTier",
     "MultipleChoiceScorer",
     "NLIEntailmentChecker",
     "NumericAnswerScorer",
@@ -258,6 +268,8 @@ __all__ = [
     "apply_variants",
     "approximate_power",
     "bootstrap_ci",
+    "build_default_llm_refusal_scorer",
+    "classify_model",
     "holm_bonferroni",
     "load_eval_awareness_jsonl",
     "load_public_dataset_examples",
@@ -265,9 +277,11 @@ __all__ = [
     "paired_mean_delta",
     "provider_manifest",
     "rate",
+    "reasoning_tier_bucket",
     "score_response",
     "starter_examples",
     "starter_validation_set",
+    "task_family_from_example_id",
     "train_difference_probe",
     "train_logistic_probe",
     "write_eval_awareness_jsonl",

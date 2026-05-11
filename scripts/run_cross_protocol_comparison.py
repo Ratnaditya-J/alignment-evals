@@ -52,6 +52,7 @@ from src.eval_awareness import (  # noqa: E402
     LLMVerbalizedAwarenessJudge,
     OllamaClient,
     OpenAIClient,
+    OpenRouterClient,
     RefusalScorer,
     ScoringContext,
     ScriptedModelClient,
@@ -65,6 +66,7 @@ from src.eval_awareness.dataset_loaders import (  # noqa: E402
     MMLULoader,
     TruthfulQALoader,
 )
+from src.eval_awareness.run_metadata import classify_model  # noqa: E402
 
 LOGGER = logging.getLogger("cross_protocol")
 
@@ -92,6 +94,29 @@ def _discover_models() -> List[Any]:
                 candidates.append(
                     AnthropicClient.from_env(name=f"anthropic:{model}", model=model)
                 )
+    if os.environ.get("OPENROUTER_API_KEY"):
+        # OpenRouter has thousands of models, so we require an explicit
+        # CROSS_OPENROUTER_MODELS list - there's no sensible default. This is
+        # how we bring open-weight reasoning models (DeepSeek R1, Qwen QwQ,
+        # Kimi K2.5, Llama 3.3 70B Instruct) into the comparison. The provider
+        # client handles the OpenRouter-specific HTTP headers; the open-
+        # reasoning token-budget bump is handled in providers.py.
+        openrouter_models = os.environ.get("CROSS_OPENROUTER_MODELS", "").strip()
+        if openrouter_models:
+            for model in openrouter_models.split(","):
+                model = model.strip()
+                if model:
+                    candidates.append(
+                        OpenRouterClient.from_env(
+                            name=f"openrouter:{model}", model=model
+                        )
+                    )
+        else:
+            LOGGER.warning(
+                "OPENROUTER_API_KEY is set but CROSS_OPENROUTER_MODELS is empty; "
+                "skipping OpenRouter. Set CROSS_OPENROUTER_MODELS to a comma-"
+                "separated list (e.g. 'deepseek/deepseek-r1,qwen/qwq-32b')."
+            )
     if os.environ.get("CROSS_OLLAMA_MODELS"):
         for model in os.environ["CROSS_OLLAMA_MODELS"].split(","):
             model = model.strip()
@@ -134,6 +159,15 @@ def _build_corpus(
     if not examples:
         return _synthetic_corpus(n_prompts)
     return examples[:n_prompts]
+
+
+def _task_family_counts(examples: Sequence[EvalAwarenessExample]) -> Dict[str, int]:
+    """Count examples per task_family for the corpus manifest."""
+    counts: Dict[str, int] = {}
+    for ex in examples:
+        family = getattr(ex, "task_family", "unknown") or "unknown"
+        counts[family] = counts.get(family, 0) + 1
+    return dict(sorted(counts.items()))
 
 
 def _synthetic_corpus(n: int) -> List[EvalAwarenessExample]:
@@ -522,6 +556,7 @@ class _ArxivTask:
     config: GenerationConfig
     example_id: str
     rollout_index: int
+    task_family: str = "unknown"
 
 
 _ARXIV_CONDITIONS = ("baseline", "inject", "remove", "neutral")
@@ -580,6 +615,7 @@ def _build_arxiv_tasks(
                             config=config,
                             example_id=example.example_id,
                             rollout_index=rollout_index,
+                            task_family=getattr(example, "task_family", "unknown") or "unknown",
                         )
                     )
     return tasks
@@ -639,11 +675,21 @@ def run_arxiv_protocol(
         nonlocal completed
         refusals[task.model_name][task.condition].append(refusal)
         if rollouts_log is not None:
+            # Capture the returned model id from the provider's last response
+            # when available so reviewers can verify openai:gpt-5.5 actually
+            # served gpt-5.5 rather than a routed alias. Falls back to the
+            # requested model id when the provider doesn't echo a model name.
+            returned_model = ""
+            last_response = getattr(task.model, "last_response", None)
+            if last_response is not None:
+                returned_model = getattr(last_response, "model", "") or ""
             rollouts_log.append(
                 {
                     "model_name": task.model_name,
+                    "model_returned": returned_model,
                     "condition": task.condition,
                     "example_id": task.example_id,
+                    "task_family": task.task_family,
                     "rollout_index": task.rollout_index,
                     "prompt": task.transcript.user_prompt,
                     "system_prompt": task.transcript.system_prompt,
@@ -940,6 +986,54 @@ def main(argv: Iterable[str] | None = None) -> None:
         allow_network=args.allow_network,
         safety_only=args.safety_only,
     )
+
+    # Write the corpus manifest BEFORE the run starts so methodology
+    # information survives any interruption. Post-processing tools
+    # (rescore_cross_protocol.py, validate_refusal_scorer.py) read this to
+    # recover task families and prompt templates without rebuilding the
+    # corpus or re-running the benchmark.
+    corpus_manifest = {
+        "n_prompts_requested": args.n_prompts,
+        "n_prompts_actual": len(examples),
+        "n_rollouts": args.n_rollouts,
+        "safety_only": args.safety_only,
+        "conditions": list(_ARXIV_CONDITIONS),
+        "prompt_templates": {
+            "goodfire_system": GOODFIRE_SYSTEM,
+            "arxiv_inject_system": ARXIV_INJECT_SYSTEM,
+            "arxiv_remove_system": ARXIV_REMOVE_SYSTEM,
+            "arxiv_neutral_system": ARXIV_NEUTRAL_SYSTEM,
+        },
+        "task_family_counts": _task_family_counts(examples),
+        "examples": [
+            {
+                "example_id": ex.example_id,
+                "task_family": getattr(ex, "task_family", "unknown"),
+                "source": getattr(ex, "source", "unknown"),
+                "label": getattr(ex, "label", "unknown"),
+            }
+            for ex in examples
+        ],
+        "models": [
+            classify_model(
+                getattr(m, "name", m.__class__.__name__)
+            ).to_dict()
+            for m in models
+        ],
+        "reasoning_effort_requested": args.reasoning_effort,
+        "judge_provider": args.judge_provider,
+        "judge_model": args.judge_model
+        or _DEFAULT_JUDGE_MODELS.get(args.judge_provider),
+    }
+    (output_dir / "corpus_manifest.json").write_text(
+        json.dumps(corpus_manifest, indent=2, sort_keys=True) + "\n"
+    )
+    LOGGER.info(
+        "wrote corpus_manifest.json (%d examples across %d task families)",
+        corpus_manifest["n_prompts_actual"],
+        len(corpus_manifest["task_family_counts"]),
+    )
+
     LOGGER.info(
         "running cross-protocol comparison: protocols=%s, %d models × %d prompts × %d rollouts (safety_only=%s)",
         sorted(selected),

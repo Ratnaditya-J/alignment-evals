@@ -81,6 +81,38 @@ def _is_anthropic_reasoning_model(model: str) -> bool:
     return any(name.startswith(prefix) for prefix in _ANTHROPIC_REASONING_PREFIXES)
 
 
+# Open-weight reasoning models with visible chain-of-thought (e.g. DeepSeek R1,
+# Qwen QwQ, OLMo 3 Think, Kimi K2.5). They need a high ``max_tokens`` budget
+# because the visible response shares the budget with the reasoning trace -
+# at the default 512 cap, a hot reasoning trace consumes the budget and the
+# visible answer comes back near-empty.
+_OPEN_REASONING_MODEL_TOKENS = (
+    "deepseek-r1",
+    "deepseek/deepseek-r1",
+    "deepseek-ai/deepseek-r1",
+    "qwen/qwq",
+    "qwen-qwq",
+    "qwq-32b",
+    "open-thoughts",
+    "openthinker",
+    "olmo-2-think",
+    "olmo-3",
+    "kimi-k2.5",
+    "kimi-k2",
+)
+
+
+def _is_open_reasoning_model(model: str) -> bool:
+    """Return True for open-weight reasoning models with visible CoT.
+
+    Used by ``OpenAICompatibleClient`` (and therefore ``OpenRouterClient`` /
+    ``LiteLLMClient`` / ``VLLMClient``) to bump ``max_tokens`` so the visible
+    response isn't crowded out by the reasoning trace.
+    """
+    name = model.lower()
+    return any(token in name for token in _OPEN_REASONING_MODEL_TOKENS)
+
+
 @dataclass(frozen=True)
 class RetryConfig:
     """Retry policy for transient provider failures (HTTP 5xx, timeouts)."""
@@ -272,6 +304,7 @@ class OpenAICompatibleClient:
             "messages": self._build_messages(transcript),
         }
         is_reasoning = _is_openai_reasoning_model(self.model)
+        is_open_reasoning = (not is_reasoning) and _is_open_reasoning_model(self.model)
         if is_reasoning:
             # gpt-5 / o1 / o3 / o4 family reject temperature/top_p/seed/stop
             # and use max_completion_tokens instead of max_tokens. Critically,
@@ -283,7 +316,14 @@ class OpenAICompatibleClient:
             payload["max_completion_tokens"] = max(config.max_tokens, 2048)
         else:
             payload["temperature"] = config.temperature
-            payload["max_tokens"] = config.max_tokens
+            # Open-weight reasoning models (DeepSeek R1, Qwen QwQ, etc.) served
+            # via OpenRouter / LiteLLM / vLLM accept the standard ``max_tokens``
+            # parameter, but their visible response shares the budget with the
+            # reasoning trace. Same fix as the OpenAI branch: floor at 2048 so
+            # the reasoning trace doesn't starve the visible answer.
+            payload["max_tokens"] = (
+                max(config.max_tokens, 2048) if is_open_reasoning else config.max_tokens
+            )
             if config.top_p is not None:
                 payload["top_p"] = config.top_p
             if config.stop:
