@@ -72,7 +72,14 @@ def _is_openai_reasoning_model(model: str) -> bool:
 # Anthropic models that reject ``temperature`` (and possibly ``top_p``) because
 # they require fixed sampling internally. Confirmed via 400 from
 # ``claude-opus-4-7``: "`temperature` is deprecated for this model.".
-_ANTHROPIC_REASONING_PREFIXES = ("claude-opus-4-7", "claude-opus-5", "claude-sonnet-5")
+#
+# Per Anthropic's published model overview, the current production
+# lineup is claude-haiku-4-5, claude-sonnet-4-6, claude-opus-4-7. Only
+# opus is confirmed to reject the temperature parameter; sonnet-4-6 and
+# haiku-4-5 are NOT on this list and use the standard chat path. If a
+# future model id (e.g. claude-opus-5) lands with the same parameter
+# rejection, add the prefix here.
+_ANTHROPIC_REASONING_PREFIXES = ("claude-opus-4-7",)
 
 
 def _is_anthropic_reasoning_model(model: str) -> bool:

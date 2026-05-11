@@ -257,6 +257,31 @@ def test_classify_anthropic_non_reasoning():
     assert tier.is_reasoning is False
 
 
+def test_anthropic_reasoning_prefixes_match_actual_lineup():
+    """Pin the actual Anthropic production lineup so we don't re-introduce
+    hallucinated slugs (e.g. 'claude-sonnet-5', 'claude-opus-5' which
+    don't exist).
+
+    Per Anthropic's published model overview, the current lineup is
+    haiku-4-5, sonnet-4-6, opus-4-7. Only opus has the temperature-
+    rejection behaviour that the reasoning-prefix list flags. Sonnet
+    and haiku take temperature normally and must NOT be on the list.
+    """
+    from src.eval_awareness.providers import _is_anthropic_reasoning_model
+
+    # Actual current production lineup
+    assert _is_anthropic_reasoning_model("claude-opus-4-7") is True
+    assert _is_anthropic_reasoning_model("claude-opus-4-7-20260301") is True
+    # Sonnet 4.6 takes temperature normally - must NOT be flagged.
+    assert _is_anthropic_reasoning_model("claude-sonnet-4-6") is False
+    # Haiku 4.5 also takes temperature normally.
+    assert _is_anthropic_reasoning_model("claude-haiku-4-5-20251001") is False
+    # Hallucinated slugs that previously polluted the list - guard
+    # against re-introduction.
+    assert _is_anthropic_reasoning_model("claude-sonnet-5") is False
+    assert _is_anthropic_reasoning_model("claude-opus-5") is False
+
+
 def test_classify_open_reasoning_via_openrouter():
     tier = classify_model("openrouter:deepseek/deepseek-r1")
     assert tier.vendor == "openrouter"
