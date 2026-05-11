@@ -711,16 +711,38 @@ def test_validate_score_mode_computes_metrics(tmp_path):
 @pytest.mark.parametrize(
     "model_id, expected",
     [
+        # DeepSeek family
         ("deepseek/deepseek-r1", True),
+        ("deepseek/deepseek-r1-0528", True),
         ("deepseek-ai/deepseek-r1-distill", True),
+        ("deepseek/deepseek-r2", True),
+        ("deepseek/deepseek-v3.2-exp", True),
+        # Qwen family (explicit + "thinking" heuristic)
         ("qwen/qwq-32b", True),
         ("qwen-qwq", True),
-        ("openthinker-32b", True),
+        ("qwq-max", True),
+        ("qwen/qwen3-235b-a22b-thinking-2507", True),
+        ("qwen/qwen3-30b-a3b-thinking-2507", True),
+        ("qwen/qwen3-32b-thinking", True),
+        # Kimi / Moonshot
         ("kimi-k2.5", True),
+        ("moonshotai/kimi-k2", True),
+        ("moonshotai/kimi-k2-0905", True),
+        ("moonshotai/kimi-k2-thinking", True),
+        # GLM / Zhipu thinking
+        ("zai-org/glm-4.6", True),
+        ("glm-4.5-thinking", True),
+        # OpenThinker / Open Thoughts
+        ("openthinker-32b", True),
+        ("open-thoughts/openthinker3-7b", True),
+        # OLMo
         ("olmo-3-think", True),
+        ("olmo-2-think-7b", True),
+        # Negative cases
         ("meta-llama/llama-3.3-70b-instruct", False),
         ("mistralai/mistral-large", False),
         ("gpt-4o-mini", False),
+        ("anthropic/claude-haiku-4-5", False),
         ("", False),
     ],
 )
