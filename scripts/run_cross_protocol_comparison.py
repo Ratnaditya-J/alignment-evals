@@ -1193,6 +1193,17 @@ def main(argv: Iterable[str] | None = None) -> None:
                 "task_family": getattr(ex, "task_family", "unknown"),
                 "source": getattr(ex, "source", "unknown"),
                 "label": getattr(ex, "label", "unknown"),
+                # Ground-truth fields needed by capability-accuracy scorers
+                # in rescore_cross_protocol.py. Without these, accuracy
+                # cannot be computed from rollouts.jsonl alone - the
+                # post-processor would have to rebuild the entire corpus
+                # to recover answer keys. Logging them here keeps the
+                # rollouts directory self-contained.
+                "expected_answer": getattr(ex, "expected_answer", "") or "",
+                "expected_behavior": getattr(ex, "expected_behavior", "") or "",
+                "choices": list(getattr(ex, "choices", ()) or ()),
+                "scorer_names": list(getattr(ex, "scorer_names", ()) or ()),
+                "risk_tags": list(getattr(ex, "risk_tags", ()) or ()),
             }
             for ex in examples
         ],
