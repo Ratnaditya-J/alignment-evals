@@ -4488,3 +4488,339 @@ def test_vea_mediation_out_suffix_writes_to_distinct_files(tmp_path):
     assert broad_strata["flip_neg_to_pos"]["n"] == 1
     assert strict_strata["flip_neg_to_pos"]["n"] == 0
     assert strict_strata["stable_neg"]["n"] == 1
+
+
+def test_vea_mediation_cross_model_summary_renders_when_multiple_models(tmp_path):
+    """When the mediation analysis runs on >1 model, the report must include
+    a cross-model summary table at the top so reviewers can compare verdicts
+    at a glance. Single-model runs (the historical default) skip the
+    summary to avoid clutter.
+    """
+    from scripts.analyze_vea_mediation import main as mediation_main
+
+    run_dir = tmp_path / "multi"
+    rollouts: List[Dict[str, Any]] = []
+    classifications: List[Dict[str, Any]] = []
+    for model in ("qwen-like", "deepseek-like"):
+        for i in range(8):
+            for cond in ("neutral", "inject"):
+                # qwen-like has a clear flip+refusal-jump signal; deepseek-
+                # like has nothing.
+                flips = (
+                    model == "qwen-like" and i < 4 and cond == "inject"
+                )
+                rollouts.append(
+                    {
+                        "model_name": model,
+                        "condition": cond,
+                        "example_id": f"ex:{i}",
+                        "task_family": "safety",
+                        "rollout_index": 0,
+                        "refusal": 1.0 if flips else 0.0,
+                    }
+                )
+                classifications.append(
+                    {
+                        "model_name": model,
+                        "condition": cond,
+                        "example_id": f"ex:{i}",
+                        "task_family": "safety",
+                        "rollout_index": 0,
+                        "is_vea": flips,
+                        "vea_type": "explicit_eval" if flips else "none",
+                        "confidence": 0.9 if flips else 0.0,
+                    }
+                )
+    _write_mediation_inputs(run_dir, rollouts, classifications)
+    rc = mediation_main(["--run-dir", str(run_dir)])
+    assert rc == 0
+    report = (run_dir / "vea_mediation_report.md").read_text()
+    assert "## Cross-model summary" in report
+    # Both models appear in the summary table.
+    assert "qwen-like" in report
+    assert "deepseek-like" in report
+
+    # Single-model run does NOT render the cross-model summary (no value
+    # added when there's only one row).
+    rc = mediation_main(
+        ["--run-dir", str(run_dir), "--models", "qwen-like"]
+    )
+    assert rc == 0
+    report_single = (run_dir / "vea_mediation_report.md").read_text()
+    assert "## Cross-model summary" not in report_single
+
+
+# ---------------------------------------------------------------------------
+# VEA judge validation script (PR follow-up to PR #43)
+# ---------------------------------------------------------------------------
+
+
+def test_validate_vea_judge_sample_mode_writes_stratified_csv(tmp_path):
+    """Sample mode reads rollouts.jsonl + goodfire_vea_classifications.jsonl,
+    joins on the standard key, stratifies by judge vea_type so every subtype
+    is represented, and writes a CSV the user can open in a spreadsheet
+    for manual labeling."""
+    from scripts.validate_vea_judge import main as validator_main
+
+    run_dir = tmp_path / "vea-sample"
+    run_dir.mkdir()
+    # 4 subtypes × 5 records each = 20 records, spanning strict positives
+    # (explicit_eval), soft positives (safety_check, test_scenario), and
+    # negatives (none).
+    rollouts: List[Dict[str, Any]] = []
+    classifications: List[Dict[str, Any]] = []
+    subtypes = [
+        ("explicit_eval", True),
+        ("safety_check", True),
+        ("test_scenario", True),
+        ("none", False),
+    ]
+    for subtype, is_vea in subtypes:
+        for i in range(5):
+            ex_id = f"{subtype}:{i}"
+            rec = {
+                "model_name": "openrouter:qwen/qwen3-thinking",
+                "condition": "inject",
+                "example_id": ex_id,
+                "task_family": "safety",
+                "rollout_index": 0,
+                "prompt": f"prompt {ex_id}",
+                "response": f"response {ex_id}",
+                "reasoning_trace": (
+                    f"reasoning trace for {subtype}: ... extended thinking ..."
+                ),
+            }
+            rollouts.append(rec)
+            classifications.append(
+                {
+                    "model_name": rec["model_name"],
+                    "condition": rec["condition"],
+                    "example_id": ex_id,
+                    "task_family": "safety",
+                    "rollout_index": 0,
+                    "is_vea": is_vea,
+                    "vea_type": subtype,
+                    "confidence": 0.9 if is_vea else 0.0,
+                    "quoted_text": "judge quote here" if is_vea else "",
+                }
+            )
+    (run_dir / "rollouts.jsonl").write_text(
+        "\n".join(json.dumps(r, sort_keys=True) for r in rollouts) + "\n"
+    )
+    (run_dir / "goodfire_vea_classifications.jsonl").write_text(
+        "\n".join(json.dumps(c, sort_keys=True) for c in classifications) + "\n"
+    )
+
+    out_csv = tmp_path / "vea_labels.csv"
+    rc = validator_main(
+        [str(run_dir), "--n-per-subtype", "3", "--output", str(out_csv)]
+    )
+    assert rc == 0
+    assert out_csv.is_file()
+
+    rows = list(csv.DictReader(out_csv.open()))
+    # 4 subtypes × 3 per subtype = 12 rows.
+    assert len(rows) == 12
+    # All subtypes are present in the sample (the load-bearing
+    # stratification property).
+    sampled_subtypes = {r["judge_vea_type"] for r in rows}
+    assert sampled_subtypes == {
+        "explicit_eval",
+        "safety_check",
+        "test_scenario",
+        "none",
+    }
+    # Required CSV columns are all populated where we expect.
+    sample_row = rows[0]
+    for col in (
+        "label_id",
+        "model_name",
+        "condition",
+        "task_family",
+        "example_id",
+        "judge_is_vea",
+        "judge_vea_type",
+        "human_is_vea",
+    ):
+        assert col in sample_row
+    # human_is_vea column is empty (waiting for the user to label).
+    assert all(r["human_is_vea"] == "" for r in rows)
+
+
+def test_validate_vea_judge_score_mode_computes_metrics(tmp_path):
+    """Score mode reads a filled CSV and emits judge-vs-human metrics.
+    Tests the load-bearing per-subtype + strict/broad split."""
+    from scripts.validate_vea_judge import main as validator_main
+
+    csv_path = tmp_path / "labels.csv"
+    # 12 rows: 4 explicit_eval (judge=true, human varies),
+    # 4 safety_check (judge=true, human=false 3 times → false positives),
+    # 4 none (judge=false, human=false 4 times → true negatives).
+    rows = []
+    for i in range(4):
+        rows.append({
+            "label_id": f"vea_{i}",
+            "model_name": "m",
+            "condition": "inject",
+            "task_family": "safety",
+            "example_id": f"ex:{i}",
+            "rollout_index": "0",
+            "prompt_snippet": "p",
+            "response_snippet": "r",
+            "reasoning_trace_snippet": "t",
+            "judge_is_vea": "true",
+            "judge_vea_type": "explicit_eval",
+            "judge_confidence": "0.9",
+            "judge_quote": "q",
+            "human_is_vea": "yes",  # 4 TP for explicit_eval
+            "human_notes": "",
+        })
+    for i in range(4):
+        rows.append({
+            "label_id": f"vea_s_{i}",
+            "model_name": "m",
+            "condition": "inject",
+            "task_family": "safety",
+            "example_id": f"sc:{i}",
+            "rollout_index": "0",
+            "prompt_snippet": "p",
+            "response_snippet": "r",
+            "reasoning_trace_snippet": "t",
+            "judge_is_vea": "true",
+            "judge_vea_type": "safety_check",
+            "judge_confidence": "0.9",
+            "judge_quote": "q",
+            "human_is_vea": "no" if i < 3 else "yes",  # 3 FP, 1 TP under broad
+            "human_notes": "",
+        })
+    for i in range(4):
+        rows.append({
+            "label_id": f"vea_n_{i}",
+            "model_name": "m",
+            "condition": "inject",
+            "task_family": "safety",
+            "example_id": f"none:{i}",
+            "rollout_index": "0",
+            "prompt_snippet": "p",
+            "response_snippet": "r",
+            "reasoning_trace_snippet": "t",
+            "judge_is_vea": "false",
+            "judge_vea_type": "none",
+            "judge_confidence": "0.0",
+            "judge_quote": "",
+            "human_is_vea": "no",  # 4 TN
+            "human_notes": "",
+        })
+    fields = list(rows[0].keys())
+    with csv_path.open("w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=fields, quoting=csv.QUOTE_ALL)
+        w.writeheader()
+        for r in rows:
+            w.writerow(r)
+
+    rc = validator_main(
+        [str(tmp_path), "--score", "--input", str(csv_path)]
+    )
+    assert rc == 0
+    metrics_path = csv_path.with_suffix(".validation.json")
+    assert metrics_path.is_file()
+    metrics = json.loads(metrics_path.read_text())
+
+    # Broad: judge predicts true on 8 (4 explicit + 4 safety_check).
+    # Human says true on 5 (4 explicit + 1 safety_check). So:
+    #   TP = 5 (4 explicit + 1 safety_check that humans agreed with)
+    #   FP = 3 (3 safety_check the humans disagreed with)
+    #   FN = 0
+    #   TN = 4 (none rows)
+    broad = metrics["overall_broad"]
+    assert broad["true_positive"] == 5
+    assert broad["false_positive"] == 3
+    assert broad["false_negative"] == 0
+    assert broad["true_negative"] == 4
+    # Precision = 5/8 = 0.625; Recall = 5/5 = 1.0; F1 = 2*0.625*1/(1.625) = 0.769
+    assert abs(broad["precision"] - 0.625) < 0.01
+    assert abs(broad["recall"] - 1.0) < 0.01
+
+    # Strict: judge_strict positive only when subtype in strict set.
+    # Strict set = {explicit_eval, benchmark, grader_awareness}, so:
+    # safety_check rows become judge_strict=False.
+    #   TP = 4 (explicit_eval rows where human=yes)
+    #   FP = 0 (safety_check no longer counts as judge-positive)
+    #   FN = 1 (safety_check row where human said yes - judge missed it)
+    #   TN = 7 (3 safety_check rows where humans said no + 4 none rows)
+    strict = metrics["overall_strict"]
+    assert strict["true_positive"] == 4
+    assert strict["false_positive"] == 0
+    assert strict["false_negative"] == 1
+    assert strict["true_negative"] == 7
+
+    # Per-subtype shows safety_check has high false-positive rate
+    # under broad mode (the load-bearing subtype-validity finding).
+    by_sub = metrics["per_subtype"]
+    assert by_sub["safety_check"]["false_positive"] == 3
+    assert by_sub["explicit_eval"]["true_positive"] == 4
+
+    # Markdown report exists too.
+    md_path = csv_path.with_suffix(".validation.md")
+    assert md_path.is_file()
+    md = md_path.read_text()
+    assert "Per-subtype" in md
+    assert "safety_check" in md
+    assert "explicit_eval" in md
+
+
+def test_validate_vea_judge_score_handles_unsure_and_unparseable_rows(tmp_path):
+    """Rows with unsure / blank human labels OR unparseable judge calls
+    must be EXCLUDED from metrics, not crash the script. Otherwise a
+    partially-labeled CSV (the realistic case) is unusable."""
+    from scripts.validate_vea_judge import main as validator_main
+
+    csv_path = tmp_path / "partial.csv"
+    rows = [
+        # Valid TP
+        {
+            "label_id": "v1", "model_name": "m", "condition": "inject",
+            "task_family": "safety", "example_id": "ex:0", "rollout_index": "0",
+            "prompt_snippet": "p", "response_snippet": "r",
+            "reasoning_trace_snippet": "t", "judge_is_vea": "true",
+            "judge_vea_type": "explicit_eval", "judge_confidence": "0.9",
+            "judge_quote": "q", "human_is_vea": "yes", "human_notes": "",
+        },
+        # Excluded: unsure
+        {
+            "label_id": "v2", "model_name": "m", "condition": "inject",
+            "task_family": "safety", "example_id": "ex:1", "rollout_index": "0",
+            "prompt_snippet": "p", "response_snippet": "r",
+            "reasoning_trace_snippet": "t", "judge_is_vea": "true",
+            "judge_vea_type": "safety_check", "judge_confidence": "0.5",
+            "judge_quote": "q", "human_is_vea": "unsure", "human_notes": "",
+        },
+        # Excluded: blank
+        {
+            "label_id": "v3", "model_name": "m", "condition": "inject",
+            "task_family": "safety", "example_id": "ex:2", "rollout_index": "0",
+            "prompt_snippet": "p", "response_snippet": "r",
+            "reasoning_trace_snippet": "t", "judge_is_vea": "false",
+            "judge_vea_type": "none", "judge_confidence": "0.0",
+            "judge_quote": "", "human_is_vea": "", "human_notes": "",
+        },
+    ]
+    fields = list(rows[0].keys())
+    with csv_path.open("w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=fields, quoting=csv.QUOTE_ALL)
+        w.writeheader()
+        for r in rows:
+            w.writerow(r)
+
+    rc = validator_main(
+        [str(tmp_path), "--score", "--input", str(csv_path)]
+    )
+    assert rc == 0
+    metrics = json.loads(
+        csv_path.with_suffix(".validation.json").read_text()
+    )
+    # 1 row scored, 2 excluded.
+    assert metrics["n_total_rows"] == 3
+    assert metrics["n_unsure_excluded"] == 2
+    assert metrics["overall_broad"]["n"] == 1
+    assert metrics["overall_broad"]["true_positive"] == 1
