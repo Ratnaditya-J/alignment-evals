@@ -5042,3 +5042,235 @@ def test_validate_vea_judge_score_reports_quote_locatability(tmp_path):
     assert "Judge-positive rows only" in md
     # 1 of 3 judge-positive rows = 33.3% not-in-trace.
     assert "33.3%" in md
+
+
+# ---------------------------------------------------------------------------
+# Paper figure generation script
+# ---------------------------------------------------------------------------
+
+
+def test_generate_paper_figures_produces_all_figures_when_inputs_provided(tmp_path):
+    """End-to-end: with all four input JSONs supplied, the script writes
+    fig1-4 PNG files into out-dir and exits 0. Uses synthetic but
+    structurally valid summary JSONs so we don't depend on a real run dir.
+    """
+    from scripts.generate_paper_figures import main as fig_main
+
+    # Cross-protocol summary: one closed + one open-reasoning model.
+    cross = {
+        "per_model": [
+            {
+                "model_name": "openai:gpt-4o-mini",
+                "inject_minus_neutral": 0.008,
+                "inject_minus_neutral_ci": {"low": -0.046, "high": 0.059},
+                "inject_minus_neutral_n_paired": 500,
+            },
+            {
+                "model_name": "openrouter:qwen/qwen3-235b-a22b-thinking-2507",
+                "inject_minus_neutral": 0.018,
+                "inject_minus_neutral_ci": {"low": -0.030, "high": 0.080},
+                "inject_minus_neutral_n_paired": 481,
+            },
+        ],
+    }
+    # Goodfire summary: three open-reasoning models.
+    goodfire = {
+        "per_model_inject_minus_neutral": [
+            {
+                "model_name": "openrouter:deepseek/deepseek-v3.2-exp",
+                "inject_minus_neutral_vea": 0.050,
+                "inject_minus_neutral_vea_ci": {"low": 0.024, "high": 0.074},
+            },
+            {
+                "model_name": "openrouter:moonshotai/kimi-k2-thinking",
+                "inject_minus_neutral_vea": 0.002,
+                "inject_minus_neutral_vea_ci": {"low": -0.012, "high": 0.024},
+            },
+            {
+                "model_name": "openrouter:qwen/qwen3-235b-a22b-thinking-2507",
+                "inject_minus_neutral_vea": 0.380,
+                "inject_minus_neutral_vea_ci": {"low": 0.336, "high": 0.424},
+            },
+        ],
+    }
+    # Mediation summary (broad): qwen3 per-family + aggregate.
+    target = "openrouter:qwen/qwen3-235b-a22b-thinking-2507"
+    mediation = {
+        "per_model": [
+            {
+                "model_name": target,
+                "strata": {
+                    "flip_neg_to_pos": {
+                        "n": 192, "mean_refusal_control": 0.193,
+                        "mean_refusal_treatment": 0.271,
+                    },
+                    "flip_pos_to_neg": {"n": 2},
+                    "stable_pos": {"n": 33, "mean_refusal_treatment": 0.455},
+                    "stable_neg": {
+                        "n": 273, "mean_refusal_control": 0.077,
+                        "mean_refusal_treatment": 0.081,
+                    },
+                },
+                "diff_in_diff": {
+                    "diff_in_diff": 0.074,
+                    "diff_in_diff_ci": {"low": 0.025, "high": 0.136},
+                    "n_flip": 192, "n_stable_neg": 273,
+                },
+                "verdict": "weak_mediation",
+            },
+        ],
+        "per_model_family": [
+            {
+                "model_name": target,
+                "task_family": "knowledge",
+                "strata": {
+                    "flip_neg_to_pos": {"n": 30},
+                    "stable_pos": {"n": 0},
+                    "stable_neg": {"n": 95},
+                    "flip_pos_to_neg": {"n": 0},
+                },
+                "diff_in_diff": {
+                    "diff_in_diff": 0.0,
+                    "diff_in_diff_ci": {"low": 0.0, "high": 0.0},
+                    "n_flip": 30, "n_stable_neg": 95,
+                },
+                "verdict": "epiphenomenal",
+            },
+            {
+                "model_name": target,
+                "task_family": "math",
+                "strata": {
+                    "flip_neg_to_pos": {"n": 4},
+                    "stable_pos": {"n": 0},
+                    "stable_neg": {"n": 121},
+                    "flip_pos_to_neg": {"n": 0},
+                },
+                "diff_in_diff": {
+                    "diff_in_diff": 0.0,
+                    "diff_in_diff_ci": {"low": 0.0, "high": 0.0},
+                    "n_flip": 4, "n_stable_neg": 121,
+                },
+                "verdict": "epiphenomenal",
+            },
+            {
+                "model_name": target,
+                "task_family": "safety",
+                "strata": {
+                    "flip_neg_to_pos": {"n": 70},
+                    "stable_pos": {"n": 16},
+                    "stable_neg": {"n": 37},
+                    "flip_pos_to_neg": {"n": 2},
+                },
+                "diff_in_diff": {
+                    "diff_in_diff": 0.116,
+                    "diff_in_diff_ci": {"low": -0.105, "high": 0.349},
+                    "n_flip": 70, "n_stable_neg": 37,
+                },
+                "verdict": "epiphenomenal",
+            },
+            {
+                "model_name": target,
+                "task_family": "truthfulness",
+                "strata": {
+                    "flip_neg_to_pos": {"n": 88},
+                    "stable_pos": {"n": 17},
+                    "stable_neg": {"n": 20},
+                    "flip_pos_to_neg": {"n": 0},
+                },
+                "diff_in_diff": {
+                    "diff_in_diff": 0.057,
+                    "diff_in_diff_ci": {"low": 0.011, "high": 0.114},
+                    "n_flip": 88, "n_stable_neg": 20,
+                },
+                "verdict": "weak_mediation",
+            },
+        ],
+    }
+    # Strict mediation summary: same shape, smaller numbers.
+    strict_mediation = {
+        "per_model_family": [
+            dict(entry,
+                 diff_in_diff={
+                     **entry["diff_in_diff"],
+                     "diff_in_diff": entry["diff_in_diff"]["diff_in_diff"] * 0.3,
+                     "diff_in_diff_ci": {
+                         "low": entry["diff_in_diff"]["diff_in_diff_ci"]["low"] * 0.3,
+                         "high": entry["diff_in_diff"]["diff_in_diff_ci"]["high"] * 0.3,
+                     },
+                 })
+            for entry in mediation["per_model_family"]
+        ],
+    }
+
+    cross_path = tmp_path / "cross.json"
+    goodfire_path = tmp_path / "goodfire.json"
+    mediation_path = tmp_path / "mediation.json"
+    strict_path = tmp_path / "strict.json"
+    cross_path.write_text(json.dumps(cross))
+    goodfire_path.write_text(json.dumps(goodfire))
+    mediation_path.write_text(json.dumps(mediation))
+    strict_path.write_text(json.dumps(strict_mediation))
+    out_dir = tmp_path / "figs"
+
+    rc = fig_main(
+        [
+            "--cross-protocol-summary", str(cross_path),
+            "--goodfire-summary", str(goodfire_path),
+            "--mediation-summary", str(mediation_path),
+            "--strict-mediation-summary", str(strict_path),
+            "--out-dir", str(out_dir),
+        ]
+    )
+    assert rc == 0
+    for fname in (
+        "fig1_refusal_forest.png",
+        "fig2_vea_inflation.png",
+        "fig3_qwen3_per_family.png",
+        "fig4_mediation_panels.png",
+    ):
+        assert (out_dir / fname).is_file(), f"{fname} not produced"
+        assert (out_dir / fname).stat().st_size > 1000, (
+            f"{fname} suspiciously small (<1KB)"
+        )
+
+
+def test_generate_paper_figures_partial_inputs_still_produces_subset(tmp_path):
+    """Only --goodfire-summary supplied: fig2 produced, others skipped, exit 0.
+    Lets the user iterate on individual figures without supplying all four
+    inputs every time."""
+    from scripts.generate_paper_figures import main as fig_main
+
+    goodfire = {
+        "per_model_inject_minus_neutral": [
+            {
+                "model_name": "openrouter:qwen/qwen3-235b-a22b-thinking-2507",
+                "inject_minus_neutral_vea": 0.380,
+                "inject_minus_neutral_vea_ci": {"low": 0.336, "high": 0.424},
+            },
+        ],
+    }
+    goodfire_path = tmp_path / "goodfire.json"
+    goodfire_path.write_text(json.dumps(goodfire))
+    out_dir = tmp_path / "figs"
+
+    rc = fig_main(
+        [
+            "--goodfire-summary", str(goodfire_path),
+            "--out-dir", str(out_dir),
+        ]
+    )
+    assert rc == 0
+    assert (out_dir / "fig2_vea_inflation.png").is_file()
+    assert not (out_dir / "fig1_refusal_forest.png").is_file()
+    assert not (out_dir / "fig3_qwen3_per_family.png").is_file()
+    assert not (out_dir / "fig4_mediation_panels.png").is_file()
+
+
+def test_generate_paper_figures_no_inputs_returns_error(tmp_path):
+    """If no --*-summary arguments are supplied at all, the script reports
+    an error and returns non-zero exit code instead of silently producing
+    an empty out-dir."""
+    from scripts.generate_paper_figures import main as fig_main
+
+    rc = fig_main(["--out-dir", str(tmp_path / "figs")])
+    assert rc != 0
