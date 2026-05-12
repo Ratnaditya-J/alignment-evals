@@ -45,6 +45,7 @@ import random
 import sys
 import time
 from collections import Counter, defaultdict
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 from pathlib import Path
@@ -219,6 +220,18 @@ class _AnthropicWithThinking(AnthropicClient):
 # ---------------------------------------------------------------------------
 
 
+def _format_eta(elapsed: float, completed: int, total: int) -> str:
+    """Return a human-readable ETA string matching the arxiv-protocol style."""
+    if completed <= 0 or completed >= total:
+        return "--"
+    remaining = (elapsed / completed) * (total - completed)
+    if remaining < 60:
+        return f"{remaining:.0f}s"
+    if remaining < 3600:
+        return f"{remaining / 60:.1f}m"
+    return f"{remaining / 3600:.1f}h"
+
+
 def _classify_rollouts(
     records: Sequence[Dict[str, Any]],
     judge: LLMVeaJudge,
@@ -226,22 +239,41 @@ def _classify_rollouts(
     max_concurrent: int,
     sample_rate: float,
     seed: int,
+    progress_every: int = 25,
 ) -> List[Dict[str, Any]]:
     """Run the VEA judge over every rollout's reasoning trace.
 
     Records without a reasoning_trace short-circuit to a no_trace result
     inside the judge - no API call is made. This is the conservative bias
     described in the rubric.
+
+    Concurrency notes:
+      * Sample mask is precomputed before the parallel section so the
+        sampling RNG isn't shared across threads (random.Random is not
+        thread-safe; sharing it produces a tiny statistical bias).
+      * Progress logging fires every ``progress_every`` completed records
+        with elapsed time, percentage, ETA, and per-model breakdown so
+        long judge passes don't look like they're hanging.
     """
     rng = random.Random(seed)
+    # Deterministic sample mask: True = judge this record, False = skipped.
+    # Frozen before threads start, so no shared RNG state.
+    sample_mask: List[bool] = [rng.random() <= sample_rate for _ in records]
+    total = len(records)
     classifications: List[Dict[str, Any]] = []
 
-    def _classify_one(record: Dict[str, Any]) -> Dict[str, Any]:
+    # Per-model task totals for the progress breakdown.
+    tasks_per_model: Dict[str, int] = {}
+    for r in records:
+        name = str(r.get("model_name") or "?")
+        tasks_per_model[name] = tasks_per_model.get(name, 0) + 1
+    completed_per_model: Dict[str, int] = {name: 0 for name in tasks_per_model}
+
+    def _classify_one(idx: int, record: Dict[str, Any]) -> Dict[str, Any]:
         trace = str(record.get("reasoning_trace") or "")
         prompt = str(record.get("prompt") or "")
         response = str(record.get("response") or "")
-        # Hold the cost down: sample empty traces away if the user dialed it.
-        if sample_rate < 1.0 and rng.random() > sample_rate:
+        if not sample_mask[idx]:
             judgement = VeaJudgement(
                 is_vea=False,
                 confidence=0.0,
@@ -265,14 +297,50 @@ def _classify_rollouts(
             **judgement.to_dict(),
         }
 
+    started = time.perf_counter()
+
+    def _record_progress(result: Dict[str, Any]) -> None:
+        classifications.append(result)
+        name = str(result.get("model_name") or "?")
+        completed_per_model[name] = completed_per_model.get(name, 0) + 1
+        done = len(classifications)
+        if done % progress_every == 0 or done == total:
+            elapsed = time.perf_counter() - started
+            pct = 100 * done / max(1, total)
+            eta = _format_eta(elapsed, done, total)
+            per_model = " | ".join(
+                f"{name}={completed_per_model[name]}/{tasks_per_model[name]}"
+                for name in tasks_per_model
+            )
+            LOGGER.info(
+                "goodfire-vea judge: %d/%d (%.1f%%, %.1fs elapsed, ETA %s) -- %s",
+                done,
+                total,
+                pct,
+                elapsed,
+                eta,
+                per_model,
+            )
+
     if max_concurrent <= 1:
-        for record in records:
-            classifications.append(_classify_one(record))
+        for idx, record in enumerate(records):
+            _record_progress(_classify_one(idx, record))
         return classifications
+
+    lock = threading.Lock()
     with ThreadPoolExecutor(max_workers=max_concurrent) as executor:
-        futures = [executor.submit(_classify_one, r) for r in records]
+        futures = [
+            executor.submit(_classify_one, idx, record)
+            for idx, record in enumerate(records)
+        ]
         for future in as_completed(futures):
-            classifications.append(future.result())
+            try:
+                result = future.result()
+            except Exception as exc:  # noqa: BLE001
+                LOGGER.warning("VEA classification call failed (skipped): %s", exc)
+                continue
+            with lock:
+                _record_progress(result)
     return classifications
 
 
@@ -611,8 +679,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument(
         "--rollout-concurrency",
         type=int,
-        default=8,
-        help="Parallel rollout requests (per-vendor quota applies).",
+        default=32,
+        help=(
+            "Parallel rollout requests (per-vendor quota applies). Default "
+            "32 is safe for OpenRouter; drop to 8-16 if you hit 429s. "
+            "Reasoning models are slow (~5-15s/call), so concurrency is the "
+            "dominant factor in wall time."
+        ),
     )
     parser.add_argument(
         "--vea-judge-provider",
@@ -633,8 +706,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument(
         "--vea-judge-concurrency",
         type=int,
-        default=16,
-        help="Parallel VEA judge calls.",
+        default=32,
+        help=(
+            "Parallel VEA judge calls. Default 32 is safe for "
+            "google/gemini-2.5-flash via OpenRouter; drop to 8-16 if you "
+            "hit rate limits."
+        ),
+    )
+    parser.add_argument(
+        "--progress-every",
+        type=int,
+        default=25,
+        help=(
+            "Log a progress line every N classified records (with elapsed, "
+            "percentage, ETA, and per-model breakdown). 0 to disable."
+        ),
     )
     parser.add_argument(
         "--vea-judge-sample-rate",
@@ -729,6 +815,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         max_concurrent=args.vea_judge_concurrency,
         sample_rate=args.vea_judge_sample_rate,
         seed=args.seed,
+        progress_every=max(1, args.progress_every) if args.progress_every else 10**9,
     )
     elapsed = time.perf_counter() - started
     LOGGER.info(
