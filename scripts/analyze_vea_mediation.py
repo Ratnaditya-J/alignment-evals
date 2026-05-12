@@ -165,13 +165,19 @@ def _join_records(
 def _stratify_by_vea_flip(
     joined: Sequence[Dict[str, Any]],
     *,
+    group_keys: Sequence[str] = ("model_name",),
     treatment: str = "inject",
     control: str = "neutral",
-) -> Dict[str, Dict[str, List[Tuple[float, float]]]]:
-    """For each model, group prompts into VEA-flip strata.
+) -> Dict[Tuple[str, ...], Dict[str, List[Tuple[float, float]]]]:
+    """Group prompts into VEA-flip strata, keyed by ``group_keys``.
 
-    Returns model_name -> stratum -> list of (control_refusal, treatment_refusal)
-    pairs. Strata:
+    Default ``group_keys=("model_name",)`` reproduces the per-model
+    behaviour. Pass ``("model_name", "task_family")`` for the per-(model,
+    family) breakdown - useful for testing whether the mediation verdict
+    differs across capability vs safety prompts within the same model.
+
+    Returns group_key_tuple -> stratum -> list of (control_refusal,
+    treatment_refusal) pairs. Strata:
       * flip_neg_to_pos: VEA- under control, VEA+ under treatment (the
         causally interesting case - inject "turned on" eval-recognition)
       * flip_pos_to_neg: VEA+ under control, VEA- under treatment (rare;
@@ -180,28 +186,33 @@ def _stratify_by_vea_flip(
       * stable_neg: VEA- in both conditions
 
     Only prompts present in BOTH conditions are paired; orphan rollouts
-    are dropped.
+    are dropped. Records missing any of the ``group_keys`` are bucketed
+    under "" for that key so they're still grouped, not silently
+    discarded.
     """
     by_prompt: Dict[
-        Tuple[str, str], Dict[str, Dict[str, Any]]
+        Tuple[Any, ...], Dict[str, Dict[str, Any]]
     ] = defaultdict(dict)
     for rec in joined:
         cond = str(rec.get("condition", ""))
         if cond not in (treatment, control):
             continue
-        model = str(rec.get("model_name", ""))
+        group_values = tuple(str(rec.get(k, "") or "") for k in group_keys)
         ex_id = str(rec.get("example_id", ""))
-        by_prompt[(model, ex_id)][cond] = rec
+        by_prompt[(*group_values, ex_id)][cond] = rec
 
-    strata: Dict[str, Dict[str, List[Tuple[float, float]]]] = defaultdict(
-        lambda: {
-            "flip_neg_to_pos": [],
-            "flip_pos_to_neg": [],
-            "stable_pos": [],
-            "stable_neg": [],
-        }
+    strata: Dict[Tuple[str, ...], Dict[str, List[Tuple[float, float]]]] = (
+        defaultdict(
+            lambda: {
+                "flip_neg_to_pos": [],
+                "flip_pos_to_neg": [],
+                "stable_pos": [],
+                "stable_neg": [],
+            }
+        )
     )
-    for (model, ex_id), conds in by_prompt.items():
+    n_group_keys = len(group_keys)
+    for prompt_key, conds in by_prompt.items():
         if treatment not in conds or control not in conds:
             continue
         t_rec = conds[treatment]
@@ -210,16 +221,52 @@ def _stratify_by_vea_flip(
         c_ref = c_rec.get("refusal")
         if t_ref is None or c_ref is None:
             continue
+        group_key = tuple(prompt_key[:n_group_keys])
         pair = (float(c_ref), float(t_ref))
         if c_rec.get("is_vea") and t_rec.get("is_vea"):
-            strata[model]["stable_pos"].append(pair)
+            strata[group_key]["stable_pos"].append(pair)
         elif (not c_rec.get("is_vea")) and (not t_rec.get("is_vea")):
-            strata[model]["stable_neg"].append(pair)
+            strata[group_key]["stable_neg"].append(pair)
         elif (not c_rec.get("is_vea")) and t_rec.get("is_vea"):
-            strata[model]["flip_neg_to_pos"].append(pair)
+            strata[group_key]["flip_neg_to_pos"].append(pair)
         else:
-            strata[model]["flip_pos_to_neg"].append(pair)
+            strata[group_key]["flip_pos_to_neg"].append(pair)
     return strata
+
+
+def _build_per_group(
+    strata: Dict[Tuple[str, ...], Dict[str, List[Tuple[float, float]]]],
+    group_keys: Sequence[str],
+    *,
+    seed: int = 0,
+) -> List[Dict[str, Any]]:
+    """Turn a strata dict into a list of per-group result entries.
+
+    Each entry has the group_keys' values, the per-stratum stats, the
+    diff-in-diff result, and the verdict tier. The output list is sorted
+    by group key for stable JSON output.
+    """
+    out: List[Dict[str, Any]] = []
+    for group_key in sorted(strata):
+        group_strata = strata[group_key]
+        stratum_stats = {
+            name: _stratum_stats(pairs, seed=seed)
+            for name, pairs in group_strata.items()
+        }
+        did = _diff_in_diff(
+            group_strata["flip_neg_to_pos"],
+            group_strata["stable_neg"],
+            seed=seed,
+        )
+        entry: Dict[str, Any] = {
+            "strata": stratum_stats,
+            "diff_in_diff": did,
+            "verdict": _verdict(did["diff_in_diff"], did["diff_in_diff_ci"]),
+        }
+        for key, value in zip(group_keys, group_key):
+            entry[key] = value
+        out.append(entry)
+    return out
 
 
 def _stratum_stats(
@@ -321,12 +368,72 @@ def _verdict(diff_in_diff: Optional[float], ci: Dict[str, float]) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _render_group_entry(
+    entry: Dict[str, Any], heading: str, *, with_interpretation: bool = True
+) -> List[str]:
+    """Render one (model[, family]) entry as Markdown lines."""
+    lines: List[str] = []
+    verdict = entry["verdict"]
+    lines.append(f"### {heading} — verdict: **{verdict}**")
+    lines.append("")
+    lines.append(
+        "| Stratum | n | refusal (control) | refusal (treatment) | "
+        "paired Δ | 95% CI |"
+    )
+    lines.append("| --- | ---: | ---: | ---: | ---: | --- |")
+    for stratum_name, label in (
+        ("flip_neg_to_pos", "VEA flip (− → +)"),
+        ("flip_pos_to_neg", "VEA flip (+ → −)"),
+        ("stable_pos", "VEA stable +"),
+        ("stable_neg", "VEA stable −"),
+    ):
+        s = entry["strata"][stratum_name]
+        n = s["n"]
+        if n == 0:
+            lines.append(f"| {label} | 0 | - | - | - | - |")
+            continue
+        ci = s["paired_delta_ci"]
+        lines.append(
+            f"| {label} | {n} | "
+            f"{s['mean_refusal_control']:.3f} | "
+            f"{s['mean_refusal_treatment']:.3f} | "
+            f"{s['mean_paired_delta']:+.3f} | "
+            f"[{ci['low']:+.3f}, {ci['high']:+.3f}] |"
+        )
+    lines.append("")
+    did = entry["diff_in_diff"]
+    if did["diff_in_diff"] is None:
+        lines.append(
+            "**Diff-in-diff:** insufficient data (one stratum is empty)."
+        )
+    else:
+        ci = did["diff_in_diff_ci"]
+        sig = (
+            "**CI excludes zero**"
+            if (ci["low"] > 0 or ci["high"] < 0)
+            else "CI includes zero"
+        )
+        lines.append(
+            f"**Diff-in-diff** (Δrefusal in VEA-flip vs VEA-stable−): "
+            f"**{did['diff_in_diff']:+.3f}** "
+            f"(95% CI [{ci['low']:+.3f}, {ci['high']:+.3f}], "
+            f"n_flip={did['n_flip']}, n_stable_neg={did['n_stable_neg']}). "
+            f"{sig}."
+        )
+    lines.append("")
+    if with_interpretation:
+        lines.append(_verdict_interpretation(verdict, did))
+        lines.append("")
+    return lines
+
+
 def _render_report(
     *,
     run_dir: Path,
     treatment: str,
     control: str,
     per_model: Sequence[Dict[str, Any]],
+    per_model_family: Sequence[Dict[str, Any]] = (),
 ) -> str:
     lines: List[str] = []
     lines.append("# VEA mediation analysis")
@@ -359,62 +466,72 @@ def _render_report(
         "* **insufficient_data**: one of the strata has n=0.\n"
     )
     lines.append("")
-    lines.append("## Per-model results")
+    lines.append("## Per-model results (aggregated across task families)")
     lines.append("")
     for entry in per_model:
-        model = entry["model_name"]
-        verdict = entry["verdict"]
-        lines.append(f"### `{model}` — verdict: **{verdict}**")
+        lines.extend(
+            _render_group_entry(entry, f"`{entry['model_name']}`")
+        )
+    if per_model_family:
+        lines.append("## Per-(model, family) results")
         lines.append("")
         lines.append(
-            "| Stratum | n | refusal (control) | refusal (treatment) | "
-            "paired Δ | 95% CI |"
+            "Stratifies the mediation analysis by `task_family` so the "
+            "safety-channel verdict can be compared against capability-task "
+            "verdicts on the same model. Cells with small n (e.g. capability "
+            "families where refusal is rare so all strata collapse) may "
+            "report `insufficient_data`."
         )
-        lines.append("| --- | ---: | ---: | ---: | ---: | --- |")
-        for stratum_name, label in (
-            ("flip_neg_to_pos", "VEA flip (− → +)"),
-            ("flip_pos_to_neg", "VEA flip (+ → −)"),
-            ("stable_pos", "VEA stable +"),
-            ("stable_neg", "VEA stable −"),
-        ):
-            s = entry["strata"][stratum_name]
-            n = s["n"]
-            if n == 0:
-                lines.append(
-                    f"| {label} | 0 | - | - | - | - |"
+        lines.append("")
+        # Render per-(model, family) entries grouped by model so the
+        # comparison across families within a model is easy to read.
+        by_model: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for entry in per_model_family:
+            by_model[entry["model_name"]].append(entry)
+        for model_name in sorted(by_model):
+            lines.append(f"### `{model_name}`")
+            lines.append("")
+            # Compact summary table first, then per-family details.
+            lines.append(
+                "| Family | verdict | diff-in-diff | 95% CI | "
+                "n_flip | n_stable_neg |"
+            )
+            lines.append(
+                "| --- | :---: | ---: | --- | ---: | ---: |"
+            )
+            for entry in sorted(
+                by_model[model_name], key=lambda e: e.get("task_family", "")
+            ):
+                did = entry["diff_in_diff"]
+                family = entry.get("task_family", "?")
+                if did["diff_in_diff"] is None:
+                    lines.append(
+                        f"| {family} | `{entry['verdict']}` | - | - | "
+                        f"{did['n_flip']} | {did['n_stable_neg']} |"
+                    )
+                else:
+                    ci = did["diff_in_diff_ci"]
+                    lines.append(
+                        f"| {family} | `{entry['verdict']}` | "
+                        f"{did['diff_in_diff']:+.3f} | "
+                        f"[{ci['low']:+.3f}, {ci['high']:+.3f}] | "
+                        f"{did['n_flip']} | {did['n_stable_neg']} |"
+                    )
+            lines.append("")
+            # Per-family detail tables (skip per-entry interpretation prose
+            # to keep the per-family section compact; the verdict tier in
+            # the summary table is enough).
+            for entry in sorted(
+                by_model[model_name], key=lambda e: e.get("task_family", "")
+            ):
+                family = entry.get("task_family", "?")
+                lines.extend(
+                    _render_group_entry(
+                        entry,
+                        f"`{model_name}` / `{family}`",
+                        with_interpretation=False,
+                    )
                 )
-                continue
-            ci = s["paired_delta_ci"]
-            lines.append(
-                f"| {label} | {n} | "
-                f"{s['mean_refusal_control']:.3f} | "
-                f"{s['mean_refusal_treatment']:.3f} | "
-                f"{s['mean_paired_delta']:+.3f} | "
-                f"[{ci['low']:+.3f}, {ci['high']:+.3f}] |"
-            )
-        lines.append("")
-        did = entry["diff_in_diff"]
-        if did["diff_in_diff"] is None:
-            lines.append(
-                "**Diff-in-diff:** insufficient data (one stratum is empty)."
-            )
-        else:
-            ci = did["diff_in_diff_ci"]
-            sig = (
-                "**CI excludes zero**"
-                if (ci["low"] > 0 or ci["high"] < 0)
-                else "CI includes zero"
-            )
-            lines.append(
-                f"**Diff-in-diff** (Δrefusal in VEA-flip vs VEA-stable−): "
-                f"**{did['diff_in_diff']:+.3f}** "
-                f"(95% CI [{ci['low']:+.3f}, {ci['high']:+.3f}], "
-                f"n_flip={did['n_flip']}, n_stable_neg={did['n_stable_neg']}). "
-                f"{sig}."
-            )
-        lines.append("")
-        lines.append(_verdict_interpretation(verdict, did))
-        lines.append("")
     lines.append("## How to read this")
     lines.append("")
     lines.append(
@@ -521,36 +638,34 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         wanted = set(args.models)
         joined = [r for r in joined if r.get("model_name") in wanted]
 
-    strata = _stratify_by_vea_flip(
-        joined, treatment=args.treatment, control=args.control
+    # Per-model: aggregate across all task families (existing behaviour).
+    strata_by_model = _stratify_by_vea_flip(
+        joined,
+        group_keys=("model_name",),
+        treatment=args.treatment,
+        control=args.control,
     )
+    per_model = _build_per_group(strata_by_model, ("model_name",), seed=args.seed)
 
-    per_model: List[Dict[str, Any]] = []
-    for model_name in sorted(strata):
-        model_strata = strata[model_name]
-        stratum_stats = {
-            name: _stratum_stats(pairs, seed=args.seed)
-            for name, pairs in model_strata.items()
-        }
-        did = _diff_in_diff(
-            model_strata["flip_neg_to_pos"],
-            model_strata["stable_neg"],
-            seed=args.seed,
-        )
-        verdict = _verdict(did["diff_in_diff"], did["diff_in_diff_ci"])
-        per_model.append(
-            {
-                "model_name": model_name,
-                "strata": stratum_stats,
-                "diff_in_diff": did,
-                "verdict": verdict,
-            }
-        )
+    # Per-(model, family): stratifies the mediation analysis by task_family
+    # so the safety-channel verdict can be compared against capability-task
+    # verdicts on the same model. Records missing task_family are bucketed
+    # under "unknown".
+    strata_by_family = _stratify_by_vea_flip(
+        joined,
+        group_keys=("model_name", "task_family"),
+        treatment=args.treatment,
+        control=args.control,
+    )
+    per_model_family = _build_per_group(
+        strata_by_family, ("model_name", "task_family"), seed=args.seed
+    )
 
     summary = {
         "treatment": args.treatment,
         "control": args.control,
         "per_model": per_model,
+        "per_model_family": per_model_family,
     }
     summary_path = run_dir / "vea_mediation_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
@@ -561,6 +676,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         treatment=args.treatment,
         control=args.control,
         per_model=per_model,
+        per_model_family=per_model_family,
     )
     report_path = run_dir / "vea_mediation_report.md"
     report_path.write_text(report)
