@@ -310,9 +310,12 @@ def build_default_llm_vea_judge(
     scorer factory).
 
     Use a judge from a vendor that did NOT produce any of the rollouts so
-    same-vendor self-grading bias doesn't sneak in. Gemini Flash via
-    OpenRouter is the recommended default for the open-reasoning trio
-    (deepseek / qwen3-thinking / kimi-k2-thinking).
+    same-vendor self-grading bias doesn't sneak in.
+
+    Cost-optimized default: ``openrouter`` + ``google/gemini-2.5-flash-lite``.
+    Same prompting style as Flash, ~3-5x cheaper, JSON adherence is reliable
+    on this rubric. Bump to ``google/gemini-2.5-flash`` for the publishable
+    run if you see elevated parse_error rates on the smoke test.
     """
     provider = provider.lower()
     if provider == "openai":
@@ -341,8 +344,9 @@ def build_default_llm_vea_judge(
 
         if not model:
             raise ValueError(
-                "openrouter requires an explicit model id (e.g. "
-                "'google/gemini-2.5-flash')"
+                "openrouter requires an explicit model id "
+                "(recommended: 'google/gemini-2.5-flash-lite' for cost; "
+                "'google/gemini-2.5-flash' for the publishable run)"
             )
         client = OpenRouterClient.from_env(
             name=f"openrouter-vea-judge:{model}",

@@ -329,3 +329,74 @@ that validates the scoring contract on a tiny (5-20 example)
 synthetic dataset BEFORE the expensive rollouts run. The existing
 `scripts/preflight_full_pipeline.py` does API surface validation but
 not scoring-contract validation; that gap is a natural follow-up.
+
+---
+
+## Judge cost optimization (OpenRouter)
+
+The judges (refusal scorer, sandbagging scorer, VEA scorer) are the
+biggest non-rollout cost in any run. Switching from
+`google/gemini-2.5-flash` to `google/gemini-2.5-flash-lite` saved
+~3-5x on judge spend with no observable quality drop on these rubrics.
+
+### Pricing snapshot (rough OpenRouter prices, $/1M tokens)
+
+| Model | Input | Output | Notes |
+|---|---:|---:|---|
+| `openai/gpt-5` | ~$2.50 | ~$10.00 | overkill for binary judging |
+| `anthropic/claude-sonnet-4-6` | ~$3.00 | ~$15.00 | strong but expensive |
+| `anthropic/claude-haiku-4-5` | ~$0.80 | ~$4.00 | reliable JSON, mid-tier |
+| `google/gemini-2.5-flash` | ~$0.30 | ~$2.50 | good baseline judge |
+| **`google/gemini-2.5-flash-lite`** | **~$0.10** | **~$0.40** | **default for cost-optimized runs** |
+| `mistralai/ministral-8b-2410` | ~$0.10 | ~$0.10 | cheapest cross-vendor; smoke-test JSON adherence first |
+| `meta-llama/llama-3.1-8b-instruct` | ~$0.05 | ~$0.10 | cheapest; lower complex-rubric reliability |
+
+### Per-pass cost estimates
+
+For a v6-shaped pass (16,000 refusal-judge calls + ~1,500 sandbagging
+calls; refusal prompt ~3K input + ~200 output, sandbagging ~4K + ~250):
+
+| Judge | Refusal | Sandbagging | Total |
+|---|---:|---:|---:|
+| `google/gemini-2.5-flash` | ~$22 | ~$2.5 | **~$25** |
+| `google/gemini-2.5-flash-lite` | ~$5.7 | ~$0.6 | **~$6.3** |
+| `mistralai/ministral-8b-2410` | ~$5.1 | ~$0.5 | **~$5.6** |
+
+For a Goodfire VEA pass on the open-reasoning trio
+(8,000 rollouts × VEA judge ~3K input + ~200 output):
+
+| Judge | Cost |
+|---|---:|
+| `google/gemini-2.5-flash` | ~$11 |
+| `google/gemini-2.5-flash-lite` | ~$3 |
+
+### Same-vendor bias guardrails
+
+Whatever judge you pick, it must NOT share a vendor with any model
+under test, or the grades become self-graded. For the current lineup:
+
+| Judge family | Avoid when judging |
+|---|---|
+| `google/*` | (only conflict: a future Gemini-as-target run) |
+| `openai/*` | gpt-4o-mini, gpt-5.5 |
+| `anthropic/*` | haiku-4-5, sonnet-4-6, opus-4-7 |
+| `deepseek/*` | deepseek-v3.2-exp |
+| `qwen/*` | qwen3-235b-thinking |
+| `moonshotai/*` | kimi-k2-thinking |
+| `mistralai/*` | (no overlap in current lineup) |
+| `meta-llama/*` | (no overlap in current lineup) |
+
+For the v6 / Goodfire lineup the safe cross-vendor cheap defaults are:
+`google/gemini-2.5-flash-lite`, `mistralai/ministral-8b-2410`, or
+`meta-llama/llama-3.1-8b-instruct` (in increasing order of
+cost-savings, decreasing order of complex-rubric reliability).
+
+### Methodology recommendation for the writeup
+
+Run the smoke-test pass (~50 prompts, ~$1) with `flash-lite`.
+Spot-check 20-30 random judge classifications by hand. If
+parse_error rate is < 2% and the manual spot-check finds no
+obvious systematic miscalls, do the full publishable pass with
+`flash-lite` too and save ~4x on judge spend. Otherwise upgrade
+to `gemini-2.5-flash` for the publishable run only. Never
+upgrade to a same-vendor judge.
