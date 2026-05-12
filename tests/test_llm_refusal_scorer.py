@@ -3588,3 +3588,233 @@ def test_goodfire_classify_rollouts_sample_mask_is_deterministic():
     # with sample_rate=0.5; tolerate ±25% drift around the expected 20.
     assert judged_a == judged_b
     assert 10 < len(judged_a) < 30
+
+
+# ---------------------------------------------------------------------------
+# Bootstrap CIs in the Goodfire VEA aggregator (PR #36 follow-up)
+# ---------------------------------------------------------------------------
+
+
+def test_goodfire_vea_rate_attaches_proportion_ci():
+    """Per-(model, condition) rows must include a 95% CI on the VEA+ rate
+    so the report can render '0.660 [0.520, 0.780]' instead of just '0.660'.
+    Without a CI the reader can't tell if a rate is meaningfully above
+    the alternatives in adjacent rows."""
+    from scripts.run_goodfire_vea import _vea_rate_by_bucket
+
+    # 40 rollouts, 50% VEA+. Bootstrap CI should bracket 0.5 with width
+    # roughly ±0.15 at this n.
+    classifications = [
+        {
+            "model_name": "m",
+            "condition": "neutral",
+            "is_vea": (i % 2 == 0),
+            "vea_type": "explicit_eval" if i % 2 == 0 else "none",
+        }
+        for i in range(40)
+    ]
+    rows = _vea_rate_by_bucket(
+        classifications, ("model_name", "condition"), bootstrap_seed=0
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["vea_positive_rate"] == 0.5
+    ci = row["vea_positive_rate_ci"]
+    # Bootstrap is stochastic but seed=0 gives a tight bracket around 0.5.
+    assert 0.30 <= ci["low"] <= 0.45
+    assert 0.55 <= ci["high"] <= 0.70
+
+
+def test_goodfire_inject_neutral_delta_uses_paired_bootstrap():
+    """The inject−neutral VEA inflation MUST use a paired bootstrap that
+    keys on example_id within each model. Mimics the qwen3 smoke-test
+    finding (inject 0.66, neutral 0.30, n=50 paired) at smaller n.
+
+    Paired bootstrap preserves within-prompt correlation: a prompt that
+    triggers VEA in BOTH conditions vs only inject vs only neutral are
+    the load-bearing signal. Two-sample bootstrap throws this away and
+    gives wider CIs."""
+    from scripts.run_goodfire_vea import (
+        _inject_neutral_delta,
+        _vea_rate_by_bucket,
+    )
+
+    # Construct 20 prompts where inject triggers VEA much more often than
+    # neutral (~70% vs ~30%, like the qwen3 cell at small n).
+    classifications = []
+    for i in range(20):
+        # neutral: VEA+ on 6/20 prompts.
+        classifications.append(
+            {
+                "model_name": "qwen-like",
+                "condition": "neutral",
+                "example_id": f"ex:{i}",
+                "is_vea": i < 6,
+                "vea_type": "test_scenario" if i < 6 else "none",
+            }
+        )
+        # inject: VEA+ on 14/20 prompts.
+        classifications.append(
+            {
+                "model_name": "qwen-like",
+                "condition": "inject",
+                "example_id": f"ex:{i}",
+                "is_vea": i < 14,
+                "vea_type": "test_scenario" if i < 14 else "none",
+            }
+        )
+
+    per_condition = _vea_rate_by_bucket(
+        classifications, ("model_name", "condition"), bootstrap_seed=0
+    )
+    deltas = _inject_neutral_delta(
+        per_condition,
+        ("model_name",),
+        classifications=classifications,
+        bootstrap_seed=0,
+    )
+
+    assert len(deltas) == 1
+    row = deltas[0]
+    assert row["model_name"] == "qwen-like"
+    assert row["inject_vea_rate"] == 0.7
+    assert row["neutral_vea_rate"] == 0.3
+    assert row["inject_minus_neutral_vea"] == 0.4
+    assert row["n_paired"] == 20  # all 20 prompts have both conditions
+    ci = row["inject_minus_neutral_vea_ci"]
+    # The +0.4 effect is large enough at n=20 that paired bootstrap CI
+    # should comfortably exclude zero.
+    assert ci["low"] > 0
+    # And bracket the point estimate.
+    assert ci["low"] <= 0.4 <= ci["high"]
+
+
+def test_goodfire_refusal_split_attaches_two_sample_ci():
+    """The behavioral split (refusal rate VEA+ vs VEA−) MUST carry a CI
+    on the difference. The smoke-test surfaced the surprising finding
+    that VEA+ rollouts on qwen3 refuse LESS, not more (Δ −0.105) — but
+    n_pos was only 77 and the simple Wald CI included zero. The report
+    must show the bootstrap CI so readers can tell underpowered effects
+    from real ones."""
+    from scripts.run_goodfire_vea import _refusal_by_vea
+
+    classifications = []
+    # 30 VEA+ rollouts with mean refusal 0.4; 70 VEA− with mean refusal 0.7.
+    for i in range(30):
+        classifications.append(
+            {
+                "model_name": "m",
+                "is_vea": True,
+                "vea_type": "explicit_eval",
+                "refusal": 1.0 if i < 12 else 0.0,  # 12/30 = 0.4
+            }
+        )
+    for i in range(70):
+        classifications.append(
+            {
+                "model_name": "m",
+                "is_vea": False,
+                "vea_type": "none",
+                "refusal": 1.0 if i < 49 else 0.0,  # 49/70 = 0.7
+            }
+        )
+    rows = _refusal_by_vea(classifications, ("model_name",), bootstrap_seed=0)
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["mean_refusal_vea_pos"] == 0.4
+    assert row["mean_refusal_vea_neg"] == 0.7
+    assert row["refusal_vea_pos_minus_neg"] == -0.3
+    ci = row["refusal_vea_pos_minus_neg_ci"]
+    assert ci["low"] <= -0.3 <= ci["high"]
+    # -0.3 effect at n=30/70 is large enough that the CI should exclude 0
+    # on the negative side.
+    assert ci["high"] < 0
+
+
+def test_goodfire_report_includes_ci_columns_and_significance(tmp_path, monkeypatch):
+    """End-to-end: the rendered report must include the new CI column and
+    significance flag. Without this the CIs end up in the JSON summary
+    but a casual reader of the .md never sees them."""
+    from scripts import run_goodfire_vea as script_module
+    from src.eval_awareness.vea_judge import VeaJudgement
+
+    run_dir = tmp_path / "ci-report"
+    run_dir.mkdir()
+    rollouts = []
+    # Mimic the qwen3 smoke shape: clear inject inflation on one model.
+    for i in range(40):
+        rollouts.append(
+            {
+                "model_name": "qwen-like",
+                "condition": "inject",
+                "example_id": f"ex:{i}",
+                "task_family": "safety",
+                "rollout_index": 0,
+                "prompt": "?",
+                "response": "ok",
+                "reasoning_trace": "this is an evaluation" if i < 28 else "thinking",
+                "refusal": 0.5 if i < 28 else 0.7,
+            }
+        )
+        rollouts.append(
+            {
+                "model_name": "qwen-like",
+                "condition": "neutral",
+                "example_id": f"ex:{i}",
+                "task_family": "safety",
+                "rollout_index": 0,
+                "prompt": "?",
+                "response": "ok",
+                "reasoning_trace": "this is an evaluation" if i < 12 else "thinking",
+                "refusal": 0.5 if i < 12 else 0.7,
+            }
+        )
+    rollouts_path = run_dir / "rollouts.jsonl"
+    rollouts_path.write_text(
+        "\n".join(json.dumps(r, sort_keys=True) for r in rollouts) + "\n"
+    )
+
+    class StubJudge:
+        def classify(self, reasoning_trace, user_prompt="", response=""):
+            is_vea = "evaluation" in reasoning_trace.lower()
+            return VeaJudgement(
+                is_vea=is_vea,
+                confidence=0.9 if is_vea else 0.0,
+                vea_type="explicit_eval" if is_vea else "none",
+                quoted_text="evaluation" if is_vea else "",
+                rationale="stub",
+            )
+
+    monkeypatch.setattr(
+        script_module,
+        "build_default_llm_vea_judge",
+        lambda *a, **kw: StubJudge(),
+    )
+
+    rc = script_module.main(
+        [
+            "--from-run-dir",
+            str(run_dir),
+            "--vea-judge-provider",
+            "openrouter",
+            "--vea-judge-model",
+            "stub",
+            "--vea-judge-concurrency",
+            "1",
+        ]
+    )
+    assert rc == 0
+
+    report = (run_dir / "goodfire_vea_report.md").read_text()
+    # New columns rendered in both delta tables.
+    assert "95% CI" in report
+    assert "Significant?" in report
+    # The inject−neutral row for qwen-like should be flagged significant
+    # (point estimate 0.40, paired bootstrap excludes zero at n=40).
+    assert "**yes**" in report
+    # JSON summary persists the CI structure too.
+    summary = json.loads((run_dir / "goodfire_vea_summary.json").read_text())
+    deltas = summary["per_model_inject_minus_neutral"]
+    assert len(deltas) == 1
+    assert "inject_minus_neutral_vea_ci" in deltas[0]
+    assert deltas[0]["n_paired"] == 40

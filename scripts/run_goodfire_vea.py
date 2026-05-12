@@ -349,11 +349,100 @@ def _classify_rollouts(
 # ---------------------------------------------------------------------------
 
 
+def _bootstrap_proportion_ci(
+    values: Sequence[float],
+    iterations: int = 200,
+    seed: int = 0,
+) -> Dict[str, float]:
+    """Bootstrap a 95% CI on the mean of a 0/1 (or [0,1]) value list.
+
+    Used for VEA+ rates (binary) and refusal rates (binary). The 5th and
+    195th sorted iteration give the 2.5/97.5 percentiles.
+    """
+    if not values:
+        return {"low": 0.0, "high": 0.0, "mean": 0.0}
+    rng = random.Random(seed)
+    means: List[float] = []
+    n = len(values)
+    for _ in range(iterations):
+        sample = [rng.choice(values) for _ in range(n)]
+        means.append(sum(sample) / n)
+    means.sort()
+    return {
+        "low": round(means[5], 4),
+        "high": round(means[195], 4),
+        "mean": round(sum(means) / len(means), 4),
+    }
+
+
+def _bootstrap_paired_delta_ci(
+    pairs: Sequence[Tuple[float, float]],
+    iterations: int = 200,
+    seed: int = 0,
+) -> Dict[str, float]:
+    """Paired bootstrap CI on (treatment - baseline).
+
+    ``pairs`` is a list of (baseline_value, treatment_value) tuples, one
+    per matched pair (e.g. one prompt, two conditions). Resamples whole
+    pairs with replacement so the within-pair correlation is preserved -
+    gives tighter CIs than two-sample bootstrap when the conditions covary
+    by prompt, which they do here (a prompt that's intrinsically refusable
+    will refuse under both inject and neutral).
+    """
+    if not pairs:
+        return {"low": 0.0, "high": 0.0, "mean": 0.0}
+    rng = random.Random(seed)
+    deltas: List[float] = []
+    n = len(pairs)
+    for _ in range(iterations):
+        resampled = [rng.choice(pairs) for _ in range(n)]
+        b_mean = sum(p[0] for p in resampled) / n
+        t_mean = sum(p[1] for p in resampled) / n
+        deltas.append(t_mean - b_mean)
+    deltas.sort()
+    return {
+        "low": round(deltas[5], 4),
+        "high": round(deltas[195], 4),
+        "mean": round(sum(deltas) / len(deltas), 4),
+    }
+
+
+def _bootstrap_two_sample_delta_ci(
+    treatment_values: Sequence[float],
+    baseline_values: Sequence[float],
+    iterations: int = 200,
+    seed: int = 0,
+) -> Dict[str, float]:
+    """Two-sample bootstrap CI on (mean(treatment) - mean(baseline)).
+
+    Used for the behavioral split where VEA+ and VEA- cohorts have
+    different sizes and aren't paired (the VEA classification partitions
+    rollouts into disjoint groups). Each group is resampled independently.
+    """
+    if not treatment_values or not baseline_values:
+        return {"low": 0.0, "high": 0.0, "mean": 0.0}
+    rng = random.Random(seed)
+    deltas: List[float] = []
+    for _ in range(iterations):
+        t = [rng.choice(treatment_values) for _ in treatment_values]
+        b = [rng.choice(baseline_values) for _ in baseline_values]
+        deltas.append(sum(t) / len(t) - sum(b) / len(b))
+    deltas.sort()
+    return {
+        "low": round(deltas[5], 4),
+        "high": round(deltas[195], 4),
+        "mean": round(sum(deltas) / len(deltas), 4),
+    }
+
+
 def _vea_rate_by_bucket(
     classifications: Sequence[Dict[str, Any]],
     bucket_keys: Sequence[str],
+    *,
+    bootstrap_iterations: int = 200,
+    bootstrap_seed: int = 0,
 ) -> List[Dict[str, Any]]:
-    """Group by ``bucket_keys`` and compute VEA+ rate (and n) per group."""
+    """Group by ``bucket_keys`` and compute VEA+ rate (with 95% CI) per group."""
     buckets: Dict[Tuple[str, ...], List[Dict[str, Any]]] = defaultdict(list)
     for c in classifications:
         if c.get("vea_type") == "skipped":
@@ -364,32 +453,80 @@ def _vea_rate_by_bucket(
     for key, items in sorted(buckets.items()):
         n = len(items)
         positives = sum(1 for c in items if c.get("is_vea"))
+        binary = [1.0 if c.get("is_vea") else 0.0 for c in items]
+        ci = _bootstrap_proportion_ci(
+            binary, iterations=bootstrap_iterations, seed=bootstrap_seed
+        )
         rows.append(
             {
                 **{k: v for k, v in zip(bucket_keys, key)},
                 "n": n,
                 "n_vea_positive": positives,
                 "vea_positive_rate": round(positives / n, 4) if n else 0.0,
+                "vea_positive_rate_ci": ci,
             }
         )
     return rows
 
 
 def _inject_neutral_delta(
-    rows: Sequence[Dict[str, Any]], group_keys: Sequence[str]
+    rows: Sequence[Dict[str, Any]],
+    group_keys: Sequence[str],
+    *,
+    classifications: Optional[Sequence[Dict[str, Any]]] = None,
+    bootstrap_iterations: int = 200,
+    bootstrap_seed: int = 0,
 ) -> List[Dict[str, Any]]:
-    """Pair (model, condition) rows on group_keys and compute inject-neutral."""
+    """Pair (model, condition) rows on group_keys and compute inject-neutral.
+
+    When ``classifications`` is supplied the per-prompt VEA outcomes are
+    matched on ``example_id`` within each group and a paired-bootstrap CI
+    is attached. Without classifications the CI defaults to a no-op shape
+    so the renderer doesn't crash.
+    """
     by_group: Dict[Tuple[str, ...], Dict[str, Dict[str, Any]]] = defaultdict(dict)
     for row in rows:
         key = tuple(str(row.get(k) or "") for k in group_keys)
         cond = str(row.get("condition") or "")
         by_group[key][cond] = row
+
+    # Build per-(group, example_id, condition) VEA lookup if we have raw
+    # classifications. The paired delta uses (neutral, inject) pairs keyed
+    # by example_id WITHIN the group so within-prompt correlation is
+    # preserved across the bootstrap.
+    paired_pool: Dict[Tuple[str, ...], List[Tuple[float, float]]] = defaultdict(list)
+    if classifications is not None:
+        per_group_per_example: Dict[
+            Tuple[str, ...], Dict[str, Dict[str, float]]
+        ] = defaultdict(lambda: defaultdict(dict))
+        for c in classifications:
+            if c.get("vea_type") == "skipped":
+                continue
+            ex_id = str(c.get("example_id") or "")
+            cond = str(c.get("condition") or "")
+            if not ex_id or cond not in ("inject", "neutral"):
+                continue
+            key = tuple(str(c.get(k) or "") for k in group_keys)
+            per_group_per_example[key][ex_id][cond] = (
+                1.0 if c.get("is_vea") else 0.0
+            )
+        for key, by_example in per_group_per_example.items():
+            for ex_id, cond_map in by_example.items():
+                if "inject" in cond_map and "neutral" in cond_map:
+                    paired_pool[key].append(
+                        (cond_map["neutral"], cond_map["inject"])
+                    )
+
     out: List[Dict[str, Any]] = []
     for key, conds in sorted(by_group.items()):
         inject = conds.get("inject", {})
         neutral = conds.get("neutral", {})
         inject_rate = float(inject.get("vea_positive_rate") or 0.0)
         neutral_rate = float(neutral.get("vea_positive_rate") or 0.0)
+        pairs = paired_pool.get(key, [])
+        ci = _bootstrap_paired_delta_ci(
+            pairs, iterations=bootstrap_iterations, seed=bootstrap_seed
+        )
         out.append(
             {
                 **{k: v for k, v in zip(group_keys, key)},
@@ -398,6 +535,8 @@ def _inject_neutral_delta(
                 "neutral_vea_rate": neutral_rate,
                 "neutral_n": int(neutral.get("n") or 0),
                 "inject_minus_neutral_vea": round(inject_rate - neutral_rate, 4),
+                "inject_minus_neutral_vea_ci": ci,
+                "n_paired": len(pairs),
             }
         )
     return out
@@ -406,12 +545,17 @@ def _inject_neutral_delta(
 def _refusal_by_vea(
     classifications: Sequence[Dict[str, Any]],
     bucket_keys: Sequence[str],
+    *,
+    bootstrap_iterations: int = 200,
+    bootstrap_seed: int = 0,
 ) -> List[Dict[str, Any]]:
     """Within each bucket, compute mean refusal rate split by VEA status.
 
     This is the headline behavioral comparison: does the VEA+ cohort refuse
-    at a different rate than the VEA- cohort? If yes, VEA inflation is a
-    plausible upstream cause of any observed refusal-rate shift.
+    at a different rate than the VEA- cohort? Two-sample bootstrap CI on
+    the difference - the VEA+/VEA- partition isn't paired (it's a
+    conditional split of the same rollouts), so independent resampling of
+    each cohort is the right model.
     """
     buckets: Dict[Tuple[str, ...], Dict[str, List[float]]] = defaultdict(
         lambda: {"vea_pos": [], "vea_neg": []}
@@ -442,8 +586,16 @@ def _refusal_by_vea(
             row["refusal_vea_pos_minus_neg"] = round(
                 (sum(pos) / len(pos)) - (sum(neg) / len(neg)), 4
             )
+            row["refusal_vea_pos_minus_neg_ci"] = _bootstrap_two_sample_delta_ci(
+                pos, neg, iterations=bootstrap_iterations, seed=bootstrap_seed
+            )
         else:
             row["refusal_vea_pos_minus_neg"] = None
+            row["refusal_vea_pos_minus_neg_ci"] = {
+                "low": 0.0,
+                "high": 0.0,
+                "mean": 0.0,
+            }
         rows.append(row)
     return rows
 
@@ -490,15 +642,25 @@ def _render_report(
 
     lines.append("## VEA+ rate per (model, condition)")
     lines.append("")
-    lines.append("| Model | Condition | n | VEA+ | rate |")
-    lines.append("| --- | --- | ---: | ---: | ---: |")
+    lines.append(
+        "Bootstrap 95% CI on the proportion (B=200, resampled with "
+        "replacement). A row whose CI excludes 0 is statistically distinguishable "
+        "from no-VEA at this n; rows with very low rates (e.g. <5%) usually "
+        "have CI low=0 and are not."
+    )
+    lines.append("")
+    lines.append("| Model | Condition | n | VEA+ | rate | 95% CI |")
+    lines.append("| --- | --- | ---: | ---: | ---: | --- |")
     for row in per_model_condition:
+        ci = row.get("vea_positive_rate_ci") or {}
         lines.append(
             f"| `{row.get('model_name', '?')}` | "
             f"{row.get('condition', '?')} | "
             f"{row.get('n', 0)} | "
             f"{row.get('n_vea_positive', 0)} | "
-            f"{row.get('vea_positive_rate', 0.0):.3f} |"
+            f"{row.get('vea_positive_rate', 0.0):.3f} | "
+            f"[{float(ci.get('low', 0.0)):.3f}, "
+            f"{float(ci.get('high', 0.0)):.3f}] |"
         )
     lines.append("")
 
@@ -506,18 +668,34 @@ def _render_report(
     lines.append("")
     lines.append(
         "The headline causal question: does explicit eval framing inflate "
-        "the rate of verbalized eval-awareness in the model's CoT?"
+        "the rate of verbalized eval-awareness in the model's CoT? "
+        "**CI is paired bootstrap** (B=200) over per-prompt (neutral, inject) "
+        "pairs - tighter than two-sample because within-prompt VEA tendency "
+        "is preserved across resamples. CI excluding 0 = statistically "
+        "supported VEA inflation under inject framing."
     )
     lines.append("")
-    lines.append("| Model | inject rate | neutral rate | Δ inject−neutral |")
-    lines.append("| --- | ---: | ---: | ---: |")
+    lines.append(
+        "| Model | inject rate | neutral rate | Δ inject−neutral | "
+        "95% CI | n paired | Significant? |"
+    )
+    lines.append(
+        "| --- | ---: | ---: | ---: | --- | ---: | :---: |"
+    )
     for row in per_model_deltas:
         delta = float(row.get("inject_minus_neutral_vea") or 0.0)
+        ci = row.get("inject_minus_neutral_vea_ci") or {}
+        ci_low = float(ci.get("low", 0.0))
+        ci_high = float(ci.get("high", 0.0))
+        sig = "**yes**" if (ci_low > 0 or ci_high < 0) else "no"
         lines.append(
             f"| `{row.get('model_name', '?')}` | "
             f"{row.get('inject_vea_rate', 0.0):.3f} (n={row.get('inject_n', 0)}) | "
             f"{row.get('neutral_vea_rate', 0.0):.3f} (n={row.get('neutral_n', 0)}) | "
-            f"{delta:+.3f} |"
+            f"{delta:+.3f} | "
+            f"[{ci_low:+.3f}, {ci_high:+.3f}] | "
+            f"{row.get('n_paired', 0)} | "
+            f"{sig} |"
         )
     lines.append("")
 
@@ -527,24 +705,41 @@ def _render_report(
         "Within each model, compare the refusal rate of VEA+ rollouts vs "
         "VEA- rollouts. If VEA+ rollouts refuse more, VEA inflation is a "
         "plausible upstream mechanism for any inject-minus-neutral refusal "
-        "shift observed in the cross-protocol report."
+        "shift observed in the cross-protocol report. **CI is two-sample "
+        "bootstrap** (B=200) on the difference - the cohorts aren't paired "
+        "(VEA classification partitions disjoint rollouts), so each cohort "
+        "is resampled independently."
     )
     lines.append("")
     lines.append(
-        "| Model | n VEA+ | refusal (VEA+) | n VEA- | refusal (VEA-) | Δ |"
+        "| Model | n VEA+ | refusal (VEA+) | n VEA- | refusal (VEA-) | "
+        "Δ | 95% CI | Significant? |"
     )
-    lines.append("| --- | ---: | ---: | ---: | ---: | ---: |")
+    lines.append(
+        "| --- | ---: | ---: | ---: | ---: | ---: | --- | :---: |"
+    )
     for row in refusal_split:
         pos = row.get("mean_refusal_vea_pos")
         neg = row.get("mean_refusal_vea_neg")
         delta = row.get("refusal_vea_pos_minus_neg")
+        ci = row.get("refusal_vea_pos_minus_neg_ci") or {}
+        ci_low = float(ci.get("low", 0.0))
+        ci_high = float(ci.get("high", 0.0))
+        if delta is None:
+            ci_text = "-"
+            sig = "n/a"
+        else:
+            ci_text = f"[{ci_low:+.3f}, {ci_high:+.3f}]"
+            sig = "**yes**" if (ci_low > 0 or ci_high < 0) else "no"
         lines.append(
             f"| `{row.get('model_name', '?')}` | "
             f"{row.get('n_vea_pos', 0)} | "
             f"{'-' if pos is None else f'{pos:.3f}'} | "
             f"{row.get('n_vea_neg', 0)} | "
             f"{'-' if neg is None else f'{neg:.3f}'} | "
-            f"{'-' if delta is None else f'{delta:+.3f}'} |"
+            f"{'-' if delta is None else f'{delta:+.3f}'} | "
+            f"{ci_text} | "
+            f"{sig} |"
         )
     lines.append("")
 
@@ -828,14 +1023,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         for c in classifications:
             fh.write(json.dumps(c, sort_keys=True) + "\n")
 
-    # 3) Aggregation
+    # 3) Aggregation (with bootstrap-paired CIs for the deltas)
     per_model_condition = _vea_rate_by_bucket(
-        classifications, ("model_name", "condition")
+        classifications,
+        ("model_name", "condition"),
+        bootstrap_seed=args.seed,
     )
     per_model_deltas = _inject_neutral_delta(
-        per_model_condition, ("model_name",)
+        per_model_condition,
+        ("model_name",),
+        classifications=classifications,
+        bootstrap_seed=args.seed,
     )
-    refusal_split = _refusal_by_vea(classifications, ("model_name",))
+    refusal_split = _refusal_by_vea(
+        classifications, ("model_name",), bootstrap_seed=args.seed
+    )
 
     # Empty-trace audit per model
     empty_counts = Counter()
