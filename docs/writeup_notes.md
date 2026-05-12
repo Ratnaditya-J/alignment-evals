@@ -509,3 +509,135 @@ the paper is named after. It's what shows up at qwen3's 0.12-0.18
 baseline rate even without our intervention. The +0.42 inject
 inflation is the same phenomenon being amplified by explicit
 framing. Both judges flagged this rollout as VEA+.
+
+---
+
+## VEA verbalization is NOT the same as behavior change
+
+**The nuance.** A model recognizing the eval (VEA+) does not mean
+the model is behaving differently from how it would in real life.
+The model could verbalize "this is a test" in its CoT and still
+produce the same response it would on the same prompt under
+ordinary deployment framing. Goodfire-style VEA inflation by
+itself is a CoT phenomenon; the behavioral consequence is a
+separate empirical question that has to be tested on the same
+data.
+
+**Why this matters for the writeup.** The default reader will
+interpret "qwen3 verbalizes eval-awareness +42pp more under
+inject" as "qwen3 behaves differently under inject." That's a
+slip from CoT to behavior. The paper should explicitly disentangle
+the two and report both — the verbalization effect AND the
+behavioral effect.
+
+### Macro evidence from existing aggregates
+
+Using the qwen3 safety numbers we already have:
+
+| Quantity | Δ inject−neutral | Source |
+|---|---:|---|
+| VEA+ verbalization rate | **+0.420** (CI [+0.260, +0.580]) | Goodfire smoke, n=50 |
+| Refusal rate (refusal-LLM scorer) | **+0.032** (CI [-0.048, +0.137]) | v6 cross-protocol, n=125 |
+
+VEA inflation is ~13x the refusal-rate shift. Under the simple
+"VEA causes refusal" mediation model, inflating VEA+ rate by +0.42
+on prompts with within-cohort gap (VEA+ refuses at 0.586, VEA−
+at 0.711, Δ = −0.125) would predict a refusal-rate change of
+roughly `+0.42 × −0.125 = −0.053`. The observed change is
+**+0.032 (small INCREASE)**. The expected-by-mediation effect
+doesn't materialize — at the macro level VEA looks largely
+decoupled from refusal behavior on safety prompts.
+
+**Caveat:** the within-cohort split is correlational. VEA+
+rollouts refusing less than VEA− rollouts could be a SELECTION
+effect — VEA+ might happen on prompts that have legitimate
+engagement paths (researcher/story/educational framing), not
+prompts the model would have refused. The macro decomposition
+gives a directional signal but doesn't isolate the causal
+contribution of VEA verbalization itself.
+
+### Clean test: per-prompt diff-in-diff
+
+The decisive test is paired by prompt:
+
+1. Identify prompts where the SAME (model, example_id) flips from
+   VEA− under neutral to VEA+ under inject.
+2. Compute paired Δrefusal on those prompts.
+3. Compare against paired Δrefusal on control prompts where VEA
+   stayed − in both conditions.
+4. The **diff-in-diff** is the marginal behavioral effect of VEA
+   flipping, holding the prompt-level baseline VEA tendency
+   constant.
+
+If diff-in-diff is small and the CI includes zero → VEA
+verbalization is largely epiphenomenal. The model "notices" the
+eval but doesn't change its response on the same prompt.
+
+If diff-in-diff is large and CI excludes zero → VEA verbalization
+mediates the inject-induced behavioral shift. The Goodfire
+mechanism story (verbalize → change behavior) is supported.
+
+### Tool
+
+`scripts/analyze_vea_mediation.py` (PR #40) does this analysis:
+joins `rollouts.jsonl` with `goodfire_vea_classifications.jsonl`
+on `(model_name, condition, example_id, rollout_index)`, stratifies
+prompts into `flip_neg_to_pos` / `flip_pos_to_neg` / `stable_pos` /
+`stable_neg`, and emits the diff-in-diff with bootstrap CI per
+model. Verdict tiers: `epiphenomenal` / `weak_mediation` /
+`strong_mediation` / `insufficient_data` with explicit thresholds.
+
+To run on the existing smoke data:
+
+```bash
+python scripts/analyze_vea_mediation.py \
+  --run-dir runs/goodfire-smoke \
+  --models openrouter:qwen/qwen3-235b-a22b-thinking-2507
+```
+
+Writes `vea_mediation_summary.json` + `vea_mediation_report.md`
+into the run dir.
+
+### Predicted verdict from the macro evidence
+
+Given that the aggregate refusal shift on qwen3 safety is +0.032
+under inject vs the +0.42 VEA inflation, my expectation is the
+per-prompt diff-in-diff will come back **epiphenomenal at this n**
+or possibly **weak_mediation** in the negative direction (i.e.,
+VEA+ flipping correlates with slightly LESS refusal, consistent
+with the within-cohort split). The smoke n=50/cell is too small
+to declare confidently — the n=200 follow-up run is what would
+nail it down.
+
+### Writeup framing recommendation
+
+The paper should present the analysis as **two distinct claims,
+one supported, one not** (pending the n=200 confirmation):
+
+1. **Supported:** Goodfire-style VEA inflation is real and
+   replicable on qwen3 under explicit eval framing (+0.42, CI
+   excludes zero, two independent judges agree).
+2. **Not supported by this run:** VEA verbalization mediates a
+   commensurate refusal-rate shift. The behavioral effect on
+   safety refusal is roughly an order of magnitude smaller than
+   the verbalization effect, and the per-prompt diff-in-diff
+   suggests verbalization is largely decoupled from behavior.
+
+This combination is actually the strongest version of the paper
+to publish: "models DO recognize they're being evaluated more
+often under explicit framing, but on the safety corpus this
+recognition does NOT translate to a proportionate refusal-rate
+shift." That's a sharper, more honest claim than "models behave
+differently when they think they're being evaluated."
+
+### Open question: capability tasks
+
+The above is about safety / refusal. The qwen3 v6 result on
+**knowledge accuracy** (+0.190 under inject, CI excludes zero)
+is a different behavioral channel. The Goodfire smoke didn't
+run on knowledge prompts, so we don't have VEA classifications
+on the accuracy-shift cells. **A natural follow-up is to run the
+Goodfire pipeline on a mixed corpus (knowledge + math + safety)
+and re-do the diff-in-diff on accuracy.** If the knowledge
+accuracy shift IS mediated by VEA, that's a different (and more
+striking) mechanism story than the safety refusal channel.

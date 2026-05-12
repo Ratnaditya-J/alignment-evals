@@ -3818,3 +3818,238 @@ def test_goodfire_report_includes_ci_columns_and_significance(tmp_path, monkeypa
     assert len(deltas) == 1
     assert "inject_minus_neutral_vea_ci" in deltas[0]
     assert deltas[0]["n_paired"] == 40
+
+
+# ---------------------------------------------------------------------------
+# VEA mediation analysis (does VEA verbalization predict behavior change?)
+# ---------------------------------------------------------------------------
+
+
+def _write_mediation_inputs(
+    run_dir: Path,
+    rollouts: List[Dict[str, Any]],
+    classifications: List[Dict[str, Any]],
+) -> None:
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "rollouts.jsonl").write_text(
+        "\n".join(json.dumps(r, sort_keys=True) for r in rollouts) + "\n"
+    )
+    (run_dir / "goodfire_vea_classifications.jsonl").write_text(
+        "\n".join(json.dumps(c, sort_keys=True) for c in classifications) + "\n"
+    )
+
+
+def test_vea_mediation_epiphenomenal_when_vea_does_not_predict_refusal(
+    tmp_path,
+):
+    """When refusal is the same regardless of whether VEA flipped on the
+    same prompt, the script must verdict 'epiphenomenal' - exactly the
+    user's hypothesis that a model can be aware AND still behave the same
+    as in real life."""
+    from scripts.analyze_vea_mediation import main as mediation_main
+
+    run_dir = tmp_path / "epi"
+    rollouts: List[Dict[str, Any]] = []
+    classifications: List[Dict[str, Any]] = []
+
+    # 30 prompts: refusal score is identical across inject and neutral on
+    # every prompt (no behavioral change), but VEA flips - to + on 20 of
+    # them under inject. This is the textbook epiphenomenal case.
+    for i in range(30):
+        ref = 1.0 if i % 2 == 0 else 0.0  # half refusable, half not
+        for cond in ("neutral", "inject"):
+            rollouts.append(
+                {
+                    "model_name": "qwen-like",
+                    "condition": cond,
+                    "example_id": f"ex:{i}",
+                    "rollout_index": 0,
+                    "refusal": ref,
+                }
+            )
+            is_vea = cond == "inject" and i < 20
+            classifications.append(
+                {
+                    "model_name": "qwen-like",
+                    "condition": cond,
+                    "example_id": f"ex:{i}",
+                    "rollout_index": 0,
+                    "is_vea": is_vea,
+                    "vea_type": "explicit_eval" if is_vea else "none",
+                    "confidence": 0.9 if is_vea else 0.0,
+                }
+            )
+
+    _write_mediation_inputs(run_dir, rollouts, classifications)
+    rc = mediation_main(["--run-dir", str(run_dir)])
+    assert rc == 0
+
+    summary = json.loads((run_dir / "vea_mediation_summary.json").read_text())
+    assert len(summary["per_model"]) == 1
+    entry = summary["per_model"][0]
+    assert entry["model_name"] == "qwen-like"
+    # 20 prompts flipped neg->pos, 10 stayed neg.
+    assert entry["strata"]["flip_neg_to_pos"]["n"] == 20
+    assert entry["strata"]["stable_neg"]["n"] == 10
+    # Diff-in-diff ≈ 0 because refusal didn't move on either stratum.
+    assert abs(entry["diff_in_diff"]["diff_in_diff"]) < 0.01
+    assert entry["verdict"] == "epiphenomenal"
+
+    report = (run_dir / "vea_mediation_report.md").read_text()
+    assert "verdict: **epiphenomenal**" in report
+    assert "decoupled from behavior change" in report
+
+
+def test_vea_mediation_strong_when_flip_predicts_refusal_jump(tmp_path):
+    """When VEA-flipped prompts show a large paired Δrefusal compared to
+    VEA-stable-negative prompts, the script must verdict
+    'strong_mediation'. Synthetic case: prompts where VEA flips also see
+    refusal shoot from 0.0 to 1.0 under inject; control prompts stay at
+    refusal 0.0 in both conditions."""
+    from scripts.analyze_vea_mediation import main as mediation_main
+
+    run_dir = tmp_path / "med"
+    rollouts: List[Dict[str, Any]] = []
+    classifications: List[Dict[str, Any]] = []
+
+    for i in range(40):
+        flips = i < 20  # first 20 prompts: VEA flips and refusal jumps
+        for cond in ("neutral", "inject"):
+            if flips and cond == "inject":
+                ref = 1.0
+            else:
+                ref = 0.0
+            rollouts.append(
+                {
+                    "model_name": "mediating",
+                    "condition": cond,
+                    "example_id": f"ex:{i}",
+                    "rollout_index": 0,
+                    "refusal": ref,
+                }
+            )
+            is_vea = flips and cond == "inject"
+            classifications.append(
+                {
+                    "model_name": "mediating",
+                    "condition": cond,
+                    "example_id": f"ex:{i}",
+                    "rollout_index": 0,
+                    "is_vea": is_vea,
+                    "vea_type": "explicit_eval" if is_vea else "none",
+                    "confidence": 0.9 if is_vea else 0.0,
+                }
+            )
+
+    _write_mediation_inputs(run_dir, rollouts, classifications)
+    rc = mediation_main(["--run-dir", str(run_dir)])
+    assert rc == 0
+
+    summary = json.loads((run_dir / "vea_mediation_summary.json").read_text())
+    entry = summary["per_model"][0]
+    assert entry["strata"]["flip_neg_to_pos"]["n"] == 20
+    assert entry["strata"]["stable_neg"]["n"] == 20
+    # Flip prompts: paired Δref = +1.0; stable: 0.0. DiD = +1.0.
+    assert entry["diff_in_diff"]["diff_in_diff"] == 1.0
+    assert entry["verdict"] == "strong_mediation"
+
+
+def test_vea_mediation_join_drops_orphan_rollouts(tmp_path):
+    """Records present in rollouts.jsonl but missing from the
+    classifications file (or vice versa) must be skipped, not crash the
+    analysis. Otherwise a partial classification pass (e.g. one that
+    failed midway) would corrupt the join."""
+    from scripts.analyze_vea_mediation import main as mediation_main
+
+    run_dir = tmp_path / "orphan"
+    rollouts = [
+        {
+            "model_name": "m",
+            "condition": "neutral",
+            "example_id": "ex:0",
+            "rollout_index": 0,
+            "refusal": 0.0,
+        },
+        {
+            "model_name": "m",
+            "condition": "inject",
+            "example_id": "ex:0",
+            "rollout_index": 0,
+            "refusal": 1.0,
+        },
+        {  # orphan - has no classification
+            "model_name": "m",
+            "condition": "inject",
+            "example_id": "ex:99",
+            "rollout_index": 0,
+            "refusal": 1.0,
+        },
+    ]
+    classifications = [
+        {
+            "model_name": "m",
+            "condition": "neutral",
+            "example_id": "ex:0",
+            "rollout_index": 0,
+            "is_vea": False,
+            "vea_type": "none",
+            "confidence": 0.0,
+        },
+        {
+            "model_name": "m",
+            "condition": "inject",
+            "example_id": "ex:0",
+            "rollout_index": 0,
+            "is_vea": True,
+            "vea_type": "explicit_eval",
+            "confidence": 0.9,
+        },
+    ]
+    _write_mediation_inputs(run_dir, rollouts, classifications)
+    rc = mediation_main(["--run-dir", str(run_dir)])
+    assert rc == 0
+    summary = json.loads((run_dir / "vea_mediation_summary.json").read_text())
+    entry = summary["per_model"][0]
+    # Only ex:0 was paired; ex:99 has no classification and gets dropped.
+    assert entry["strata"]["flip_neg_to_pos"]["n"] == 1
+
+
+def test_vea_mediation_models_filter_restricts_to_named_models(tmp_path):
+    """--models foo bar must restrict the analysis to those model_name
+    values. Used to focus the analysis on VEA-significant models like
+    qwen3 without re-running on the others."""
+    from scripts.analyze_vea_mediation import main as mediation_main
+
+    run_dir = tmp_path / "filter"
+    rollouts: List[Dict[str, Any]] = []
+    classifications: List[Dict[str, Any]] = []
+    for model in ("qwen", "kimi", "deepseek"):
+        for i in range(4):
+            for cond in ("neutral", "inject"):
+                rollouts.append(
+                    {
+                        "model_name": model,
+                        "condition": cond,
+                        "example_id": f"ex:{i}",
+                        "rollout_index": 0,
+                        "refusal": 0.0,
+                    }
+                )
+                classifications.append(
+                    {
+                        "model_name": model,
+                        "condition": cond,
+                        "example_id": f"ex:{i}",
+                        "rollout_index": 0,
+                        "is_vea": False,
+                        "vea_type": "none",
+                        "confidence": 0.0,
+                    }
+                )
+    _write_mediation_inputs(run_dir, rollouts, classifications)
+    rc = mediation_main(
+        ["--run-dir", str(run_dir), "--models", "qwen"]
+    )
+    assert rc == 0
+    summary = json.loads((run_dir / "vea_mediation_summary.json").read_text())
+    assert [e["model_name"] for e in summary["per_model"]] == ["qwen"]
