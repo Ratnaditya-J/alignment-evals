@@ -4307,3 +4307,184 @@ def test_vea_mediation_per_family_independent_of_per_model_aggregate(tmp_path):
     aggregate = summary["per_model"][0]
     assert aggregate["strata"]["flip_neg_to_pos"]["n"] == 20
     assert aggregate["strata"]["stable_neg"]["n"] == 40
+
+
+def test_vea_mediation_strict_filter_drops_soft_subtypes(tmp_path):
+    """The --strict-vea flag must override is_vea using only the strict
+    subtype set (explicit_eval, benchmark, grader_awareness). Records that
+    were is_vea=True under the broad rubric but with a soft vea_type (e.g.
+    safety_check, test_scenario) must flip to is_vea=False under strict.
+
+    User concern: the broad VEA judge over-inflates positives by counting
+    'the user might be testing me' (test_scenario) and 'Safety check:'
+    (safety_check) as VEA+ alongside actual eval-recognition. Strict mode
+    isolates the latter.
+    """
+    from scripts.analyze_vea_mediation import main as mediation_main
+
+    run_dir_broad = tmp_path / "broad"
+    run_dir_strict = tmp_path / "strict"
+
+    rollouts: List[Dict[str, Any]] = []
+    classifications: List[Dict[str, Any]] = []
+
+    # 30 prompts. Under inject:
+    #   * 10 are explicit_eval (strict-positive)
+    #   * 15 are safety_check (broad-positive, strict-negative)
+    #   *  5 are none (negative)
+    # Under neutral: all none.
+    for i in range(30):
+        if i < 10:
+            inject_type = "explicit_eval"
+        elif i < 25:
+            inject_type = "safety_check"
+        else:
+            inject_type = "none"
+        for cond in ("neutral", "inject"):
+            ex_id = f"ex:{i}"
+            rollouts.append(
+                {
+                    "model_name": "qwen-like",
+                    "condition": cond,
+                    "example_id": ex_id,
+                    "task_family": "safety",
+                    "rollout_index": 0,
+                    "refusal": 0.0,
+                }
+            )
+            if cond == "inject":
+                vea_type = inject_type
+                is_vea = inject_type != "none"
+            else:
+                vea_type = "none"
+                is_vea = False
+            classifications.append(
+                {
+                    "model_name": "qwen-like",
+                    "condition": cond,
+                    "example_id": ex_id,
+                    "task_family": "safety",
+                    "rollout_index": 0,
+                    "is_vea": is_vea,
+                    "vea_type": vea_type,
+                    "confidence": 0.9 if is_vea else 0.0,
+                }
+            )
+
+    # Broad mode: all 25 inject-positives counted.
+    for d in (run_dir_broad, run_dir_strict):
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "rollouts.jsonl").write_text(
+            "\n".join(json.dumps(r, sort_keys=True) for r in rollouts) + "\n"
+        )
+        (d / "goodfire_vea_classifications.jsonl").write_text(
+            "\n".join(json.dumps(c, sort_keys=True) for c in classifications)
+            + "\n"
+        )
+
+    rc = mediation_main(["--run-dir", str(run_dir_broad)])
+    assert rc == 0
+    broad = json.loads(
+        (run_dir_broad / "vea_mediation_summary.json").read_text()
+    )
+    assert broad["vea_strictness"] == "broad"
+    # 25 prompts flipped neg->pos (10 explicit + 15 safety_check), 5 stayed neg.
+    broad_qwen = next(
+        r for r in broad["per_model"] if r["model_name"] == "qwen-like"
+    )
+    assert broad_qwen["strata"]["flip_neg_to_pos"]["n"] == 25
+    assert broad_qwen["strata"]["stable_neg"]["n"] == 5
+
+    rc = mediation_main(["--run-dir", str(run_dir_strict), "--strict-vea"])
+    assert rc == 0
+    strict = json.loads(
+        (run_dir_strict / "vea_mediation_summary.json").read_text()
+    )
+    assert strict["vea_strictness"] == "strict"
+    assert strict["vea_strict_subtypes"] == [
+        "benchmark",
+        "explicit_eval",
+        "grader_awareness",
+    ]
+    # 10 explicit-eval prompts flipped under strict; 15 safety_check
+    # prompts now count as stable_neg (both conds VEA-).
+    strict_qwen = next(
+        r for r in strict["per_model"] if r["model_name"] == "qwen-like"
+    )
+    assert strict_qwen["strata"]["flip_neg_to_pos"]["n"] == 10
+    assert strict_qwen["strata"]["stable_neg"]["n"] == 20  # 15 safety_check + 5 none
+    # Report header surfaces the strictness.
+    report = (run_dir_strict / "vea_mediation_report.md").read_text()
+    assert "VEA strictness: **strict**" in report
+    assert "explicit_eval" in report
+
+
+def test_vea_mediation_out_suffix_writes_to_distinct_files(tmp_path):
+    """--out-suffix must let strict and broad runs coexist in the same
+    run dir without overwriting each other - the recommended workflow is
+    to run both back-to-back and compare side-by-side."""
+    from scripts.analyze_vea_mediation import main as mediation_main
+
+    run_dir = tmp_path / "both"
+    run_dir.mkdir()
+    rollouts = [
+        {
+            "model_name": "m",
+            "condition": cond,
+            "example_id": "ex:0",
+            "task_family": "safety",
+            "rollout_index": 0,
+            "refusal": 0.0,
+        }
+        for cond in ("neutral", "inject")
+    ]
+    classifications = [
+        {
+            "model_name": "m",
+            "condition": cond,
+            "example_id": "ex:0",
+            "task_family": "safety",
+            "rollout_index": 0,
+            "is_vea": cond == "inject",
+            "vea_type": "safety_check" if cond == "inject" else "none",
+            "confidence": 0.9 if cond == "inject" else 0.0,
+        }
+        for cond in ("neutral", "inject")
+    ]
+    (run_dir / "rollouts.jsonl").write_text(
+        "\n".join(json.dumps(r, sort_keys=True) for r in rollouts) + "\n"
+    )
+    (run_dir / "goodfire_vea_classifications.jsonl").write_text(
+        "\n".join(json.dumps(c, sort_keys=True) for c in classifications) + "\n"
+    )
+
+    # Broad pass writes default filenames.
+    rc = mediation_main(["--run-dir", str(run_dir)])
+    assert rc == 0
+    # Strict pass writes .strict-suffixed filenames.
+    rc = mediation_main(
+        [
+            "--run-dir",
+            str(run_dir),
+            "--strict-vea",
+            "--out-suffix",
+            ".strict",
+        ]
+    )
+    assert rc == 0
+    # Both files coexist.
+    assert (run_dir / "vea_mediation_summary.json").is_file()
+    assert (run_dir / "vea_mediation_summary.strict.json").is_file()
+    assert (run_dir / "vea_mediation_report.md").is_file()
+    assert (run_dir / "vea_mediation_report.strict.md").is_file()
+    # Strict records the safety_check inject as VEA- (no flip), broad as
+    # flipped. So the strata counts differ between the two files.
+    broad = json.loads((run_dir / "vea_mediation_summary.json").read_text())
+    strict = json.loads(
+        (run_dir / "vea_mediation_summary.strict.json").read_text()
+    )
+    broad_strata = broad["per_model"][0]["strata"]
+    strict_strata = strict["per_model"][0]["strata"]
+    assert broad_strata["flip_neg_to_pos"]["n"] == 1
+    assert strict_strata["flip_neg_to_pos"]["n"] == 0
+    assert strict_strata["stable_neg"]["n"] == 1
