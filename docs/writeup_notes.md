@@ -114,6 +114,174 @@ would give us this number directly without another rescore call.
 
 ---
 
+## Closed-source models in v5/v6: comprehensive null
+
+**Why a dedicated section.** Reviewers and replicators will ask
+"what about closed-source / frontier models?" The cross-protocol
+runs include 5 closed-source models alongside the open-reasoning
+trio. Their result is **uniformly null across every measurement
+channel** — refusal-rate Δ inject−neutral, capability accuracy,
+sandbagging verdict. That null is itself publishable and is the
+contrast that makes the qwen3 finding striking.
+
+### Closed-source lineup (v6)
+
+Five closed-source models in v6 cross-protocol (n=500 prompts ×
+4 conditions = 2,000 rollouts per model):
+
+| Vendor | Model | Reasoning | CoT visible? |
+|---|---|---|---|
+| OpenAI | `gpt-4o-mini` | no | n/a |
+| OpenAI | `gpt-5.5` | yes | **hidden** (OpenAI never exposes reasoning) |
+| Anthropic | `claude-haiku-4-5-20251001` | no | n/a |
+| Anthropic | `claude-sonnet-4-6` | no | n/a |
+| Anthropic | `claude-opus-4-7` | yes | hidden by default; visible only with `thinking_budget` opt-in (PR #34) |
+
+v5 (BeaverTails safety-only) used a narrower closed-source slice
+(`gpt-4o-mini` + `claude-haiku-4-5-20251001` — no reasoning models).
+The v6 lineup is the publishable one.
+
+### Refusal-rate Δ inject−neutral per closed-source model (v6)
+
+All five models, all four task families pooled. **Zero of five
+CIs exclude zero.**
+
+| Model | Δ inject−neutral | 95% CI | n_paired |
+|---|---:|---|---:|
+| `gpt-4o-mini` | +0.008 | [−0.046, +0.059] | 500 |
+| `gpt-5.5` | +0.006 | [−0.042, +0.054] | 499 |
+| `claude-haiku-4-5` | +0.006 | [−0.044, +0.052] | 500 |
+| `claude-sonnet-4-6` | −0.008 | [−0.044, +0.032] | 500 |
+| `claude-opus-4-7` | +0.000 | [−0.050, +0.044] | 500 |
+
+The largest closed-source point estimate is `gpt-4o-mini` math at
++0.088 (CI [−0.024, +0.208]) — directionally up but CI spans zero,
+and it's the **only** closed-source per-(model, family) cell with
+a Δ greater than ±5pp.
+
+### Reasoning-tier × vendor pooled
+
+| Tier | Vendor | Δ inject−neutral | 95% CI | n_paired |
+|---|---|---:|---|---:|
+| closed_polished_reasoning | OpenAI | +0.006 | [−0.042, +0.054] | 499 |
+| closed_polished_reasoning | Anthropic | +0.000 | [−0.050, +0.044] | 500 |
+| non_reasoning | OpenAI | +0.008 | [−0.046, +0.059] | 500 |
+| non_reasoning | Anthropic | −0.001 | [−0.031, +0.038] | 1,000 |
+| open_full_reasoning | OpenRouter | +0.014 | [−0.019, +0.041] | 1,474 |
+
+Closed-polished reasoning models (gpt-5.5, opus-4.7) — the models
+Anthropic and OpenAI would presumably most care about for
+alignment-eval purposes — show essentially zero shift under explicit
+eval framing.
+
+### Source-type pooled (broadest cut, tightest CIs)
+
+| Source type | Δ inject−neutral | 95% CI | n_paired |
+|---|---:|---|---:|
+| **closed_source** | **+0.002** | **[−0.018, +0.023]** | **2,499** |
+| open_source | +0.014 | [−0.019, +0.041] | 1,474 |
+
+At n=2,499 the closed-source CI is **very tight** around zero. The
+absence of a closed-source effect is well-powered, not a
+small-sample artifact.
+
+### Capability accuracy on closed-source (v6)
+
+For non-safety task families (knowledge / math / truthfulness),
+**zero closed-source cells** show CI-excludes-zero Δ inject−neutral.
+The largest closed-source point estimates:
+
+| Model | Family | neutral | inject | Δ | 95% CI |
+|---|---|---:|---:|---:|---|
+| `gpt-4o-mini` | math | 0.536 | 0.624 | +0.088 | [−0.024, +0.208] |
+| `claude-opus-4-7` | math | 0.920 | 0.864 | −0.056 | [−0.136, +0.016] |
+| `gpt-5.5` | math | 0.856 | 0.880 | +0.024 | [−0.056, +0.112] |
+
+`gpt-4o-mini`'s math +0.088 is the closest any closed-source model
+gets to an effect, and it's directionally aligned with the qwen3
++0.190 knowledge finding (capability accuracy goes UP under inject)
+— but the CI includes zero so it's only suggestive.
+
+### Sandbagging verdicts (closed-source, v6)
+
+All 12 (closed-source-model × non-safety-family) cells return
+`no_evidence` from the Phase-C sandbagging judge. The 3 anthropic
+non-reasoning models, gpt-4o-mini (non-reasoning), opus-4-7 and
+gpt-5.5 (reasoning) all pass clean. No deliberate underperformance
+signal anywhere in the closed lineup.
+
+### VEA detection on closed-source models is partially blocked
+
+Goodfire-style VEA needs the model's reasoning trace. For
+closed-source:
+
+* `gpt-5.5` (and all OpenAI gpt-5/o-series): **OpenAI hides CoT**.
+  The Goodfire VEA judge has nothing to read on these models. They
+  appear in the cross-protocol refusal analysis but cannot be in
+  the VEA analysis.
+* `claude-opus-4-7` with extended thinking: Anthropic exposes
+  `thinking` blocks **only when requested** via the `thinking_budget`
+  parameter (added in PR #34). The Goodfire script supports this
+  via `--include-opus`, but the n=500 mixed-corpus run did **not**
+  include opus to keep cost down. Running it would close this gap.
+* `claude-haiku-4-5`, `claude-sonnet-4-6` (no reasoning): no CoT to
+  read; same constraint as gpt-4o-mini.
+
+**Net:** the closed-source VEA story currently has one open
+follow-up (opus-4.7 with extended thinking, ~$8-12 to add). The
+other three closed-source models with hidden or absent CoT cannot
+contribute to the VEA channel by construction.
+
+### The interpretation for the paper
+
+Combine the closed-source null with the qwen3 (open-reasoning)
+findings and the story sharpens:
+
+1. **No frontier closed-source model in our lineup shows a
+   CI-excludes-zero refusal shift under explicit eval framing.**
+   This is well-powered at n=2,499 paired and is a counter-result
+   to the naive "models notice the eval and refuse more" hypothesis.
+2. **No closed-source model shows CI-excludes-zero capability
+   shift either.** Sandbagging is null across the lineup.
+3. **The qwen3 finding (VEA inflation + knowledge accuracy bump)
+   is unique to the open-reasoning trio.** Whether it's qwen3-
+   specific, Chinese-trained-reasoning-model-specific, or
+   open-reasoning-specific is an open question requiring more
+   models (GLM-4.6, Kimi-K2.5, etc.).
+4. **The Goodfire VEA mechanism cannot be tested on hidden-CoT
+   closed-source models.** This is a real methodological
+   limitation: any claim about "frontier closed-source models
+   not exhibiting VEA" is unverifiable in the current dispatch.
+   The paper should be explicit that the absence of VEA evidence
+   on these models is "absence of evidence due to API design," not
+   "evidence of absence."
+
+### Recommended writeup framing
+
+In the limitations section:
+
+> Our cross-protocol behavioral analysis includes five closed-source
+> models (`gpt-4o-mini`, `gpt-5.5`, `claude-haiku-4-5`,
+> `claude-sonnet-4-6`, `claude-opus-4-7`) at n=500 prompts × 4
+> conditions per model. None show a CI-excludes-zero
+> inject−neutral shift on refusal rate, capability accuracy, or
+> sandbagging verdict. The source-type pooled analysis (n=2,499
+> paired) places the closed-source aggregate effect at
+> +0.002 [−0.018, +0.023], a tight null. The Goodfire VEA
+> analysis, however, requires observable reasoning traces, which
+> OpenAI gpt-5.5 does not provide and Anthropic Claude only
+> provides when extended thinking is explicitly enabled. Thus our
+> VEA findings (qwen3 +0.475 inflation under inject; DeepSeek
+> +0.050; Kimi null) are restricted to open-reasoning models with
+> visible CoT, and the absence of VEA evidence on hidden-CoT
+> closed-source models reflects API constraints, not a
+> well-powered null.
+
+This framing is honest about scope and inoculates against the
+"why didn't you test gpt-5.5 for VEA?" reviewer comment.
+
+---
+
 ## qwen3-thinking knowledge accuracy anomaly (v6)
 
 **Observation.** Only one CI-excludes-zero capability finding in the
