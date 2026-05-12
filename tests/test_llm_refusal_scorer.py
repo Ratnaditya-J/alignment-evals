@@ -4053,3 +4053,33 @@ def test_vea_mediation_models_filter_restricts_to_named_models(tmp_path):
     assert rc == 0
     summary = json.loads((run_dir / "vea_mediation_summary.json").read_text())
     assert [e["model_name"] for e in summary["per_model"]] == ["qwen"]
+
+
+def test_vea_mediation_bootstrap_mean_ci_is_bounded_by_min_and_max():
+    """Regression: the 'mean' field of the bootstrap CI must be the average
+    of the iterations' means, NOT divided by the original sample size n.
+
+    The first n=200 mediation run produced nonsense values like 'mean': 6.47
+    when n was small and refusal was on [0, 1] - that's the bug this test
+    guards against. The bootstrap mean must always be bounded by the
+    min/max of the input values (since each iteration's mean is bounded,
+    and the bootstrap mean is the mean of iteration means).
+    """
+    from scripts.analyze_vea_mediation import _bootstrap_mean_ci
+
+    # Small n, values bounded on [0, 1] - the regime where the old bug
+    # produced wildly inflated 'mean' values.
+    for n in (5, 10, 30, 100):
+        values = [(i % 3) / 2.0 for i in range(n)]  # values in {0.0, 0.5, 1.0}
+        ci = _bootstrap_mean_ci(values, iterations=200, seed=0)
+        # Mean must lie in [min(values), max(values)] = [0.0, 1.0].
+        assert 0.0 <= ci["mean"] <= 1.0, f"n={n}: mean {ci['mean']} out of range"
+        # And the low/high must bracket the mean.
+        assert ci["low"] <= ci["mean"] <= ci["high"], (
+            f"n={n}: mean {ci['mean']} not bracketed by "
+            f"[{ci['low']}, {ci['high']}]"
+        )
+
+    # And empty input still returns the safe sentinel.
+    ci = _bootstrap_mean_ci([], iterations=200, seed=0)
+    assert ci == {"low": 0.0, "high": 0.0, "mean": 0.0}

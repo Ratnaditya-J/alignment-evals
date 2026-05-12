@@ -85,10 +85,14 @@ def _bootstrap_mean_ci(
         sample = [rng.choice(values) for _ in range(n)]
         means.append(sum(sample) / n)
     means.sort()
+    # ``mean`` is the average over the ``iterations`` bootstrap-resampled
+    # means, NOT divided by the original sample size. Divide by len(means)
+    # (= iterations), not n. The earlier `sum(means) / n` produced
+    # nonsensical values like 6.47 when n was small.
     return {
         "low": round(means[5], 4),
         "high": round(means[195], 4),
-        "mean": round(sum(means) / n if n else 0.0, 4),
+        "mean": round(sum(means) / len(means), 4),
     }
 
 
