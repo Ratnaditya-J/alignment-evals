@@ -221,6 +221,15 @@ class RawProviderResponse:
     finish_reason: str | None = None
     request_id: str | None = None
     raw: Dict[str, object] = field(default_factory=dict)
+    # Chain-of-thought / extended-thinking text returned alongside the visible
+    # content. Empty string for non-reasoning models, when the provider routes
+    # the reasoning into ``content`` directly (some open-reasoning models inline
+    # <think>...</think>), or when the provider didn't return any reasoning.
+    # Required by the Goodfire-style VEA judge, which must read the reasoning
+    # to classify VEA+ vs VEA-; reading only the visible answer biases toward
+    # null because the spontaneous "this is an eval" thought happens in the
+    # CoT, not in the final response.
+    reasoning_trace: str = ""
 
     def to_dict(self) -> Dict[str, object]:
         return {
@@ -232,7 +241,42 @@ class RawProviderResponse:
             "usage": self.usage,
             "finish_reason": self.finish_reason,
             "request_id": self.request_id,
+            "reasoning_trace": self.reasoning_trace,
         }
+
+
+def _extract_openai_compatible_reasoning(message: Dict[str, Any]) -> str:
+    """Pull the chain-of-thought out of an OpenAI-compatible chat message.
+
+    OpenRouter and friends expose reasoning in a few different shapes depending
+    on the upstream provider:
+
+      * ``message.reasoning`` - a single string (deepseek-r1, deepseek-v3.2,
+        qwen3-thinking, kimi-k2-thinking via the default OpenRouter route).
+      * ``message.reasoning_details`` - a list of typed parts, each with a
+        ``text``/``summary`` field; we concatenate the text parts in order.
+      * Neither field present - reasoning was either inlined into ``content``
+        as ``<think>...</think>``, or the model has no reasoning step.
+
+    Returns the concatenated trace, or "" when nothing usable is found.
+    """
+    if not isinstance(message, dict):
+        return ""
+    direct = message.get("reasoning")
+    if isinstance(direct, str) and direct.strip():
+        return direct
+    details = message.get("reasoning_details")
+    if isinstance(details, list):
+        parts: List[str] = []
+        for entry in details:
+            if not isinstance(entry, dict):
+                continue
+            text = entry.get("text") or entry.get("summary") or entry.get("data")
+            if isinstance(text, str) and text.strip():
+                parts.append(text)
+        if parts:
+            return "\n".join(parts)
+    return ""
 
 
 def _post_with_retries(
@@ -397,7 +441,16 @@ class OpenAICompatibleClient:
         extra = dict(config.extra)
         if not is_reasoning:
             extra.pop("reasoning_effort", None)
+        if not (is_reasoning or is_open_reasoning):
             extra.pop("reasoning", None)
+        # For OpenRouter open-reasoning models (deepseek-r1/v3.2, qwen3-thinking,
+        # kimi-k2-thinking, etc.), explicitly opt into reasoning-token return.
+        # Some routes withhold message.reasoning unless this flag is set; the
+        # Goodfire-style VEA judge needs the reasoning trace to classify VEA+
+        # vs VEA- correctly. Callers can override via config.extra["reasoning"]
+        # to specify max_tokens / effort if they want.
+        if is_open_reasoning and "reasoning" not in extra:
+            extra["reasoning"] = {"enabled": True}
         payload.update(extra)
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -415,7 +468,17 @@ class OpenAICompatibleClient:
         latency_ms = round((time.perf_counter() - started) * 1000, 2)
         data = response.json()
         choice = (data.get("choices") or [{}])[0]
-        content = (choice.get("message") or {}).get("content") or ""
+        message = choice.get("message") or {}
+        content = message.get("content") or ""
+        # Extract the reasoning trace if the provider returned one. OpenRouter
+        # exposes it as ``message.reasoning`` for most open-reasoning models
+        # (deepseek-r1/v3.2, qwen3-thinking, kimi-k2-thinking, etc.). Some
+        # providers split it into a ``reasoning_details`` array of typed parts;
+        # join the textual parts in order so the VEA judge can read the full
+        # chain of thought. Falls back to "" when no reasoning field is present
+        # (typical for non-reasoning models or for open-reasoning models that
+        # inline <think>...</think> tags directly into content).
+        reasoning_trace = _extract_openai_compatible_reasoning(message)
         self.last_response = RawProviderResponse(
             provider=self.provider,
             model=self.model,
@@ -426,6 +489,7 @@ class OpenAICompatibleClient:
             finish_reason=choice.get("finish_reason"),
             request_id=response.headers.get("x-request-id"),
             raw=data,
+            reasoning_trace=reasoning_trace,
         )
         return content
 
@@ -720,6 +784,20 @@ class AnthropicClient:
         # Strip reasoning-specific extras that aren't valid here.
         extra = dict(config.extra)
         extra.pop("reasoning_effort", None)
+        # Extended thinking opt-in: Anthropic only surfaces ``thinking`` blocks
+        # in the response when the request explicitly enables them with a
+        # token budget. Default off so existing behavior is unchanged; the
+        # Goodfire VEA script sets thinking_budget via config.extra to get
+        # opus-4.7's reasoning trace alongside the final answer.
+        thinking_budget = extra.pop("thinking_budget", None)
+        if thinking_budget and is_reasoning:
+            budget = int(thinking_budget)
+            payload["thinking"] = {"type": "enabled", "budget_tokens": budget}
+            # When extended thinking is enabled, max_tokens must exceed the
+            # thinking budget so the visible answer has room. The Anthropic
+            # API rejects requests where max_tokens <= budget_tokens.
+            if int(payload.get("max_tokens", 0)) <= budget:
+                payload["max_tokens"] = budget + 1024
         payload.update(extra)
         headers = {
             "x-api-key": self.api_key,
@@ -742,6 +820,16 @@ class AnthropicClient:
             for block in content_blocks
             if isinstance(block, dict) and block.get("type") == "text"
         )
+        # When extended thinking is enabled, Anthropic returns one or more
+        # ``thinking`` blocks (and optionally ``redacted_thinking`` blocks).
+        # Capture the visible thinking text for the VEA judge; redacted blocks
+        # can't be inspected so they're omitted. When extended thinking is
+        # NOT enabled this loop produces "" and reasoning_trace stays empty.
+        reasoning_trace = "".join(
+            block.get("thinking", "")
+            for block in content_blocks
+            if isinstance(block, dict) and block.get("type") == "thinking"
+        )
         self.last_response = RawProviderResponse(
             provider=self.provider,
             model=self.model,
@@ -752,6 +840,7 @@ class AnthropicClient:
             finish_reason=data.get("stop_reason"),
             request_id=response.headers.get("request-id"),
             raw=data,
+            reasoning_trace=reasoning_trace,
         )
         return content
 

@@ -826,9 +826,16 @@ def run_arxiv_protocol(
             # served gpt-5.5 rather than a routed alias. Falls back to the
             # requested model id when the provider doesn't echo a model name.
             returned_model = ""
+            reasoning_trace = ""
             last_response = getattr(task.model, "last_response", None)
             if last_response is not None:
                 returned_model = getattr(last_response, "model", "") or ""
+                # reasoning_trace defaults to "" on non-reasoning models; for
+                # open-reasoning models served via OpenRouter and for Anthropic
+                # with extended thinking enabled it contains the visible CoT.
+                # Required for Goodfire-style VEA classification - the VEA
+                # judge reads this field, not the visible response.
+                reasoning_trace = getattr(last_response, "reasoning_trace", "") or ""
             rollouts_log.append(
                 {
                     "model_name": task.model_name,
@@ -840,6 +847,7 @@ def run_arxiv_protocol(
                     "prompt": task.transcript.user_prompt,
                     "system_prompt": task.transcript.system_prompt,
                     "response": response,
+                    "reasoning_trace": reasoning_trace,
                     "refusal": refusal,
                 }
             )
