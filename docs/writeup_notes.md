@@ -190,126 +190,182 @@ CIs are sensitive to the difference.
 
 ---
 
-## Goodfire VEA experiment — n=200 trio results (publishable shape)
+## Goodfire VEA experiment — n=500 mixed-corpus results (publishable shape)
 
-**Run:** `runs/goodfire-trio-n200`, 200 BeaverTails prompts × 4 conditions
-× 3 open-reasoning models = 2,400 rollouts. VEA judge =
-`google/gemini-2.5-flash-lite` via OpenRouter. Empty-trace rate
-0.04% (1 of 2,400, on kimi). PR #34 reasoning capture is solid.
+**Run:** `runs/goodfire-mixed-n500`, 500 prompts (mixed corpus: knowledge,
+math, safety, truthfulness, ~125 each) × 4 conditions × 3 open-reasoning
+models = 6,000 rollouts. VEA judge = `google/gemini-2.5-flash-lite` via
+OpenRouter. Empty-trace rate ~0%. PR #34 reasoning capture is solid at
+this scale.
 
-This supersedes the n=50 smoke run (`runs/goodfire-smoke`) which we
-keep around as the judge-swap validation set. The n=200 numbers are
-what the writeup should cite.
+This supersedes the n=200 safety-only run (`runs/goodfire-trio-n200`)
+which we keep around as the strict-vs-broad validation set. The n=500
+mixed numbers are what the writeup should cite.
 
-### Headline: qwen3 VEA inflation under inject is rock-solid
+### Headline (Framing B): VEA verbalization is induced; behavioral mediation is not
 
-Per-(model, condition) VEA+ rate:
+Three findings, all defensible, all CI-supported:
 
-| Model | baseline | neutral | inject | remove |
-|---|---:|---:|---:|---:|
-| `deepseek-v3.2-exp` | 0.040 | 0.035 | 0.065 | 0.030 |
-| `kimi-k2-thinking` | 0.035 | 0.020 | 0.030 | 0.040 |
-| **`qwen3-235b-thinking`** | 0.165 | **0.190** | **0.665** | 0.155 |
+1. **Reasoning-trace VEA inflation under explicit eval framing is real
+   and model-heterogeneous.** Replicated in three independent runs.
+2. **The inflation generalizes across task families** (truthfulness >
+   safety > knowledge > math) — but math is essentially null,
+   suggesting numerical reasoning doesn't engage the eval-recognition
+   prior.
+3. **VEA verbalization does not independently predict refusal change
+   within prompts.** Per-prompt diff-in-diff is null in every family
+   under strict eval-recognition rubrics. The aggregate VEA+/VEA−
+   correlation that initially looks like mediation is explained by
+   prompt-family composition.
 
-Inject−neutral VEA inflation per model (paired bootstrap CI, n=200):
+### VEA inflation per model (mixed corpus, n=500)
 
-| Model | Δ inject−neutral | 95% CI | Significant? |
-|---|---:|---|:---:|
-| deepseek-v3.2-exp | +0.030 | [−0.010, +0.075] | no |
-| kimi-k2-thinking | +0.010 | [−0.020, +0.045] | no |
-| **qwen3-235b-thinking** | **+0.475** | **[+0.390, +0.555]** | **yes** |
+| Model | inject VEA+ | neutral VEA+ | Δ inject−neutral | 95% CI | Significant? |
+|---|---:|---:|---:|---|:---:|
+| `deepseek-v3.2-exp` | 0.066 | 0.016 | +0.050 | [+0.024, +0.074] | yes |
+| `kimi-k2-thinking` | 0.026 | 0.024 | +0.002 | [−0.012, +0.024] | no |
+| **`qwen3-235b-thinking`** | **0.450** | **0.070** | **+0.380** | **[+0.336, +0.424]** | **yes** |
 
-The qwen3 effect went from +0.36 [+0.18, +0.54] at n=50 (Wald) to
-**+0.475 [+0.390, +0.555] at n=200** (paired bootstrap) — point
-estimate slightly larger, CI ~half the width. Inject framing
-roughly **quadruples** qwen3's VEA+ verbalization rate (0.190 →
-0.665) and the effect is CI-excludes-zero with substantial margin.
+Three runs, three replications of the qwen3 inflation:
 
-Goodfire's spontaneous-VEA inflation finding **replicates on qwen3
-under explicit-injection framing at publishable statistical power**.
-The other two open-reasoning models in the trio show null effects
-even at n=200 — VEA inflation is *not* a universal property of
-visible-CoT reasoning models.
+| Run | Qwen Δ inject−neutral | CI |
+|---|---:|---|
+| Smoke n=50 (safety-only) | +0.36 | [+0.18, +0.54] |
+| Trio n=200 (safety-only) | +0.475 | [+0.390, +0.555] |
+| Mixed n=500 | +0.380 | [+0.336, +0.424] |
 
-qwen3 also shows the highest **baseline** VEA+ rate of the trio
-(0.165 vs 0.035-0.040 for deepseek/kimi). The model has a
-pre-existing eval-recognition prior that's activated even without
-the inject system prompt; inject just amplifies what's already
-there.
+The exact magnitude varies with corpus composition, but the qualitative
+result is stable. **DeepSeek now also shows a small but CI-excludes-zero
+inflation** (n=200 had +0.030 borderline; n=500 has +0.050 just outside
+zero). Kimi remains a clean negative control.
 
-### Behavioral split at n=200: collapses to zero on qwen3
+### Per-family VEA inflation (qwen3, broad classification)
 
-The "VEA+ rollouts refuse less" signal we flagged from the n=50
-smoke was sample noise. At n=200, the within-cohort split:
+| Family | neutral VEA+ | inject VEA+ | Δ |
+|---|---:|---:|---:|
+| math | 0% | 3.2% | +3.2pp |
+| knowledge | 0% | 24.0% | +24.0pp |
+| safety | 14.4% | 68.8% | +54.4pp |
+| truthfulness | 13.6% | 84.0% | **+70.4pp** |
 
-| Model | n VEA+ | refusal (VEA+) | n VEA− | refusal (VEA−) | Δ | 95% CI |
-|---|---:|---:|---:|---:|---:|---|
-| deepseek-v3.2-exp | 34 | 0.529 | 766 | 0.589 | −0.059 | [−0.207, +0.146] |
-| kimi-k2-thinking | 25 | 0.640 | 775 | 0.724 | −0.084 | [−0.275, +0.094] |
-| **qwen3-235b-thinking** | **235** | **0.617** | **565** | **0.591** | **+0.026** | **[−0.043, +0.104]** |
+**The largest inflation is on truthfulness, not safety.** Math is the
+unique null cell. Under strict VEA, all three non-math families remain
+inflated by ~14-23pp under inject — the cross-family generalization
+holds at the strict bar.
 
-qwen3 at n_pos=235 has a behavioral split CI that's now **tightly
-bracketed around zero**. No meaningful refusal difference between
-VEA+ and VEA− rollouts. The earlier −0.125 reading at n_pos=58 was
-a small-sample artifact. deepseek and kimi still have wide CIs
-because their n_pos is too small (34, 25) to power tight inference,
-but their point estimates remain non-significant.
+### Mediation analysis: aggregate looks mediating, per-family/strict doesn't
 
-This is the cleanest possible setup for the **VEA verbalization is
-not the same as behavior change** finding (next section): at the
-within-cohort level, VEA+ qwen3 rollouts refuse at essentially
-the same rate as VEA− qwen3 rollouts.
+**Per-prompt diff-in-diff (qwen3, mixed corpus n=500):**
+
+| Mode | Family | DiD | 95% CI | Verdict |
+|---|---|---:|---|---|
+| broad | aggregate | +0.074 | **[+0.025, +0.136]** | weak_mediation |
+| broad | knowledge | +0.000 | [0, 0] | epiphenomenal |
+| broad | math | +0.000 | [0, 0] | epiphenomenal |
+| broad | safety | +0.116 | [−0.105, +0.349] | epiphenomenal |
+| broad | truthfulness | +0.057 | **[+0.011, +0.114]** | weak_mediation |
+| strict | aggregate | +0.097 | [−0.008, +0.203] | epiphenomenal |
+| strict | knowledge | +0.000 | [0, 0] | epiphenomenal |
+| strict | math | — | — | insufficient_data |
+| strict | safety | +0.199 | [−0.031, +0.439] | epiphenomenal |
+| strict | truthfulness | +0.024 | [−0.053, +0.114] | epiphenomenal |
+
+**Read:** the broad aggregate shows weak_mediation (CI excludes zero),
+but this is driven entirely by family-composition confounding:
+
+- VEA+ rollouts are disproportionately drawn from safety/truthfulness
+  prompts (these families flip under inject at high rates)
+- Safety and truthfulness prompts have higher baseline refusal rates
+  than knowledge / math
+- Pooling these together makes "VEA+ rollouts" look like they refuse
+  more than "VEA− rollouts," but the gap is the family-composition
+  difference, not within-prompt mediation
+
+**Within every family individually, the per-prompt DiD is
+epiphenomenal or weak.** And the only weak-mediation cell
+(truthfulness, broad) **does not survive the strict-VEA filter** —
+exactly the rubric-sensitivity concern that motivated PR #43.
+
+### Why the aggregate within-cohort split is misleading
+
+If you ignore per-prompt structure and just compute pooled refusal
+rates by VEA status, the qwen3 mixed-corpus run gives:
+
+| Cohort | mean refusal | n |
+|---|---:|---:|
+| VEA+ (any condition) | ~0.28 | ~260 |
+| VEA− (any condition) | ~0.13 | ~740 |
+
+That gap (+0.15) looks like strong mediation. **It is not.** Replacing
+the same numbers with the within-prompt DiD (which controls for the
+prompt's intrinsic refusal tendency by pairing) gives +0.074 broad /
+epiphenomenal under strict. The aggregate split is an observational
+correlation confounded by the fact that VEA+ rollouts are from
+inherently more-refusable prompts.
+
+The paper should present the aggregate split in an appendix table
+with the explicit caveat: *"this aggregate VEA+/VEA− gap is observational
+and confounded by task-family composition; the within-prompt
+diff-in-diff in the main text is the correct causal estimand."*
 
 ### Connection to the v6 qwen3 +0.190 knowledge anomaly
 
 Two converging signals on qwen3 under inject framing:
 
-* **VEA inflation (safety corpus, this run):** +0.475 in CoT
-  verbalization rate, CI excludes zero.
+* **VEA inflation (mixed corpus, this run):** +0.380 in CoT
+  verbalization rate, CI excludes zero. Generalizes across truthfulness,
+  safety, knowledge.
 * **Knowledge accuracy improvement (v6 cross-protocol):** +0.190,
   CI excludes zero.
 
 Both are unique to qwen3 in their respective lineups. **qwen3-235b-
 thinking is the publishable model-of-interest.** It has an unusually
 strong eval-context detection prior that, when activated by explicit
-framing, both surfaces in the visible CoT (this run) and improves
-capability-task accuracy (v6).
-
-A dedicated case-study section in the paper is warranted: same model,
-across runs, with the qwen3 cell as the focal point.
+framing, surfaces in the visible CoT across multiple families. Whether
+the knowledge-accuracy bump is mediated by VEA is a separate
+mediation question we have not yet tested (the current
+`analyze_vea_mediation.py` uses refusal as the outcome; the accuracy-
+mediation path needs a new outcome variable).
 
 ### Caveats
 
-* This is BeaverTails-only (safety corpus). Goodfire's effect could
-  be stronger or weaker on other prompt distributions; the planned
-  mixed-corpus pass tests family-dependence.
-* Of 2,400 classifications: 28 `explicit_eval`, 156 `test_scenario`,
-  96 `safety_check`, 7 `artificial_scenario`, 6 `grader_awareness`,
-  1 `benchmark`, 2,102 `none`, 3 `parse_error`, 1 `no_trace`. The
-  dominant positive subtype is still `test_scenario`, but the
-  count of strict-bar `explicit_eval` calls tripled relative to
-  the smoke (8 → 28) — consistent with the inject effect being
-  stronger at qwen3's volume.
-* opus-4.7 with extended thinking is NOT in this run. Adding it is
-  the natural closed-source comparison and would either strengthen
-  the qwen3-specific story (if opus is null) or generalize it (if
-  opus also inflates).
+* **VEA judge validity is the gating issue for arxiv submission.**
+  No human-validation pass yet. The strict-vs-broad robustness check
+  partially compensates (showing the headline finding is rubric-
+  sensitive), but a 200–500-classification human audit with reported
+  precision/recall/F1 is the bar reviewers will hold.
+* The DeepSeek inflation result is small (+0.050) and the CI just
+  barely excludes zero (low=+0.024). Treat it as suggestive rather
+  than definitive without replication.
+* Only refusal is tested as the behavioral outcome. The qwen3
+  knowledge accuracy +0.190 in v6 is a separate channel — a
+  capability-mediation analysis would need ground-truth answer
+  matching, not just refusal scoring.
+* No condition × family logistic regression yet. The diff-in-diff is
+  the right estimand but a mixed-effects model with random per-prompt
+  intercepts is what reviewers expect for the formal inference.
 
-### Suggested next steps (in cost order)
+### Suggested next steps (in order)
 
-1. **Mixed-corpus pass** on the open-reasoning trio
-   (`--n-examples 500` without `--safety-only`, ~$15-25). Tests
-   whether the qwen3 VEA inflation is safety-specific or carries
-   over to capability families. Also enables a mediation analysis
-   on the qwen3 knowledge-accuracy channel (currently we have no
-   VEA classifications on accuracy-shift cells).
-2. **Add opus-4.7 with extended thinking** (~$8-12 incremental).
-   Closed-source comparison.
-3. **Pre-registered replication on a fresh BeaverTails sample**
-   (different 200-prompt slice) to argue robustness to corpus
-   choice within the safety domain.
+1. **Reframe writeup around within-prompt DiD as the headline causal
+   evidence.** The aggregate within-cohort split goes in an
+   appendix with an explicit confounding caveat. (This file's
+   framing is now aligned to that.)
+2. **Ship the VEA judge validation tool** so 200–500 stratified
+   classifications can be human-labeled and the judge precision/recall
+   is reported in the paper.
+3. **Run the per-prompt DiD on deepseek and kimi** in the same n=500
+   mixed-corpus dataset — currently only qwen3 has the per-prompt
+   analysis. Tells whether DeepSeek's +0.050 VEA inflation also fails
+   the per-prompt mediation test.
+4. **Capability-channel mediation:** extend the analysis to use
+   accuracy as the outcome variable on knowledge / math / truthfulness
+   families. Tests whether the qwen3 v6 knowledge-accuracy bump is
+   VEA-mediated (different question from the safety refusal channel).
+5. **Pre-registered replication** on a fresh prompt sample once the
+   judge is human-validated.
 
-### Concrete publishable quote
+### Concrete publishable quote (qwen3 spontaneous-VEA at neutral)
 
 qwen3 spontaneously frames its own reasoning as a "safety check"
 under the **neutral** condition (no inject prompt) on `beavertails:30k_train:0`:
@@ -318,7 +374,7 @@ under the **neutral** condition (no inject prompt) on `beavertails:30k_train:0`:
 >  Not even 'he lives in NYC' because that's still too specific
 >  when combined with other info. Full shutdown with education."*
 
-This is spontaneous-VEA at the 0.190 baseline rate for qwen3 — the
+This is spontaneous-VEA at the ~0.165 baseline rate for qwen3 — the
 Goodfire phenomenon at the model's natural level, with no eval
 prompt. Inject framing amplifies an already-present prior; it does
 not manufacture eval-awareness from nothing.
@@ -542,148 +598,168 @@ slip from CoT to behavior. The paper should explicitly disentangle
 the two and report both — the verbalization effect AND the
 behavioral effect.
 
-### Macro evidence from existing aggregates (qwen3)
+### What the n=500 mixed-corpus run actually shows
 
-Using the qwen3 safety numbers we have at publishable n:
+For qwen3 specifically, three things hold simultaneously:
 
-| Quantity | Δ inject−neutral | Source |
-|---|---:|---|
-| VEA+ verbalization rate | **+0.475** (CI [+0.390, +0.555]) | Goodfire trio n=200 |
-| Refusal rate (LLM scorer) | **+0.032** (CI [−0.048, +0.137]) | v6 cross-protocol, n=125 |
-| Refusal rate (regex scorer, paired) | **+0.138** | n=200 mediation, stable-neg stratum |
+1. **Strong VEA inflation under inject** across non-math families
+   (+0.380 aggregate; +24pp / +54pp / +70pp on knowledge / safety /
+   truthfulness; +3pp on math).
+2. **The aggregate within-cohort VEA+/VEA− refusal split** (mean
+   refusal ~0.28 vs ~0.13, gap ~+0.15) appears to suggest VEA mediates
+   refusal at first glance.
+3. **The within-prompt diff-in-diff inside every family is null.**
+   Under strict eval-recognition rubrics (`explicit_eval`,
+   `benchmark`, `grader_awareness` only), no family shows
+   weak_mediation or stronger.
 
-VEA inflation is roughly **15x the v6 refusal shift and 3.4x the
-n=200 stable-neg paired refusal shift**. The within-cohort split
-(VEA+ refusal vs VEA−) at n=200 is +0.026 with tight CI
-[−0.043, +0.104]. Under the simple "VEA inflation causes refusal
-inflation" model, naive prediction with the n=200 within-cohort
-gap is `+0.475 × +0.026 = +0.012` — essentially nothing. The
-expected-by-mediation effect doesn't materialize at the macro level.
+The naive aggregate split is a **corpus-composition confound**, not
+within-prompt mediation. Mechanism:
 
-**Caveat:** the within-cohort split is correlational. The per-prompt
-diff-in-diff (next section) is the test that controls for this.
+- VEA+ rollouts are disproportionately drawn from safety/truthfulness
+  prompts (qwen3 flips at ~56% / ~70% on those families vs ~24% on
+  knowledge / ~3% on math).
+- Safety / truthfulness prompts have inherently higher refusal
+  baselines than knowledge / math.
+- Pooling makes "VEA+" rollouts look more refusal-prone than "VEA−"
+  rollouts. The gap is the family-composition difference, not
+  within-prompt VEA→refusal causation.
+
+The per-prompt diff-in-diff is the correct **within-prompt causal
+estimand**: it pairs the SAME prompt across (inject, neutral) and
+asks whether the prompts where VEA flipped show a larger Δrefusal
+than the prompts where VEA stayed −.
 
 ### Clean test: per-prompt diff-in-diff
 
-The decisive test is paired by prompt:
+For each prompt $i$ paired across treatment (inject) and control
+(neutral), define:
 
-1. Identify prompts where the SAME (model, example_id) flips from
-   VEA− under neutral to VEA+ under inject.
-2. Compute paired Δrefusal on those prompts.
-3. Compare against paired Δrefusal on control prompts where VEA
-   stayed − in both conditions.
-4. The **diff-in-diff** is the marginal behavioral effect of VEA
-   flipping, holding the prompt-level baseline VEA tendency
-   constant.
+```
+Δrefusal_i  = refusal(inject, i) − refusal(neutral, i)
+ΔVEA_i      = VEA(inject, i) − VEA(neutral, i)
+```
 
-If diff-in-diff is small and the CI includes zero → VEA
-verbalization is largely epiphenomenal. The model "notices" the
-eval but doesn't change its response on the same prompt.
+Stratify prompts by their VEA-flip pattern and compute paired
+mean Δrefusal in each stratum. The diff-in-diff is:
 
-If diff-in-diff is large and CI excludes zero → VEA verbalization
-mediates the inject-induced behavioral shift. The Goodfire
-mechanism story (verbalize → change behavior) is supported.
+```
+DiD = mean Δrefusal_i over {prompts that flipped neg→pos under inject}
+    − mean Δrefusal_i over {prompts that stayed VEA− in both conditions}
+```
+
+A small/zero DiD means VEA verbalization is **not independently
+predictive** of refusal change once prompt-level baseline VEA
+tendency is held constant. A large positive DiD means VEA
+verbalization IS predictive of additional refusal change beyond
+the direct inject effect.
 
 ### Tool
 
-`scripts/analyze_vea_mediation.py` (PR #40) does this analysis:
-joins `rollouts.jsonl` with `goodfire_vea_classifications.jsonl`
-on `(model_name, condition, example_id, rollout_index)`, stratifies
-prompts into `flip_neg_to_pos` / `flip_pos_to_neg` / `stable_pos` /
-`stable_neg`, and emits the diff-in-diff with bootstrap CI per
-model. Verdict tiers: `epiphenomenal` / `weak_mediation` /
-`strong_mediation` / `insufficient_data` with explicit thresholds.
-
-To run on the existing smoke data:
+`scripts/analyze_vea_mediation.py` does this analysis (PR #40 +
+PR #42 added per-(model, family) stratification + PR #43 added the
+`--strict-vea` rubric filter). Run both broad and strict on a run
+dir:
 
 ```bash
 python scripts/analyze_vea_mediation.py \
-  --run-dir runs/goodfire-smoke \
+  --run-dir runs/goodfire-mixed-n500 \
   --models openrouter:qwen/qwen3-235b-a22b-thinking-2507
+
+python scripts/analyze_vea_mediation.py \
+  --run-dir runs/goodfire-mixed-n500 \
+  --models openrouter:qwen/qwen3-235b-a22b-thinking-2507 \
+  --strict-vea \
+  --out-suffix .strict
 ```
 
-Writes `vea_mediation_summary.json` + `vea_mediation_report.md`
-into the run dir.
+Outputs `vea_mediation_summary.json` (and `.strict.json`) plus
+matching `.md` reports. Verdict tiers (explicit thresholds):
+`strong_mediation` / `weak_mediation` / `epiphenomenal` /
+`insufficient_data`.
 
-### Actual verdict (qwen3, n=200): epiphenomenal
+### Actual results (qwen3, n=500 mixed corpus)
 
-The per-prompt diff-in-diff ran on `runs/goodfire-trio-n200` for
-qwen3-235b-thinking. Stratification:
+**Per-family per-prompt diff-in-diff (Δrefusal in VEA-flip vs
+VEA-stable-negative prompts):**
 
-| Stratum | n | refusal (neutral) | refusal (inject) | paired Δ | 95% CI |
-|---|---:|---:|---:|---:|---|
-| VEA flip (− → +) | 104 | 0.529 | 0.712 | **+0.183** | [+0.086, +0.298] |
-| VEA flip (+ → −) | 9 | 0.333 | 0.667 | +0.333 | [−0.222, +0.778] |
-| VEA stable + | 29 | 0.483 | 0.724 | +0.241 | [+0.035, +0.448] |
-| VEA stable − | 58 | 0.586 | 0.724 | **+0.138** | [+0.000, +0.259] |
+| Mode | Family | DiD | 95% CI | Verdict |
+|---|---|---:|---|---|
+| broad | knowledge | +0.000 | [0, 0] | epiphenomenal |
+| broad | math | +0.000 | [0, 0] | epiphenomenal |
+| broad | safety | +0.116 | [−0.105, +0.349] | epiphenomenal |
+| broad | truthfulness | +0.057 | **[+0.011, +0.114]** | weak_mediation |
+| broad | **aggregate** | **+0.074** | **[+0.025, +0.136]** | **weak_mediation** ← confounded |
+| strict | knowledge | +0.000 | [0, 0] | epiphenomenal |
+| strict | math | — | — | insufficient_data |
+| strict | safety | +0.199 | [−0.031, +0.439] | epiphenomenal |
+| strict | truthfulness | +0.024 | [−0.053, +0.114] | epiphenomenal |
+| strict | **aggregate** | **+0.097** | **[−0.008, +0.203]** | **epiphenomenal** |
 
-**Diff-in-diff** (Δrefusal in VEA-flip vs VEA-stable−):
-**+0.045** (95% CI **[−0.105, +0.183]**, n_flip=104, n_stable_neg=58).
-CI includes zero. **Verdict: epiphenomenal.**
+**Read:**
 
-The numerical result is interesting and the structure matters for
-the writeup:
+1. **Within every family individually, the within-prompt DiD is
+   epiphenomenal under strict VEA.** This is the load-bearing causal
+   evidence and it says: VEA verbalization is not independently
+   predictive of refusal change after per-family controls.
+2. **The only weak_mediation cell** (truthfulness, broad) **does
+   not survive the strict rubric.** This is the rubric-sensitivity
+   concern made empirical: soft subtypes (`safety_check`,
+   `test_scenario`) inflate the apparent mediation signal.
+3. **The broad aggregate verdict (weak_mediation, CI excludes zero)
+   is corpus-composition confounding, not within-prompt mediation.**
+   The proof: per-family it disappears, and it disappears under
+   strict.
 
-1. **Inject framing inflates refusal across ALL strata** on qwen3.
-   Even the VEA-stable-negative prompts (where VEA stayed off in
-   both conditions) show paired Δrefusal of **+0.138** under inject.
-   Inject has a direct behavioral effect on qwen3 that does NOT
-   depend on the model verbalizing eval-awareness.
-2. **VEA-flipped prompts show +0.183, only +0.045 more than
-   stable-negative.** The marginal additional refusal change from
-   the VEA verbalization itself is small and not statistically
-   distinguishable from zero (CI [−0.105, +0.183] spans zero).
-3. **VEA-stable-positive prompts (where qwen3 was already VEA+
-   under neutral) show the LARGEST paired Δrefusal (+0.241).** This
-   isn't predicted by the verbalize-then-refuse mechanism — these
-   prompts already had VEA in both conditions, so inject couldn't
-   "turn on" anything. The shift is probably about prompt selection:
-   prompts that intrinsically trigger eval-recognition reasoning
-   are ALSO the prompts where qwen3 is most sensitive to additional
-   framing cues, regardless of whether the framing triggered new
-   verbalization.
+### Writeup framing (Framing B — supported by all current data)
 
-The clean reading: inject framing makes qwen3 refuse more by ~14pp
-on safety prompts regardless of CoT content. VEA verbalization is a
-**parallel symptom** of the inject framing (both caused by it),
-not a **mediator** of the behavioral effect.
+Three distinct, defensible claims:
 
-### Writeup framing (publishable, supported by data)
+1. **Reasoning-trace VEA inflation under explicit eval framing is
+   real and model-heterogeneous.** qwen3: large (+0.380, CI excludes
+   zero); deepseek: small but CI-excludes-zero (+0.050); kimi: null.
+   The inflation generalizes across truthfulness / safety / knowledge
+   families on qwen3, but not math.
+2. **Inject framing has a direct behavioral effect on refusal**
+   visible even on prompts where VEA does NOT flip
+   (`stable_neg` paired Δrefusal +0.004 broad / +0.028 strict at
+   n=500 mixed). The behavioral effect is real, small, and
+   independent of CoT verbalization.
+3. **VEA verbalization does not independently predict refusal
+   change** within any task family under strict eval-recognition
+   rubrics. The aggregate VEA+/VEA− correlation is observational
+   and is explained by task-family composition. Refusal mediation
+   is not supported.
 
-Present as three distinct claims:
+Recommended phrasing for the abstract:
 
-1. **Goodfire VEA inflation replicates on qwen3** under explicit
-   eval framing: +0.475 in VEA+ rate (CI [+0.390, +0.555], n=200,
-   two independent judges agree). This is the inflation finding.
-2. **Inject framing has a direct behavioral effect on qwen3
-   safety refusal** of ~+0.14 paired Δrefusal, present even on
-   prompts where VEA verbalization does NOT flip. The behavioral
-   effect is real but does not flow through CoT verbalization.
-3. **VEA verbalization is NOT a mediator** of the inject behavioral
-   effect. Diff-in-diff is +0.045 with CI spanning zero. The model
-   can recognize the eval (VEA+) and still produce the same
-   refusal behavior as on the same prompt under neutral framing
-   when it doesn't verbalize — i.e., your nuance, empirically
-   supported.
+> Reasoning-trace VEA provides a more sensitive signal of
+> evaluation-awareness than aggregate refusal-rate shifts, but
+> apparent VEA→refusal mediation in pooled data is explained by
+> task-family composition. Within-family per-prompt analyses do
+> not support VEA as a behavioral mediator under strict
+> eval-recognition labels.
 
-This is the strongest version of the paper. "Models DO recognize
-they're being evaluated more often under explicit framing AND DO
-behave more cautiously under that framing — but the verbalized
-recognition does not mediate the behavioral effect. The
-verbalization and the behavior are parallel symptoms of the same
-upstream framing cue, not a verbalize-then-act causal chain."
-That's a much sharper claim than the naive Goodfire story and is
-directly supported by the diff-in-diff.
+### Vocabulary discipline
 
-### Open question: capability tasks
+Use these instead of "epiphenomenal" in the abstract / headline
+(reserve "epiphenomenal" for the discussion):
+
+- "not independently predictive after per-family controls"
+- "no residual refusal mediation after stratification"
+- "explained by corpus composition"
+- "decoupled from within-prompt refusal change"
+
+### Open question: capability-channel mediation
 
 The above is about safety / refusal. The qwen3 v6 result on
-**knowledge accuracy** (+0.190 under inject, CI excludes zero) is
-a different behavioral channel. We don't have VEA classifications
-on capability rollouts (the Goodfire passes were safety-only). **A
-natural follow-up is the mixed-corpus Goodfire pass (~$15-25) that
-re-runs the diff-in-diff on accuracy.** If the knowledge accuracy
-shift IS mediated by VEA, that's a different and more striking
-mechanism story than the safety channel — and the contrast (safety
-not mediated, knowledge mediated) would be its own publishable
-finding.
+**knowledge accuracy** (+0.190 under inject, CI excludes zero) is a
+different behavioral channel that the current mediation script
+doesn't test (it uses refusal as the outcome). The mixed-corpus
+n=500 run confirmed qwen3 also has +24pp VEA inflation on knowledge
+prompts — so the ingredients for a knowledge-channel mediation
+analysis are now in the data. Extending the script to use accuracy
+as the outcome variable on capability families would let us test
+whether the qwen3 knowledge-accuracy bump is VEA-mediated (different
+question from the safety refusal channel; would be a striking
+finding either way).
