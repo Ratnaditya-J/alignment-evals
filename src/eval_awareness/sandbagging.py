@@ -523,8 +523,9 @@ def build_default_sandbagging_judge(
 
         if not model:
             raise ValueError(
-                "openrouter requires an explicit model id, e.g. "
-                "'google/gemini-2.5-flash' or 'meta-llama/llama-3.3-70b-instruct'"
+                "openrouter requires an explicit model id (recommended: "
+                "'google/gemini-2.5-flash-lite' for cost; "
+                "'google/gemini-2.5-flash' for the publishable run)"
             )
         client = OpenRouterClient.from_env(
             name=f"openrouter-sandbagging-judge:{model}", model=model

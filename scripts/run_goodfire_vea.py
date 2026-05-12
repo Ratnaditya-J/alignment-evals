@@ -889,14 +889,24 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help=(
             "Provider for the VEA judge. Pick a vendor that did NOT produce "
             "any of the rollouts to avoid same-vendor self-grading bias. "
-            "openrouter+google/gemini-2.5-flash is the recommended default "
-            "for the open-reasoning trio."
+            "openrouter+google/gemini-2.5-flash-lite is the recommended "
+            "default for the open-reasoning trio - same prompting style as "
+            "the larger Flash, ~3-5x cheaper, JSON adherence is reliable on "
+            "this rubric."
         ),
     )
     parser.add_argument(
         "--vea-judge-model",
-        default="google/gemini-2.5-flash",
-        help="VEA judge model id.",
+        default="google/gemini-2.5-flash-lite",
+        help=(
+            "VEA judge model id. Default 'google/gemini-2.5-flash-lite' is "
+            "the cost-optimized default (~$3-7 per 8000-rollout pass on "
+            "OpenRouter). Bump to 'google/gemini-2.5-flash' if you see "
+            "elevated parse_error rates or want a stronger judge for the "
+            "publishable run. Even cheaper: 'mistralai/ministral-8b-2410' "
+            "(~10x cheaper than Flash, lower JSON adherence; smoke-test "
+            "before committing)."
+        ),
     )
     parser.add_argument(
         "--vea-judge-concurrency",
@@ -904,8 +914,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         default=32,
         help=(
             "Parallel VEA judge calls. Default 32 is safe for "
-            "google/gemini-2.5-flash via OpenRouter; drop to 8-16 if you "
-            "hit rate limits."
+            "google/gemini-2.5-flash-lite via OpenRouter; drop to 8-16 if "
+            "you hit rate limits."
         ),
     )
     parser.add_argument(
