@@ -3476,3 +3476,115 @@ def test_goodfire_script_classifies_and_aggregates_rollouts(tmp_path, monkeypatc
     assert "VEA+ rate per (model, condition)" in report
     assert "qwen/qwen3-thinking" in report
     assert "Inject-minus-neutral VEA+ inflation" in report
+
+
+def test_goodfire_classify_rollouts_emits_progress(caplog):
+    """The VEA judge phase MUST emit progress lines or the run looks
+    like it's hanging - that was the original user complaint after
+    waiting through silent 20+ minute classification passes.
+
+    The progress format mirrors the arxiv rollout-protocol line so the
+    'N/T (P%, Ts elapsed, ETA X) -- model=x/y' shape is searchable in
+    logs across both phases.
+    """
+    from src.eval_awareness.vea_judge import VeaJudgement
+    from scripts.run_goodfire_vea import _classify_rollouts
+
+    class StubJudge:
+        def classify(self, reasoning_trace, user_prompt="", response=""):
+            return VeaJudgement(
+                is_vea=False,
+                confidence=0.0,
+                vea_type="none",
+                quoted_text="",
+                rationale="stub",
+            )
+
+    records = [
+        {
+            "model_name": f"openrouter:m{i % 2}",
+            "condition": "neutral",
+            "example_id": f"e:{i}",
+            "task_family": "safety",
+            "reasoning_trace": "some thinking",
+            "prompt": "?",
+            "response": "ok",
+            "refusal": 0.0,
+        }
+        for i in range(6)
+    ]
+
+    caplog.set_level("INFO", logger="goodfire_vea")
+    classifications = _classify_rollouts(
+        records,
+        judge=StubJudge(),
+        max_concurrent=1,
+        sample_rate=1.0,
+        seed=0,
+        progress_every=2,
+    )
+    assert len(classifications) == 6
+
+    progress_lines = [
+        rec.getMessage()
+        for rec in caplog.records
+        if "goodfire-vea judge:" in rec.getMessage()
+    ]
+    # progress_every=2 over 6 records -> at least 3 progress lines.
+    assert len(progress_lines) >= 3
+    # Per-model breakdown is in the message and counts to the right cell.
+    final = progress_lines[-1]
+    assert "6/6" in final
+    assert "openrouter:m0=3/3" in final
+    assert "openrouter:m1=3/3" in final
+
+
+def test_goodfire_classify_rollouts_sample_mask_is_deterministic():
+    """When --vea-judge-sample-rate < 1.0, two runs with the same seed must
+    produce the same set of judged records. The sample mask used to live
+    inside the thread workers via a shared random.Random which isn't
+    thread-safe; precomputing the mask before the parallel section makes
+    sampling both deterministic and race-free."""
+    from src.eval_awareness.vea_judge import VeaJudgement
+    from scripts.run_goodfire_vea import _classify_rollouts
+
+    class CountingJudge:
+        def classify(self, reasoning_trace, user_prompt="", response=""):
+            return VeaJudgement(
+                is_vea=False,
+                confidence=0.0,
+                vea_type="judged",
+                quoted_text="",
+                rationale="counted",
+            )
+
+    records = [
+        {
+            "model_name": "m",
+            "condition": "neutral",
+            "example_id": f"e:{i}",
+            "reasoning_trace": "x",
+            "prompt": "?",
+            "response": "?",
+            "refusal": 0.0,
+        }
+        for i in range(40)
+    ]
+
+    def _run() -> List[str]:
+        out = _classify_rollouts(
+            records,
+            judge=CountingJudge(),
+            max_concurrent=1,
+            sample_rate=0.5,
+            seed=42,
+            progress_every=10**9,
+        )
+        return [c["example_id"] for c in out if c["vea_type"] == "judged"]
+
+    judged_a = sorted(_run())
+    judged_b = sorted(_run())
+    # Same seed -> same set of judged ids. ~50% of 40 should be judged
+    # with sample_rate=0.5; tolerate ±25% drift around the expected 20.
+    assert judged_a == judged_b
+    assert 10 < len(judged_a) < 30
