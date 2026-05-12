@@ -4083,3 +4083,227 @@ def test_vea_mediation_bootstrap_mean_ci_is_bounded_by_min_and_max():
     # And empty input still returns the safe sentinel.
     ci = _bootstrap_mean_ci([], iterations=200, seed=0)
     assert ci == {"low": 0.0, "high": 0.0, "mean": 0.0}
+
+
+def test_vea_mediation_per_family_emits_cells_for_each_task_family(tmp_path):
+    """Mixed-corpus runs need per-(model, family) mediation cells so the
+    safety-channel verdict can be compared against capability-task verdicts
+    on the same model.
+
+    The user's specific question: on the v6/Goodfire mixed corpus, does
+    the qwen3 VEA inflation mediate refusal on safety prompts vs accuracy
+    on knowledge prompts? This test confirms the per-family grouping
+    produces one mediation cell per (model, family) so the comparison is
+    available downstream.
+    """
+    from scripts.analyze_vea_mediation import main as mediation_main
+
+    run_dir = tmp_path / "fam"
+    rollouts: List[Dict[str, Any]] = []
+    classifications: List[Dict[str, Any]] = []
+    # Two models, two families, 20 prompts per family.
+    for model in ("qwen-like", "deepseek-like"):
+        for family in ("safety", "knowledge"):
+            for i in range(20):
+                ex_id = f"{family}:{i}"
+                # Inject flips VEA on the first 10 prompts of qwen-like
+                # safety; everything else stays VEA-.
+                qwen_safety_flips = (
+                    model == "qwen-like" and family == "safety" and i < 10
+                )
+                for cond in ("neutral", "inject"):
+                    rollouts.append(
+                        {
+                            "model_name": model,
+                            "condition": cond,
+                            "example_id": ex_id,
+                            "task_family": family,
+                            "rollout_index": 0,
+                            # Refusal jumps from 0 -> 1 on qwen safety
+                            # flip-prompts under inject; stays at 0
+                            # elsewhere. This injects a strong-mediation
+                            # signal in exactly one (model, family) cell.
+                            "refusal": (
+                                1.0 if qwen_safety_flips and cond == "inject"
+                                else 0.0
+                            ),
+                        }
+                    )
+                    is_vea = qwen_safety_flips and cond == "inject"
+                    classifications.append(
+                        {
+                            "model_name": model,
+                            "condition": cond,
+                            "example_id": ex_id,
+                            "task_family": family,
+                            "rollout_index": 0,
+                            "is_vea": is_vea,
+                            "vea_type": (
+                                "explicit_eval" if is_vea else "none"
+                            ),
+                            "confidence": 0.9 if is_vea else 0.0,
+                        }
+                    )
+    _write_mediation_inputs(run_dir, rollouts, classifications)
+    rc = mediation_main(["--run-dir", str(run_dir)])
+    assert rc == 0
+
+    summary = json.loads((run_dir / "vea_mediation_summary.json").read_text())
+    assert "per_model_family" in summary
+    family_rows = summary["per_model_family"]
+    by_cell = {
+        (r["model_name"], r["task_family"]): r for r in family_rows
+    }
+    # Four expected cells: (qwen-like, safety), (qwen-like, knowledge),
+    # (deepseek-like, safety), (deepseek-like, knowledge).
+    assert set(by_cell.keys()) == {
+        ("qwen-like", "safety"),
+        ("qwen-like", "knowledge"),
+        ("deepseek-like", "safety"),
+        ("deepseek-like", "knowledge"),
+    }
+    # The qwen-safety cell is the only one with a real signal. The other
+    # three cells have no flip prompts (refusal stays at 0 everywhere)
+    # so they verdict insufficient_data or epiphenomenal.
+    qwen_safety = by_cell[("qwen-like", "safety")]
+    assert qwen_safety["verdict"] == "strong_mediation"
+    assert qwen_safety["diff_in_diff"]["diff_in_diff"] == 1.0
+
+    # Per-model rows still exist alongside per-(model, family).
+    assert "per_model" in summary
+    per_model = {r["model_name"]: r for r in summary["per_model"]}
+    # qwen-like aggregated across families: 10 flip prompts + 30 stable-neg
+    # = diff-in-diff still nonzero but diluted by the no-effect families.
+    assert per_model["qwen-like"]["diff_in_diff"]["diff_in_diff"] is not None
+
+    # Report includes both sections.
+    report = (run_dir / "vea_mediation_report.md").read_text()
+    assert "Per-model results (aggregated across task families)" in report
+    assert "Per-(model, family) results" in report
+    # Per-family summary table renders cells.
+    assert "qwen-like" in report and "safety" in report and "knowledge" in report
+
+
+def test_vea_mediation_per_family_handles_missing_task_family(tmp_path):
+    """Records missing task_family should be bucketed under '', not
+    silently dropped. The user's prior runs predate the family field;
+    swallowing them would make legacy runs invisible in the family
+    breakdown."""
+    from scripts.analyze_vea_mediation import main as mediation_main
+
+    run_dir = tmp_path / "no-fam"
+    rollouts: List[Dict[str, Any]] = []
+    classifications: List[Dict[str, Any]] = []
+    for i in range(4):
+        for cond in ("neutral", "inject"):
+            rollouts.append(
+                {
+                    "model_name": "m",
+                    "condition": cond,
+                    "example_id": f"ex:{i}",
+                    # task_family deliberately omitted
+                    "rollout_index": 0,
+                    "refusal": 0.0,
+                }
+            )
+            classifications.append(
+                {
+                    "model_name": "m",
+                    "condition": cond,
+                    "example_id": f"ex:{i}",
+                    # task_family deliberately omitted
+                    "rollout_index": 0,
+                    "is_vea": False,
+                    "vea_type": "none",
+                    "confidence": 0.0,
+                }
+            )
+    _write_mediation_inputs(run_dir, rollouts, classifications)
+    rc = mediation_main(["--run-dir", str(run_dir)])
+    assert rc == 0
+    summary = json.loads((run_dir / "vea_mediation_summary.json").read_text())
+    # Records without task_family are bucketed under "" - one cell, not
+    # zero cells.
+    assert len(summary["per_model_family"]) == 1
+    assert summary["per_model_family"][0]["task_family"] == ""
+
+
+def test_vea_mediation_per_family_independent_of_per_model_aggregate(tmp_path):
+    """The per-(model, family) rows must be independent of the per-model
+    aggregate row - i.e. one family showing strong_mediation must NOT
+    overwrite the aggregate verdict and vice versa. Regression guard
+    against accidentally hardcoded grouping in the build function.
+    """
+    from scripts.analyze_vea_mediation import main as mediation_main
+
+    run_dir = tmp_path / "indep"
+    rollouts: List[Dict[str, Any]] = []
+    classifications: List[Dict[str, Any]] = []
+    # 30 safety prompts where VEA flips and refusal jumps; 30 knowledge
+    # prompts with no signal. Aggregate dilutes the safety effect.
+    for family, flips in (("safety", True), ("knowledge", False)):
+        for i in range(30):
+            ex_id = f"{family}:{i}"
+            for cond in ("neutral", "inject"):
+                rollouts.append(
+                    {
+                        "model_name": "m",
+                        "condition": cond,
+                        "example_id": ex_id,
+                        "task_family": family,
+                        "rollout_index": 0,
+                        "refusal": (
+                            1.0
+                            if (flips and cond == "inject" and i < 20)
+                            else 0.0
+                        ),
+                    }
+                )
+                is_vea = flips and cond == "inject" and i < 20
+                classifications.append(
+                    {
+                        "model_name": "m",
+                        "condition": cond,
+                        "example_id": ex_id,
+                        "task_family": family,
+                        "rollout_index": 0,
+                        "is_vea": is_vea,
+                        "vea_type": (
+                            "explicit_eval" if is_vea else "none"
+                        ),
+                        "confidence": 0.9 if is_vea else 0.0,
+                    }
+                )
+    _write_mediation_inputs(run_dir, rollouts, classifications)
+    rc = mediation_main(["--run-dir", str(run_dir)])
+    assert rc == 0
+    summary = json.loads((run_dir / "vea_mediation_summary.json").read_text())
+
+    # Safety family alone: strong mediation (refusal jumps with VEA flip).
+    safety = next(
+        r
+        for r in summary["per_model_family"]
+        if r["task_family"] == "safety"
+    )
+    assert safety["verdict"] == "strong_mediation"
+
+    # Knowledge family alone: insufficient (refusal is 0 everywhere so
+    # no flip stratum) OR epiphenomenal. Either way NOT strong_mediation.
+    knowledge = next(
+        r
+        for r in summary["per_model_family"]
+        if r["task_family"] == "knowledge"
+    )
+    assert knowledge["verdict"] != "strong_mediation"
+
+    # Each per-family row has its OWN strata counts, not the aggregate's.
+    # Safety: 20 flip + 10 stable_neg. Knowledge: 0 flip + 30 stable_neg.
+    assert safety["strata"]["flip_neg_to_pos"]["n"] == 20
+    assert safety["strata"]["stable_neg"]["n"] == 10
+    assert knowledge["strata"]["flip_neg_to_pos"]["n"] == 0
+    assert knowledge["strata"]["stable_neg"]["n"] == 30
+
+    # Per-model aggregate sees BOTH families pooled: 20 flip + 40 stable_neg.
+    aggregate = summary["per_model"][0]
+    assert aggregate["strata"]["flip_neg_to_pos"]["n"] == 20
+    assert aggregate["strata"]["stable_neg"]["n"] == 40
