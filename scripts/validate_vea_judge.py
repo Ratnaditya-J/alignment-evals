@@ -66,6 +66,7 @@ CSV_FIELDS = (
     "judge_vea_type",
     "judge_confidence",
     "judge_quote",
+    "quote_locatable",
     "human_is_vea",
     "human_notes",
 )
@@ -84,6 +85,13 @@ _NEGATIVE_SUBTYPES: frozenset = frozenset({"none", "no_trace"})
 _PROMPT_SNIPPET_CHARS = 240
 _RESPONSE_SNIPPET_CHARS = 320
 _TRACE_SNIPPET_CHARS = 1200
+# When the judge_quote can be located in the reasoning trace, the snippet
+# is centered on the quote with this many chars of context before/after.
+# Chosen so the labeller can see "what was the model thinking just before
+# the eval-recognition phrase, and how did it follow up after?"
+_QUOTE_PRE_CONTEXT_CHARS = 400
+_QUOTE_POST_CONTEXT_CHARS = 800
+_QUOTE_NOT_LOCATED_PREFIX = "[QUOTE NOT IN TRACE] "
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +196,56 @@ def _truncate(text: Any, n: int) -> str:
     return s[:n] + "..."
 
 
+def _resolve_trace_snippet(
+    reasoning_trace: Any, judge_quote: Any
+) -> Tuple[str, str]:
+    """Build the reasoning_trace snippet for the labeling CSV.
+
+    Returns ``(snippet, quote_locatable)`` where ``quote_locatable`` is
+    one of ``"yes"`` / ``"no"`` / ``"n/a"`` so the labeler can sort the
+    CSV by locatability and audit suspicious rows first.
+
+    Behaviour:
+      * Empty quote (judge claimed VEA−, or returned empty quote):
+        front-truncate the trace as before and mark locatable = "n/a".
+      * Quote is a substring of the trace: center the snippet on the
+        quote (~400 chars before, ~800 chars after) so the labeler can
+        verify the call and see the surrounding reasoning context.
+      * Quote is NOT a substring of the trace: prepend a
+        ``[QUOTE NOT IN TRACE]`` marker so the labeler knows the judge
+        paraphrased / hallucinated / quoted from somewhere outside the
+        reasoning trace. This is itself a judge-validity signal and is
+        reported as a rate in the score-mode report.
+    """
+    trace = (reasoning_trace or "")
+    if not isinstance(trace, str):
+        trace = str(trace)
+    quote = (judge_quote or "")
+    if not isinstance(quote, str):
+        quote = str(quote)
+    trace = trace.strip()
+    quote = quote.strip()
+
+    if not trace:
+        return ("", "n/a")
+    if not quote:
+        return (_truncate(trace, _TRACE_SNIPPET_CHARS), "n/a")
+
+    idx = trace.find(quote)
+    if idx < 0:
+        budget = max(0, _TRACE_SNIPPET_CHARS - len(_QUOTE_NOT_LOCATED_PREFIX))
+        return (_QUOTE_NOT_LOCATED_PREFIX + _truncate(trace, budget), "no")
+
+    start = max(0, idx - _QUOTE_PRE_CONTEXT_CHARS)
+    end = min(len(trace), idx + len(quote) + _QUOTE_POST_CONTEXT_CHARS)
+    snippet = trace[start:end]
+    if start > 0:
+        snippet = "..." + snippet
+    if end < len(trace):
+        snippet = snippet + "..."
+    return (snippet, "yes")
+
+
 def _write_labelling_csv(
     records: Sequence[Dict[str, Any]], path: Path
 ) -> None:
@@ -198,6 +256,9 @@ def _write_labelling_csv(
         )
         writer.writeheader()
         for index, record in enumerate(records):
+            snippet, locatable = _resolve_trace_snippet(
+                record.get("reasoning_trace"), record.get("judge_quote")
+            )
             row = {
                 "label_id": f"vea_{index:05d}",
                 "model_name": str(record.get("model_name") or ""),
@@ -211,13 +272,12 @@ def _write_labelling_csv(
                 "response_snippet": _truncate(
                     record.get("response"), _RESPONSE_SNIPPET_CHARS
                 ),
-                "reasoning_trace_snippet": _truncate(
-                    record.get("reasoning_trace"), _TRACE_SNIPPET_CHARS
-                ),
+                "reasoning_trace_snippet": snippet,
                 "judge_is_vea": "true" if record.get("judge_is_vea") else "false",
                 "judge_vea_type": str(record.get("judge_vea_type") or ""),
                 "judge_confidence": str(record.get("judge_confidence") or ""),
                 "judge_quote": _truncate(record.get("judge_quote"), 240),
+                "quote_locatable": locatable,
                 "human_is_vea": "",
                 "human_notes": "",
             }
@@ -308,7 +368,20 @@ def _score_labelling_csv(path: Path) -> Dict[str, Any]:
     n_unsure = 0
     n_unparseable_judge = 0
 
+    # Quote-locatability is computed over ALL rows where the judge claimed
+    # VEA+ (regardless of human label or unsure-ness) so it's a pure
+    # judge-validity stat independent of the labeling subset.
+    quote_locatable_counts: Dict[str, int] = {"yes": 0, "no": 0, "n/a": 0}
+    quote_locatable_judge_pos: Dict[str, int] = {"yes": 0, "no": 0, "n/a": 0}
+
     for row in rows:
+        loc = (row.get("quote_locatable") or "").strip().lower()
+        if loc not in quote_locatable_counts:
+            loc = "n/a"
+        quote_locatable_counts[loc] += 1
+        if _coerce_judge_label(row.get("judge_is_vea")) is True:
+            quote_locatable_judge_pos[loc] += 1
+
         human = _coerce_human_label(row.get("human_is_vea", ""))
         if human is None:
             n_unsure += 1
@@ -336,6 +409,8 @@ def _score_labelling_csv(path: Path) -> Dict[str, Any]:
         "per_subtype": {
             subtype: _confusion(pairs) for subtype, pairs in sorted(by_subtype.items())
         },
+        "quote_locatable_counts": quote_locatable_counts,
+        "quote_locatable_among_judge_positive": quote_locatable_judge_pos,
     }
 
 
@@ -388,6 +463,49 @@ def _render_score_report(scores: Dict[str, Any]) -> str:
         "judge-positive) is the right number to cite in the abstract; the "
         "broad-mode row characterises the raw judge's behavior."
     )
+    lines.append("")
+
+    # Quote-locatability is judge-validity meta: how often the judge's
+    # 'verbatim quoted_text' actually appears in the reasoning trace it
+    # was given. A high not-located rate among judge-positive rows is
+    # evidence the judge is paraphrasing / hallucinating rather than
+    # copying — itself a finding worth reporting in the methods section.
+    lines.append("## Quote locatability (judge-validity check)")
+    lines.append("")
+    locatable = scores.get("quote_locatable_counts", {})
+    judge_pos_loc = scores.get("quote_locatable_among_judge_positive", {})
+    total_yes = locatable.get("yes", 0)
+    total_no = locatable.get("no", 0)
+    total_na = locatable.get("n/a", 0)
+    pos_yes = judge_pos_loc.get("yes", 0)
+    pos_no = judge_pos_loc.get("no", 0)
+    pos_total = pos_yes + pos_no + judge_pos_loc.get("n/a", 0)
+    lines.append(
+        "Counts the fraction of rows where the judge's `quoted_text` is a "
+        "verbatim substring of the reasoning trace it scored. A high "
+        "'not in trace' rate among judge-positive rows means the judge "
+        "is paraphrasing or hallucinating its supporting evidence — "
+        "itself a judge-validity flag independent of the human labels."
+    )
+    lines.append("")
+    lines.append("| Slice | quote_locatable=yes | =no | =n/a |")
+    lines.append("| --- | ---: | ---: | ---: |")
+    lines.append(f"| All rows | {total_yes} | {total_no} | {total_na} |")
+    lines.append(
+        f"| Judge-positive rows only | {pos_yes} | {pos_no} | "
+        f"{judge_pos_loc.get('n/a', 0)} |"
+    )
+    if pos_total > 0:
+        not_in_trace_rate = pos_no / pos_total
+        lines.append("")
+        lines.append(
+            f"**Judge-positive 'not in trace' rate:** {not_in_trace_rate:.1%} "
+            f"({pos_no}/{pos_total}). The n/a column on judge-positive rows "
+            "represents judge calls with empty `quoted_text` and is itself a "
+            "minor judge-validity concern (the rubric requires a non-empty "
+            "quote for VEA+ calls)."
+        )
+    lines.append("")
     return "\n".join(lines) + "\n"
 
 
