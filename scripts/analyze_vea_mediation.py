@@ -521,6 +521,35 @@ def _render_report(
         "* **insufficient_data**: one of the strata has n=0.\n"
     )
     lines.append("")
+    if len(per_model) > 1:
+        # Cross-model summary table at the top so reviewers can compare
+        # models at a glance without scrolling through per-model detail
+        # tables. Most useful when the script is run on >1 model in the
+        # same call.
+        lines.append("## Cross-model summary")
+        lines.append("")
+        lines.append(
+            "| Model | verdict | diff-in-diff | 95% CI | n_flip | n_stable_neg |"
+        )
+        lines.append(
+            "| --- | :---: | ---: | --- | ---: | ---: |"
+        )
+        for entry in per_model:
+            did = entry["diff_in_diff"]
+            if did["diff_in_diff"] is None:
+                lines.append(
+                    f"| `{entry['model_name']}` | `{entry['verdict']}` | "
+                    f"- | - | {did['n_flip']} | {did['n_stable_neg']} |"
+                )
+            else:
+                ci = did["diff_in_diff_ci"]
+                lines.append(
+                    f"| `{entry['model_name']}` | `{entry['verdict']}` | "
+                    f"{did['diff_in_diff']:+.3f} | "
+                    f"[{ci['low']:+.3f}, {ci['high']:+.3f}] | "
+                    f"{did['n_flip']} | {did['n_stable_neg']} |"
+                )
+        lines.append("")
     lines.append("## Per-model results (aggregated across task families)")
     lines.append("")
     for entry in per_model:
