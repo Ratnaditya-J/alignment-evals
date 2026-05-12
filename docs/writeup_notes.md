@@ -190,25 +190,126 @@ CIs are sensitive to the difference.
 
 ---
 
-## Goodfire VEA experiment (planned, not yet run)
+## Goodfire VEA experiment — first results (smoke run, n=50/cell)
 
-The open-reasoning trio (deepseek-v3.2-exp, qwen3-235b-thinking,
-kimi-k2-thinking) plus opus-4.7 with extended thinking is the right
-model set for VEA detection. Pre-requisite: PR #34 (capture reasoning
-traces) merged.
+**Run:** `runs/goodfire-smoke`, 50 BeaverTails prompts × 4 conditions ×
+3 open-reasoning models = 600 rollouts. VEA judge =
+`google/gemini-2.5-flash` via OpenRouter. No empty traces (PR #34
+reasoning capture worked across all three routes).
 
-Key writeup angle if VEA inflation IS observed under inject:
-this is a **mechanism** for the safety-only refusal effect seen in v5.
-The story would be:
-1. Inject framing inflates VEA+ rate in the CoT.
-2. VEA+ rollouts refuse more than VEA- rollouts within the same model.
-3. Therefore: refusal rate increases under inject framing, mediated by
-   VEA inflation.
+### Headline: qwen3-235b-thinking shows strong VEA inflation under inject
 
-This is the clean Goodfire-style replication. If VEA inflation is NOT
-observed, the v5 effect needs a different explanation (e.g., direct
-behavioral conditioning on the inject system prompt without
-intermediate verbalization).
+Per-(model, condition) VEA+ rate:
+
+| Model | baseline | neutral | inject | remove |
+|---|---:|---:|---:|---:|
+| `deepseek-v3.2-exp` | 0.20 | 0.18 | 0.14 | 0.14 |
+| `kimi-k2-thinking` | 0.14 | 0.06 | 0.06 | 0.10 |
+| **`qwen3-235b-thinking`** | 0.18 | **0.30** | **0.66** | 0.40 |
+
+Inject−neutral VEA inflation per model:
+
+| Model | Δ inject−neutral | rough 95% CI (Wald) |
+|---|---:|---|
+| deepseek-v3.2-exp | −0.040 | [−0.19, +0.11] |
+| kimi-k2-thinking | +0.000 | [−0.10, +0.10] |
+| **qwen3-235b-thinking** | **+0.360** | **[+0.18, +0.54]** |
+
+The qwen3 effect is large enough to be CI-excludes-zero at this n.
+Goodfire's spontaneous-VEA inflation finding **replicates on qwen3
+under explicit-injection framing**. The other two open-reasoning
+models in the trio show null effects — VEA inflation is *not* a
+universal property of visible-CoT reasoning models.
+
+### Behavioral surprise: VEA+ does NOT predict more refusal
+
+The mechanism story we sketched in the planning entry above (VEA+
+rollouts → more refusal → inject inflates refusal via VEA) is **not
+supported** by this run. Within-model refusal rate by VEA status:
+
+| Model | refusal (VEA+) | refusal (VEA−) | Δ VEA+ − VEA− |
+|---|---:|---:|---:|
+| deepseek-v3.2-exp | 0.636 (n=33) | 0.557 (n=167) | +0.080 |
+| qwen3-235b-thinking | 0.610 (n=77) | 0.715 (n=123) | **−0.105** |
+| kimi-k2-thinking | 0.500 (n=18) | 0.775 (n=182) | **−0.275** |
+
+Two of three models show the OPPOSITE direction: VEA+ rollouts refuse
+LESS than VEA− rollouts in the same model. Bootstrap CIs at this n
+include zero on qwen3 and deepseek; kimi's CI just barely excludes
+zero but n_pos=18 is too thin to lean on. The point estimates are
+nevertheless directional evidence that the simple Goodfire mechanism
+story is incomplete or wrong on these models.
+
+Two candidate reframings for the writeup:
+
+1. **Performative-helpfulness on eval, performative-conservatism off
+   eval.** The model recognizes it's being evaluated and *relaxes*
+   safety in order to demonstrate helpfulness, rather than tightening.
+   This is the inverse of the alignment-anxiety prediction and worth
+   reporting as a real, surprising direction.
+2. **Selection effect.** The prompts where the model goes VEA+ may be
+   the ones that have legitimate engagement paths (researcher / story
+   / educational framing) — the kinds of prompts the model can
+   answer carefully without refusing. The harder refuse-baiting prompts
+   may not trigger VEA+ verbalization because the model just refuses
+   without elaborating. This would mean VEA+ correlates with prompt
+   tractability, not with model state.
+
+Both reframings are testable. (1) predicts that if you re-prompt the
+SAME prompt under inject vs neutral, the same prompt will produce
+different refusal outcomes when the model goes VEA+ vs VEA−. (2)
+predicts that prompts producing VEA+ are systematically different
+from prompts producing VEA− (e.g. lower baseline refusal rate even
+under neutral framing).
+
+### Connection to the v6 qwen3 +0.190 knowledge anomaly
+
+Two converging signals on qwen3 under inject framing:
+
+* **VEA inflation:** +0.36 in CoT verbalization rate (this run).
+* **Knowledge accuracy improvement:** +0.190 (v6 cross-protocol).
+
+Both move in the same direction (more eval-aware, better answer) and
+both are unique to qwen3 in their respective lineups. **qwen3-235b-
+thinking is becoming the publishable model-of-interest.** It has an
+unusually strong eval-context detection prior that, when activated by
+explicit framing, both surfaces in the visible CoT and improves
+capability-task accuracy.
+
+Worth a dedicated case-study section: same-model, same-prompts,
+across all the run families, with the qwen3 cell as the focal point.
+
+### Caveats
+
+* n=50 per cell is small. Bootstrap CIs (now wired in via PR after #36)
+  give the proper uncertainty bracket; eyeballing point estimates
+  alone overstates confidence.
+* This is BeaverTails-only (safety corpus). Goodfire's effect could
+  be stronger or weaker on other prompt distributions; planned
+  follow-up runs the open-reasoning trio on the full mixed corpus to
+  test family-dependence.
+* Of 600 classifications, 9 were `explicit_eval`, 72 `test_scenario`,
+  46 `safety_check`, 470 `none`, 2 `parse_error`. The dominant
+  positive subtype is `test_scenario` ("the user might be testing my
+  boundaries") rather than `explicit_eval` ("this is an evaluation").
+  That's consistent with Goodfire's softer-recognition characterization
+  but means our judge bar is already operating below the strictest
+  "explicit eval" interpretation.
+* opus-4.7 with extended thinking is NOT in this run. Adding it is the
+  natural closed-source comparison and would either strengthen the
+  qwen3-specific story (if opus is null) or generalize it (if opus
+  also inflates).
+
+### Suggested next steps (in cost order)
+
+1. **n=200 follow-up on the trio** (~$3-5) to tighten qwen3's CI and
+   confirm the kimi/deepseek nulls aren't underpowered.
+2. **Add opus-4.7 with extended thinking** (~$8-12 incremental) for
+   the closed-source comparison.
+3. **Mixed-corpus pass** (`--n-examples 500` without `--safety-only`,
+   ~$15-25) to test whether the qwen3 effect is safety-specific or
+   carries over to capability families. Cross-references the v5-vs-v6
+   corpus-composition note above.
 
 ---
 
