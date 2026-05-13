@@ -20,6 +20,12 @@ Produces the four figures referenced in ``docs/paper_draft.md``:
      (c) per-family within-prompt DiD under strict rubric.
      Reads ``vea_mediation_summary.json`` + the ``.strict.json`` sibling.
 
+  5. fig5_two_mechanism.png         — side-by-side per-model panel
+     contrasting qwen3 (VEA-mediated) vs opus (non-verbalized direct)
+     on the safety family. Each panel shows paired Δrefusal for the
+     flip and stable_neg strata with CIs. Reads two strict-mediation
+     summaries (one per model). See §5.4 of the paper.
+
 Each figure has an explicit caption embedded in the .png as a matplotlib
 title; the paper draft references them by filename. The script is
 deliberately self-contained — only matplotlib + the project's own
@@ -31,11 +37,14 @@ Usage:
         --goodfire-summary runs/goodfire-mixed-n500/goodfire_vea_summary.json \\
         --mediation-summary runs/goodfire-mixed-n500/vea_mediation_summary.json \\
         --strict-mediation-summary runs/goodfire-mixed-n500/vea_mediation_summary.strict.json \\
+        --opus-strict-mediation-summary runs/goodfire-opus-mixed-n300/vea_mediation_summary.strict.json \\
         --out-dir docs/figures/
 
 Each --*-summary argument is optional. Figures whose inputs aren't
 supplied are skipped (with an info log); the script exits 0 as long as
-at least one figure was produced.
+at least one figure was produced. fig5 needs both
+``--strict-mediation-summary`` (qwen3) and
+``--opus-strict-mediation-summary`` (opus).
 """
 
 from __future__ import annotations
@@ -386,6 +395,115 @@ def _render_mediation_panels(
 
 
 # ---------------------------------------------------------------------------
+# Figure 5: two-mechanism contrast (qwen3 vs opus, safety family)
+# ---------------------------------------------------------------------------
+
+
+def _render_two_mechanism(
+    qwen3_strict: Dict[str, Any],
+    opus_strict: Dict[str, Any],
+    out_path: Path,
+) -> None:
+    """Side-by-side per-model panel contrasting qwen3 (VEA-mediated)
+    vs opus (non-verbalized direct) on the safety family. Each panel
+    shows paired Δrefusal for the flip-neg-to-pos stratum and the
+    stable_neg stratum with bootstrap CIs. The qualitative contrast:
+    qwen3's effect lives in the flip stratum; opus's effect lives in
+    the stable_neg stratum.
+
+    Strict-rubric, safety-family-only. Reads each model's
+    ``vea_mediation_summary.strict.json``.
+    """
+    import matplotlib.pyplot as plt
+
+    def _safety_row(summary: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        for row in summary.get("per_model_family", []) or []:
+            if row.get("task_family") == "safety":
+                return row
+        return None
+
+    qwen3_row = _safety_row(qwen3_strict)
+    opus_row = _safety_row(opus_strict)
+    if not qwen3_row or not opus_row:
+        LOGGER.warning("fig5: missing safety row in qwen3 or opus summary")
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 5))
+
+    def _panel(ax: Any, row: Dict[str, Any], model_label: str) -> None:
+        strata = row.get("strata") or {}
+        flip = strata.get("flip_neg_to_pos") or {}
+        stable = strata.get("stable_neg") or {}
+
+        labels = [
+            f"flip (− → +)\nn={int(flip.get('n') or 0)}",
+            f"stable −\nn={int(stable.get('n') or 0)}",
+        ]
+        means = [
+            float(flip.get("mean_paired_delta") or 0.0),
+            float(stable.get("mean_paired_delta") or 0.0),
+        ]
+        cis = [
+            flip.get("paired_delta_ci") or {},
+            stable.get("paired_delta_ci") or {},
+        ]
+        lows = [float(c.get("low", 0.0)) for c in cis]
+        highs = [float(c.get("high", 0.0)) for c in cis]
+        err_low = [max(0.0, m - l) for m, l in zip(means, lows)]
+        err_high = [max(0.0, h - m) for m, h in zip(means, highs)]
+        # Red when CI excludes zero, gray otherwise — matches fig4 convention.
+        colors = [
+            "#d62728" if (l > 0 or h < 0) else "#7e9eb2"
+            for l, h in zip(lows, highs)
+        ]
+        ax.bar(
+            labels, means, color=colors,
+            yerr=[err_low, err_high], capsize=6,
+        )
+        ax.axhline(0, color="#888", linestyle="--", linewidth=1)
+        ax.set_ylabel("paired Δrefusal (inject − neutral)")
+
+        did_obj = row.get("diff_in_diff") or {}
+        did = did_obj.get("diff_in_diff")
+        did_ci = did_obj.get("diff_in_diff_ci") or {}
+        if did is not None:
+            did_text = f"DiD = {float(did):+.3f}"
+            if did_ci:
+                did_text += (
+                    f"  CI [{float(did_ci.get('low', 0.0)):+.3f},"
+                    f" {float(did_ci.get('high', 0.0)):+.3f}]"
+                )
+        else:
+            did_text = "DiD = —"
+        verdict = row.get("verdict") or "—"
+        ax.set_title(f"{model_label}\n{did_text}\nverdict: {verdict}")
+        ax.grid(axis="y", alpha=0.25)
+
+    _panel(axes[0], qwen3_row, "qwen3-235B-thinking (n=500)")
+    _panel(axes[1], opus_row, "claude-opus-4-7 (n=300)")
+
+    # Unify y-limits so the magnitude contrast is visually faithful
+    # rather than each panel auto-scaling independently.
+    yl0 = axes[0].get_ylim()
+    yl1 = axes[1].get_ylim()
+    lo = min(yl0[0], yl1[0])
+    hi = max(yl0[1], yl1[1])
+    axes[0].set_ylim(lo, hi)
+    axes[1].set_ylim(lo, hi)
+
+    fig.suptitle(
+        "Two mechanisms on safety (validated strict rubric):\n"
+        "qwen3: behavioral effect only on VEA-flip prompts (mediated). "
+        "opus: behavioral effect on flip AND stable_neg prompts (direct).",
+        fontsize=11,
+    )
+    fig.tight_layout(rect=[0, 0, 1, 0.88])
+    fig.savefig(out_path, dpi=160, bbox_inches="tight")
+    plt.close(fig)
+    LOGGER.info("wrote %s", out_path)
+
+
+# ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
 
@@ -415,6 +533,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--goodfire-summary", default=None)
     parser.add_argument("--mediation-summary", default=None)
     parser.add_argument("--strict-mediation-summary", default=None)
+    parser.add_argument(
+        "--opus-strict-mediation-summary",
+        default=None,
+        help=(
+            "Strict-rubric mediation summary for opus-4.7 (n=300). "
+            "Combined with --strict-mediation-summary (qwen3 n=500) to "
+            "render fig5 — the two-mechanism contrast figure on the "
+            "safety family. See §5.4 of the paper."
+        ),
+    )
     parser.add_argument("--out-dir", default="docs/figures")
     args = parser.parse_args(list(argv) if argv is not None else None)
 
@@ -427,6 +555,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     goodfire = _load_json(args.goodfire_summary)
     mediation = _load_json(args.mediation_summary)
     strict_mediation = _load_json(args.strict_mediation_summary)
+    opus_strict_mediation = _load_json(args.opus_strict_mediation_summary)
 
     produced = 0
 
@@ -451,6 +580,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         produced += 1
     else:
         LOGGER.info("fig3 + fig4 skipped (no --mediation-summary)")
+
+    if strict_mediation and opus_strict_mediation:
+        _render_two_mechanism(
+            strict_mediation,
+            opus_strict_mediation,
+            out_dir / "fig5_two_mechanism.png",
+        )
+        produced += 1
+    else:
+        LOGGER.info(
+            "fig5 skipped (needs both --strict-mediation-summary and "
+            "--opus-strict-mediation-summary)"
+        )
 
     if produced == 0:
         LOGGER.error(

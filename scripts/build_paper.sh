@@ -44,13 +44,14 @@ if [[ ! -d "$FIG_SRC" ]]; then
   exit 2
 fi
 
-# Verify all four expected figures exist.
+# Verify all five expected figures exist.
 missing=()
 for fig in \
     fig1_refusal_forest.png \
     fig2_vea_inflation.png \
     fig3_qwen3_per_family.png \
-    fig4_mediation_panels.png
+    fig4_mediation_panels.png \
+    fig5_two_mechanism.png
 do
   if [[ ! -f "$FIG_SRC/$fig" ]]; then
     missing+=("$fig")
