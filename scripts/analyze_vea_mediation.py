@@ -74,7 +74,7 @@ def _load_jsonl(path: Path) -> List[Dict[str, Any]]:
 
 
 def _bootstrap_mean_ci(
-    values: Sequence[float], iterations: int = 200, seed: int = 0
+    values: Sequence[float], iterations: int = 2000, seed: int = 0
 ) -> Dict[str, float]:
     if not values:
         return {"low": 0.0, "high": 0.0, "mean": 0.0}
@@ -85,13 +85,18 @@ def _bootstrap_mean_ci(
         sample = [rng.choice(values) for _ in range(n)]
         means.append(sum(sample) / n)
     means.sort()
+    # 95% CI: percentile-indexed so the call works for any iterations
+    # value (was hardcoded means[5] / means[195] for B=200, which broke
+    # silently for any other B).
+    lo_idx = int(round(iterations * 0.025))
+    hi_idx = min(iterations - 1, int(round(iterations * 0.975)))
     # ``mean`` is the average over the ``iterations`` bootstrap-resampled
     # means, NOT divided by the original sample size. Divide by len(means)
     # (= iterations), not n. The earlier `sum(means) / n` produced
     # nonsensical values like 6.47 when n was small.
     return {
-        "low": round(means[5], 4),
-        "high": round(means[195], 4),
+        "low": round(means[lo_idx], 4),
+        "high": round(means[hi_idx], 4),
         "mean": round(sum(means) / len(means), 4),
     }
 
@@ -99,7 +104,7 @@ def _bootstrap_mean_ci(
 def _bootstrap_diff_of_means_ci(
     treatment_values: Sequence[float],
     baseline_values: Sequence[float],
-    iterations: int = 200,
+    iterations: int = 2000,
     seed: int = 0,
 ) -> Dict[str, float]:
     """Two-sample bootstrap of (mean(treatment) - mean(baseline))."""
@@ -112,9 +117,11 @@ def _bootstrap_diff_of_means_ci(
         b = [rng.choice(baseline_values) for _ in baseline_values]
         deltas.append(sum(t) / len(t) - sum(b) / len(b))
     deltas.sort()
+    lo_idx = int(round(iterations * 0.025))
+    hi_idx = min(iterations - 1, int(round(iterations * 0.975)))
     return {
-        "low": round(deltas[5], 4),
-        "high": round(deltas[195], 4),
+        "low": round(deltas[lo_idx], 4),
+        "high": round(deltas[hi_idx], 4),
         "mean": round(sum(deltas) / len(deltas), 4),
     }
 
@@ -294,6 +301,7 @@ def _build_per_group(
     group_keys: Sequence[str],
     *,
     seed: int = 0,
+    bootstrap_samples: int = 2000,
 ) -> List[Dict[str, Any]]:
     """Turn a strata dict into a list of per-group result entries.
 
@@ -305,13 +313,16 @@ def _build_per_group(
     for group_key in sorted(strata):
         group_strata = strata[group_key]
         stratum_stats = {
-            name: _stratum_stats(pairs, seed=seed)
+            name: _stratum_stats(
+                pairs, seed=seed, bootstrap_samples=bootstrap_samples
+            )
             for name, pairs in group_strata.items()
         }
         did = _diff_in_diff(
             group_strata["flip_neg_to_pos"],
             group_strata["stable_neg"],
             seed=seed,
+            bootstrap_samples=bootstrap_samples,
         )
         entry: Dict[str, Any] = {
             "strata": stratum_stats,
@@ -327,6 +338,7 @@ def _build_per_group(
 def _stratum_stats(
     pairs: Sequence[Tuple[float, float]],
     seed: int = 0,
+    bootstrap_samples: int = 2000,
 ) -> Dict[str, Any]:
     """Compute paired Δrefusal stats for one stratum."""
     if not pairs:
@@ -347,7 +359,9 @@ def _stratum_stats(
             sum(t for _, t in pairs) / len(pairs), 4
         ),
         "mean_paired_delta": round(sum(deltas) / len(deltas), 4),
-        "paired_delta_ci": _bootstrap_mean_ci(deltas, seed=seed),
+        "paired_delta_ci": _bootstrap_mean_ci(
+            deltas, iterations=bootstrap_samples, seed=seed
+        ),
     }
 
 
@@ -355,6 +369,7 @@ def _diff_in_diff(
     flip_pairs: Sequence[Tuple[float, float]],
     stable_neg_pairs: Sequence[Tuple[float, float]],
     seed: int = 0,
+    bootstrap_samples: int = 2000,
 ) -> Dict[str, Any]:
     """Diff-in-diff: how much more does refusal change when VEA flips?
 
@@ -386,7 +401,8 @@ def _diff_in_diff(
             4,
         ),
         "diff_in_diff_ci": _bootstrap_diff_of_means_ci(
-            flip_deltas, stable_deltas, seed=seed
+            flip_deltas, stable_deltas,
+            iterations=bootstrap_samples, seed=seed,
         ),
     }
 
@@ -723,17 +739,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Bootstrap seed.",
     )
     parser.add_argument(
+        "--bootstrap-samples",
+        type=int,
+        default=2000,
+        help=(
+            "Number of bootstrap resamples for paired-Δrefusal and "
+            "diff-in-diff CIs. Default 2000. The previous default of "
+            "200 has noticeable Monte Carlo error on the CI bounds "
+            "(±~0.01-0.03 of the bound, depending on data). For headline "
+            "numbers prefer 2000 or 10000; for fast smoke runs 200 is "
+            "fine. Percentile indices auto-scale with this value."
+        ),
+    )
+    parser.add_argument(
         "--strict-vea",
         action="store_true",
         help=(
-            "Recompute is_vea using only strict eval-recognition subtypes "
-            "(explicit_eval, benchmark, grader_awareness). Excludes softer "
-            "subtypes (safety_check, test_scenario, artificial_scenario) "
-            "that can fire on safety reasoning without an actual eval "
-            "framing being named. Lets the same rollouts be re-analyzed "
-            "under a stricter bar without re-judging. The output JSON "
-            "records which strictness mode was used so summaries can be "
-            "compared side-by-side."
+            "Recompute is_vea using only the validated-strict subtypes "
+            "(explicit_eval, benchmark, safety_check). Excludes softer "
+            "subtypes (test_scenario, artificial_scenario, grader_"
+            "awareness) that have lower human-vs-judge precision per the "
+            "166-row validation in §4.4. Lets the same rollouts be "
+            "re-analyzed under a stricter bar without re-judging. The "
+            "output JSON records which strictness mode was used so "
+            "summaries can be compared side-by-side."
         ),
     )
     parser.add_argument(
@@ -778,7 +807,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         treatment=args.treatment,
         control=args.control,
     )
-    per_model = _build_per_group(strata_by_model, ("model_name",), seed=args.seed)
+    per_model = _build_per_group(
+        strata_by_model, ("model_name",),
+        seed=args.seed, bootstrap_samples=args.bootstrap_samples,
+    )
 
     # Per-(model, family): stratifies the mediation analysis by task_family
     # so the safety-channel verdict can be compared against capability-task
@@ -791,7 +823,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         control=args.control,
     )
     per_model_family = _build_per_group(
-        strata_by_family, ("model_name", "task_family"), seed=args.seed
+        strata_by_family, ("model_name", "task_family"),
+        seed=args.seed, bootstrap_samples=args.bootstrap_samples,
     )
 
     strictness = "strict" if args.strict_vea else "broad"
