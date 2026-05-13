@@ -414,6 +414,47 @@ at +0.018 [−0.030, +0.080]. Pooled by source type:
 The closed-source pooled estimate is a tight well-powered null. The
 open-source pooled estimate is a wider null.
 
+**Per-(model, family) refusal Δ inject−neutral, all 32 cells (8 models
+× 4 families, n=125 paired per cell, B=200 paired bootstrap):**
+
+| Model | knowledge | math | safety | truthfulness |
+|---|---:|---:|---:|---:|
+| claude-haiku-4-5 | +0.008 [0.000, 0.032] | +0.000 [0.000, 0.000] | +0.024 [−0.096, +0.144] | −0.008 [−0.064, +0.064] |
+| claude-sonnet-4-6 | +0.000 [0.000, 0.000] | +0.000 [0.000, 0.000] | −0.032 [−0.136, +0.096] | +0.000 [−0.056, +0.048] |
+| claude-opus-4-7 | +0.000 [0.000, 0.000] | +0.000 [0.000, 0.000] | +0.000 [−0.104, +0.128] | +0.000 [−0.056, +0.064] |
+| gpt-4o-mini | +0.000 [0.000, 0.000] | −0.002 [−0.045, +0.037] | +0.040 [−0.056, +0.160] | −0.008 [−0.064, +0.048] |
+| gpt-5.5 | +0.000 [0.000, 0.000] | +0.000 [0.000, 0.000] | +0.022 [−0.083, +0.127] | +0.008 [−0.040, +0.056] |
+| deepseek-v3.2-exp | +0.000 [0.000, 0.000] | +0.000 [0.000, 0.000] | +0.008 [−0.080, +0.088] | +0.024 [−0.032, +0.072] |
+| kimi-k2-thinking | +0.000 [0.000, 0.000] | +0.000 [0.000, 0.000] | +0.045 [−0.052, +0.151] | +0.024 [−0.016, +0.065] |
+| qwen3-235b-thinking | +0.000 [0.000, 0.000] | −0.007 [−0.026, 0.000] | +0.040 [−0.048, +0.145] | +0.040 [−0.024, +0.104] |
+
+**Zero of 32 CIs exclude zero.** Three observations on the structure
+of this null result:
+
+* **Capability families (knowledge, math) collapse to 0.000.** Refusal
+  rates are ~0 on these prompts under all conditions for all models,
+  so the inject−neutral contrast is mechanically zero. The single
+  non-zero point estimate on a capability family is gpt-4o-mini math
+  at −0.002, and that's noise at the 1-prompt level.
+* **Safety is the family with most cross-model variability.** Six of
+  eight models have positive point estimates on safety (the
+  sandbagging-on-eval prediction), claude-sonnet-4-6 is negative
+  (−0.032), and claude-opus-4-7 is exactly zero in this analysis.
+  The largest positive is kimi-k2-thinking at +0.045 [−0.052, +0.151];
+  none CI-excludes-zero at the per-(model, family) granularity.
+  The opus-4.7 safety cell shows zero here but §5.4 finds a clean
+  −0.339 paired Δ on the strict-VEA-stable stratum of the Goodfire
+  run — see that section for why the within-prompt design recovers a
+  signal the cross-protocol n=125 cell does not.
+* **Truthfulness shows a small positive trend on three open-reasoning
+  models** (deepseek +0.024, kimi +0.024, qwen3 +0.040), none CI-
+  excludes-zero. The closed-source truthfulness cells are all ≤±0.008.
+
+The per-(model, family) granularity does not change the headline
+null. It does show that the aggregate +0.002 closed-source pooled
+estimate is composed of mostly-exactly-zero cells plus a small
+amount of safety-family signal that is itself within CI of zero.
+
 ![](figures/fig1_refusal_forest.png)
 
 **Figure 1.** Per-model inject−neutral refusal Δ across all 8 frontier
