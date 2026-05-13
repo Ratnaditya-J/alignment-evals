@@ -3137,9 +3137,12 @@ def test_openrouter_non_reasoning_model_no_reasoning_flag(monkeypatch):
 
 def test_anthropic_captures_thinking_blocks_when_enabled(monkeypatch):
     """Anthropic returns extended thinking as `thinking`-type content blocks
-    when the request explicitly enables them. Capture the visible thinking
-    text so the VEA judge can read it. Required for the opus-4.7 closed-
-    source comparison in the Goodfire experiment."""
+    when the request opts in. Capture the visible thinking text so the VEA
+    judge can read it. opus-4.7 uses the adaptive thinking API: the request
+    must carry ``thinking: {type: adaptive}`` + sibling
+    ``output_config: {effort: <level>}`` (the legacy
+    ``thinking: {type: enabled, budget_tokens: N}`` shape returns HTTP 400
+    on opus-4.7). The 4096-token budget maps to effort=medium."""
     from src.eval_awareness import AnthropicClient
     captured: Dict[str, Any] = {}
 
@@ -3186,15 +3189,11 @@ def test_anthropic_captures_thinking_blocks_when_enabled(monkeypatch):
     )
     # Visible content is just the text blocks (unchanged behavior).
     assert content == "I can answer that respectfully."
-    # Thinking block is now captured.
+    # Thinking block is captured.
     assert "evaluation" in client.last_response.reasoning_trace
-    # The request opted into extended thinking.
-    assert captured["payload"]["thinking"] == {
-        "type": "enabled",
-        "budget_tokens": 4096,
-    }
-    # max_tokens must exceed the thinking budget so the visible answer fits.
-    assert int(captured["payload"]["max_tokens"]) > 4096
+    # Adaptive thinking shape — required for opus-4.7.
+    assert captured["payload"]["thinking"] == {"type": "adaptive"}
+    assert captured["payload"]["output_config"] == {"effort": "medium"}
 
 
 def test_anthropic_thinking_disabled_by_default(monkeypatch):
@@ -5850,9 +5849,10 @@ def test_anthropic_with_thinking_wrapper_injects_thinking_budget(monkeypatch):
     """The _AnthropicWithThinking wrapper exists so opus-4.7 actually
     returns `thinking` blocks under the Goodfire pipeline. Verifies the
     wrapper injects thinking_budget into config.extra before delegating
-    to AnthropicClient.generate_with_config (which is the part that
-    actually sets the `thinking: {type: enabled}` payload field, tested
-    separately in PR #34).
+    to AnthropicClient.generate_with_config. opus-4.7 uses the adaptive
+    thinking API: ``thinking: {type: adaptive}`` + sibling
+    ``output_config: {effort: ...}``. The 4096-token default budget maps
+    to effort=medium (cutoffs: <2048->low, <8192->medium, >=8192->high).
     """
     from scripts.run_goodfire_vea import _AnthropicWithThinking
     from src.eval_awareness import GenerationConfig, TranscriptInput
@@ -5893,17 +5893,55 @@ def test_anthropic_with_thinking_wrapper_injects_thinking_budget(monkeypatch):
         GenerationConfig(temperature=1.0, max_tokens=256),
     )
 
-    # Wrapper passed thinking_budget through to the providers.py request
-    # payload, which converted it into a `thinking: {type: enabled, ...}`
-    # block as expected.
-    assert captured["payload"]["thinking"] == {
-        "type": "enabled",
-        "budget_tokens": 4096,
-    }
+    # opus-4.7 needs the adaptive shape. The wrapper-supplied budget=4096
+    # maps to effort=medium per the providers.py cutoff table.
+    assert captured["payload"]["thinking"] == {"type": "adaptive"}
+    assert captured["payload"]["output_config"] == {"effort": "medium"}
     assert content == "(visible response)"
     # And the reasoning trace was captured from the `thinking` block.
     assert wrapper.last_response is not None
     assert "(model thinks here)" in wrapper.last_response.reasoning_trace
+
+
+def test_anthropic_thinking_effort_overrides_budget_mapping(monkeypatch):
+    """thinking_effort takes precedence over thinking_budget mapping.
+    A caller can force effort=high even if budget would only map to low.
+    """
+    from scripts.run_goodfire_vea import _AnthropicWithThinking
+    from src.eval_awareness import GenerationConfig, TranscriptInput
+
+    captured = {}
+
+    class FakeResponse:
+        status_code = 200
+        headers = {"request-id": "rid-fake"}
+
+        def json(self):
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+    def fake_post(url, headers, payload, timeout_seconds, retry):
+        captured["payload"] = dict(payload)
+        return FakeResponse()
+
+    import src.eval_awareness.providers as providers_module
+
+    monkeypatch.setattr(providers_module, "_post_with_retries", fake_post)
+
+    wrapper = _AnthropicWithThinking(
+        name="anthropic:claude-opus-4-7",
+        base_url="https://api.anthropic.com/v1",
+        api_key="fake-key",
+        model="claude-opus-4-7",
+        thinking_budget=512,  # would map to "low"
+        thinking_effort="high",  # explicit override
+    )
+
+    wrapper.generate_with_config(
+        TranscriptInput(user_prompt="hi"),
+        GenerationConfig(temperature=1.0, max_tokens=256),
+    )
+
+    assert captured["payload"]["output_config"] == {"effort": "high"}
 
 
 def test_anthropic_with_thinking_preserves_caller_supplied_budget(monkeypatch):

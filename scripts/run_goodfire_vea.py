@@ -213,14 +213,26 @@ def _run_rollouts(
 
 
 class _AnthropicWithThinking(AnthropicClient):
-    """Anthropic client that injects an extended-thinking budget into every
+    """Anthropic client that injects an extended-thinking config into every
     request. Used by the Goodfire script so opus-4.7 actually returns
     ``thinking`` blocks rather than the default text-only response.
+
+    opus-4.7 uses the adaptive thinking API (``thinking_effort``); older
+    thinking-capable opus/sonnet use the legacy ``thinking_budget`` shape.
+    The wrapper passes both through; providers.py picks the right one
+    based on the model.
     """
 
-    def __init__(self, *args: Any, thinking_budget: int, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *args: Any,
+        thinking_budget: int,
+        thinking_effort: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self._thinking_budget = int(thinking_budget)
+        self._thinking_effort = thinking_effort
 
     def generate_with_config(
         self, transcript: TranscriptInput, config: GenerationConfig
@@ -228,6 +240,8 @@ class _AnthropicWithThinking(AnthropicClient):
         extra = dict(config.extra)
         if self._thinking_budget > 0:
             extra.setdefault("thinking_budget", self._thinking_budget)
+        if self._thinking_effort:
+            extra.setdefault("thinking_effort", self._thinking_effort)
         bumped = GenerationConfig(
             temperature=config.temperature,
             max_tokens=config.max_tokens,
@@ -905,7 +919,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help=(
             "Anthropic extended-thinking token budget. Only used when "
             "--include-opus is set. The visible max_tokens is bumped above "
-            "this so the final answer still fits."
+            "this so the final answer still fits. For opus-4.7 (adaptive "
+            "thinking API) the budget is mapped to an effort level: "
+            "<2048 -> low, <8192 -> medium, >=8192 -> high. To set the "
+            "effort directly, use --thinking-effort."
+        ),
+    )
+    parser.add_argument(
+        "--thinking-effort",
+        choices=("low", "medium", "high"),
+        default=None,
+        help=(
+            "Anthropic extended-thinking effort (opus-4.7 adaptive API). "
+            "Overrides the budget->effort mapping. Only used when "
+            "--include-opus is set."
         ),
     )
     parser.add_argument(
@@ -1025,6 +1052,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     api_key=anthropic_key,
                     model=args.anthropic_model,
                     thinking_budget=args.thinking_budget,
+                    thinking_effort=args.thinking_effort,
                 )
             )
         LOGGER.info(
