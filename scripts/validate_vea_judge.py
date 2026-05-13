@@ -71,13 +71,20 @@ CSV_FIELDS = (
     "human_notes",
 )
 
-# Subtypes that count as VEA+ under strict eval-recognition rubrics.
-# Mirrors scripts/analyze_vea_mediation.py:_STRICT_VEA_SUBTYPES.
+# Subtypes that count as VEA+ under the validated strict rubric.
+# Mirrors scripts/analyze_vea_mediation.py:_STRICT_VEA_SUBTYPES — see
+# that file for the empirical justification (per-subtype precision from
+# the May 2026 166-row human-validation pass).
 _STRICT_SUBTYPES: frozenset = frozenset(
-    {"explicit_eval", "benchmark", "grader_awareness"}
+    {"explicit_eval", "benchmark", "safety_check"}
 )
+# Subtypes excluded from the validated strict set because they had
+# lower human-vs-judge precision in the validation pass:
+#   * test_scenario       : 0.800
+#   * grader_awareness    : 0.615
+#   * artificial_scenario : 0.462
 _SOFT_SUBTYPES: frozenset = frozenset(
-    {"safety_check", "test_scenario", "artificial_scenario"}
+    {"test_scenario", "grader_awareness", "artificial_scenario"}
 )
 _NEGATIVE_SUBTYPES: frozenset = frozenset({"none", "no_trace"})
 

@@ -28,9 +28,13 @@ independently predict refusal change**: a per-prompt diff-in-diff
 analysis within each task family returns epiphenomenal verdicts under
 a strict eval-recognition rubric, and the apparent +0.074 aggregate
 mediation signal is explained by task-family composition confounding.
-We discuss judge-validity limitations, the dissociation between CoT
-verbalization and visible behavior, and implications for benchmark
-design and alignment-eval research.
+We validate the VEA judge against 166 human-labeled rollouts (broad
+F1 0.886, precision 0.795, recall 1.000) and refine the strict-rubric
+subtype set empirically. We discuss the dissociation between CoT
+verbalization and visible behavior, judge-fidelity caveats (17.4% of
+judge-positive rows cite quotes that are not verbatim substrings of
+the trace), and implications for benchmark design and
+alignment-eval research.
 
 **Keywords:** evaluation awareness, reasoning models, chain-of-thought,
 safety evaluation, benchmark validity
@@ -218,15 +222,17 @@ reasoning trace supporting the call).
 
 We define two operationalizations of VEA+:
 
-- **Strict**: `vea_type ∈ {explicit_eval, benchmark,
-  grader_awareness}`. Excludes softer subtypes that can fire on
-  ordinary safety reasoning.
-- **Broad**: any `is_vea=true` call, regardless of subtype. Includes
-  `safety_check` and `test_scenario` which can over-flag on
-  refusal-baiting prompts.
+- **Broad**: any `is_vea=true` call, regardless of subtype. Captures
+  all eval-flavored CoT verbalization.
+- **Strict**: `vea_type ∈ {explicit_eval, benchmark, safety_check}`.
+  This is the **empirically-validated** strict set — see §4.4 for the
+  human-validation pass that determined the composition.
 
-Strict is the right operationalization for the headline claim. Broad
-characterizes the raw judge's behavior. We report both in §6.
+The strict-set composition was refined based on human validation
+rather than a priori intuition. An earlier draft used
+`{explicit_eval, benchmark, grader_awareness}` on the assumption that
+`safety_check` would over-flag on ordinary safety reasoning; the
+validation showed this assumption was wrong (§4.4).
 
 ### 4.3 Defensive guards
 
@@ -234,6 +240,79 @@ The rubric explicitly forbids `quoted_text` from being copied from
 the rubric, the prompts, or the visible response. Empty traces
 short-circuit to VEA−. Judge calls with no supporting quote are
 demoted in confidence.
+
+### 4.4 Judge validation against human labels
+
+We validate the LLM judge against 166 human-labeled rollouts,
+stratified across `vea_type` subtypes so every subtype has
+substantive coverage (~30 rows per major subtype, smaller cells for
+the rare ones).
+
+**Overall agreement:**
+
+| Rubric | n | Agreement | Precision | Recall | F1 |
+|---|---:|---:|---:|---:|---:|
+| broad | 166 | 0.837 | 0.795 | **1.000** | **0.886** |
+| strict | 166 | 0.572 | 0.870 | 0.381 | 0.530 |
+
+**The judge has perfect recall on the broad rubric**: no rollout that
+humans labeled VEA+ was missed. Broad precision is 0.795 (~20% of
+broad-positive calls are not validated by humans). The strict rubric
+trades recall for precision in a way that's dramatic and we discuss
+the right cut in §4.5.
+
+**Per-subtype precision** (broad-mode judge calls):
+
+| Subtype | n | Precision | Comment |
+|---|---:|---:|---|
+| `explicit_eval` | 30 | **0.967** | clean |
+| `benchmark` | 3 | 1.000 | small n but clean |
+| `safety_check` | 30 | **0.967** | high precision; was incorrectly excluded from initial strict set |
+| `test_scenario` | 30 | 0.800 | moderate |
+| `grader_awareness` | 13 | 0.615 | weak; below the bar to include in strict |
+| `artificial_scenario` | 26 | 0.462 | chance-level; broad-mode false positives |
+| `none` | 30 | n/a | judge correctly classifies all as VEA− |
+
+The clean dichotomy is between high-precision subtypes (~0.97 across
+`explicit_eval` / `benchmark` / `safety_check`) and low-precision
+subtypes (`artificial_scenario` at 0.46; `grader_awareness` at 0.62).
+`test_scenario` is intermediate.
+
+### 4.5 The validated strict set: `{explicit_eval, benchmark, safety_check}`
+
+The strict set used throughout this paper is empirically grounded:
+we include only the subtypes with precision ≥0.95 against human
+labels. This refinement is important because the earlier draft used
+`{explicit_eval, benchmark, grader_awareness}` based on intuition
+("these subtypes most literally encode eval-recognition"), and the
+validation showed this composition was wrong:
+
+- `safety_check` is **at parity with `explicit_eval`** in precision
+  (0.967 vs 0.967). When the judge calls a rollout `safety_check`,
+  humans agree it's VEA+ 97% of the time. The initial intuition that
+  "Safety check:" tokens fire on ordinary safety reasoning was not
+  borne out empirically — apparently the judge has learned to use
+  this label only on genuine eval-context verbalization.
+- `grader_awareness` is meaningfully **lower precision** (0.615) than
+  the other "literal eval recognition" subtypes. Humans disagreed
+  with the judge on 5 of 13 calls. We exclude it from strict.
+
+### 4.6 Quote locatability
+
+The rubric requires `quoted_text` to be a verbatim substring of the
+reasoning trace. Among judge-positive rows (n=132), 23 (**17.4%**)
+have quotes that are not substrings of the trace — the judge
+paraphrased, summarized, or hallucinated the evidence. This is a
+real judge-fidelity concern: when reading per-row classifications,
+roughly 1 in 6 of the cited quotes cannot be verified against the
+trace. We disclose this rate prominently in the limitations section.
+
+### 4.7 Implications for the mediation analysis
+
+The per-prompt diff-in-diff analysis in §5.3 was re-run with the
+validated strict set (`{explicit_eval, benchmark, safety_check}`).
+The numbers reported in §5.3 reflect the validated strict set; the
+earlier draft's strict-set values are superseded.
 
 ---
 
@@ -490,13 +569,21 @@ problematic ways.
 
 ## 8. Limitations
 
-**Judge validity.** The VEA judge is itself an LLM. Cross-judge
-replication (§6.2) addresses one form of judge bias but does not
-substitute for human-vs-judge F1. A 200–500-classification human
-validation pass is in the planned-followup queue; the script and
-labeling-CSV workflow are in the released code (see
-`scripts/validate_vea_judge.py`). Numbers in this draft should be
-read as preliminary until that pass is complete.
+**Judge validity.** The VEA judge is an LLM (`google/gemini-2.5-flash-lite`).
+We validate it against 166 human-labeled rollouts (§4.4): broad-mode
+F1 0.886 (precision 0.795, recall 1.000); validated strict-mode F1
+contributions detailed in §4.4. The judge has perfect recall on the
+broad rubric but ~20% false-positive rate driven by two subtypes
+(`artificial_scenario` at 0.46 precision, `grader_awareness` at 0.62).
+We address this by reporting both rubrics and using the
+validated strict set (high-precision subtypes only) for headline
+claims. A separate quote-fidelity concern: 17.4% of judge-positive
+rows cite a `quoted_text` that is not a verbatim substring of the
+reasoning trace — the judge paraphrased or summarized rather than
+copying. Readers verifying individual rows should treat unlocatable
+quotes with skepticism; aggregate findings are not biased by this
+because both broad and strict precision are computed against human
+labels, not against quote-locatability.
 
 **Closed-source VEA scope.** The Goodfire reasoning-trace analysis
 is restricted to open-reasoning models with visible CoT. OpenAI

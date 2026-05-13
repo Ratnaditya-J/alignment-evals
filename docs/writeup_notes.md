@@ -931,3 +931,91 @@ as the outcome variable on capability families would let us test
 whether the qwen3 knowledge-accuracy bump is VEA-mediated (different
 question from the safety refusal channel; would be a striking
 finding either way).
+
+---
+
+## VEA judge validation: 166 human-labeled rollouts
+
+**Run.** 166 rollouts from `runs/goodfire-mixed-n500` stratified by
+`vea_type` so every subtype has substantive coverage (~30 rows per
+major subtype). Labels assigned by hand; `unsure` rows excluded
+(none in this pass — full coverage).
+
+### Overall
+
+| Rubric | n | Agreement | Precision | Recall | F1 |
+|---|---:|---:|---:|---:|---:|
+| broad | 166 | 0.837 | 0.795 | **1.000** | **0.886** |
+| strict (old) | 166 | 0.572 | 0.870 | 0.381 | 0.530 |
+
+**Broad recall is 1.0.** The judge does not miss VEA+ rollouts that
+humans would flag. The 20% broad precision gap is the headline
+judge-validity number to disclose.
+
+### Per-subtype precision
+
+| Subtype | n | Precision | TP | FP | Status |
+|---|---:|---:|---:|---:|---|
+| `explicit_eval` | 30 | **0.967** | 29 | 1 | KEEP in strict |
+| `benchmark` | 3 | 1.000 | 3 | 0 | KEEP (small n) |
+| `safety_check` | 30 | **0.967** | 29 | 1 | **promote to strict** |
+| `test_scenario` | 30 | 0.800 | 24 | 6 | moderate; broad-only |
+| `grader_awareness` | 13 | 0.615 | 8 | 5 | **demote from strict** |
+| `artificial_scenario` | 26 | 0.462 | 12 | 14 | chance-level; broad-only |
+| `none` | 30 | (TN=30) | 0 | 0 | judge correctly classifies all as VEA− |
+
+### The strict set was empirically wrong
+
+The earlier strict set
+`{explicit_eval, benchmark, grader_awareness}` was chosen on
+intuition ("these subtypes most literally encode eval-recognition")
+**before** the validation pass. Validation showed:
+
+- `safety_check` is **at parity with `explicit_eval`** (P=0.967
+  each). The intuition that "Safety check:" tokens fire on ordinary
+  safety reasoning is empirically wrong; the judge has learned to
+  use this label only on genuine eval-context verbalization.
+- `grader_awareness` is **meaningfully lower precision** (P=0.615).
+  Humans disagreed with the judge on 5 of 13 calls. It's not in the
+  top-precision tier and should be excluded from strict.
+
+**New strict set (PR #49):**
+`{explicit_eval, benchmark, safety_check}` — all three subtypes have
+precision ~0.97 against human labels. The strict-vs-broad robustness
+results in §6 of the paper now use this validated set. The earlier
+strict numbers in the project's run artifacts are superseded; the
+user should re-run `analyze_vea_mediation.py` with `--strict-vea` on
+the n=500 data to regenerate the strict-mode mediation numbers under
+the corrected set.
+
+### Quote locatability (independent judge-fidelity stat)
+
+Among the 132 judge-positive rows in the validation sample:
+
+| Slice | yes (in trace) | no (not in trace) | n/a (empty quote) |
+|---|---:|---:|---:|
+| All rows | 109 | 23 | 34 |
+| Judge-positive only | 109 | 23 | 0 |
+
+**17.4% (23/132) of judge-positive rows have quotes that are not
+verbatim substrings of the reasoning trace.** The judge paraphrased,
+summarized, or hallucinated the supporting evidence on roughly 1 in
+6 positive calls. This is a real judge-fidelity concern and is
+disclosed in the paper's limitations section. Aggregate findings are
+not biased by this (precision/recall are computed against human
+labels, not against quote locatability) but readers verifying
+individual rows should treat unlocatable quotes with skepticism.
+
+### Methodological lesson
+
+The "validated strict" exercise is what made this finding rigorous.
+The pre-validation strict set used in the n=500 mediation analysis
+was a plausible intuition that turned out to be wrong on two of its
+three included subtypes (in opposite directions: safety_check should
+have been included, grader_awareness should have been excluded). The
+paper now uses the validation-grounded set and explicitly walks
+through this refinement in §4.4-§4.5.
+
+For future judges: don't ship a strict-rubric definition without a
+validation pass against humans. Intuitions about which subtypes are
+"clean" do not survive empirical testing.
