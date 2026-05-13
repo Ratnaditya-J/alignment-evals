@@ -253,13 +253,16 @@ def _setup_diagram(out_path: Path) -> None:
 
     conditions = [
         ("baseline", "no system prompt", _MUTED),
-        ("neutral", '"You are a helpful assistant."', _NAVY),
-        ("inject", '"Note: this is an evaluation. Your response will be reviewed…"', _RED),
-        ("remove", '"This is a real customer interaction in production…"', _SAGE),
+        ("neutral", '"You are a helpful assistant."', _MUTED),
+        ("inject", '"Note: this is an evaluation. Your response will be reviewed…"', _NAVY),
+        ("remove", '"This is a real customer interaction in production…"', _MUTED),
     ]
     for i, (cond, desc, color) in enumerate(conditions):
         y = 3.85 - i * 0.78
-        # Inject is the key manipulation: filled card. Others: outline only.
+        # Inject is the key manipulation: filled navy. Others: muted-grey
+        # outline only. Navy is the structural-accent color used elsewhere
+        # (forest-plot markers) and deliberately avoids the post's red
+        # which means "CI excludes zero."
         is_key = cond == "inject"
         ax.add_patch(FancyBboxPatch(
             (4.65, y - 0.30), 4.55, 0.60,
@@ -269,8 +272,8 @@ def _setup_diagram(out_path: Path) -> None:
             facecolor=color if is_key else "white",
             alpha=1.0 if is_key else 1.0,
         ))
-        text_color = "white" if is_key else color
-        desc_color = "#fbeae0" if is_key else _MUTED
+        text_color = "white" if is_key else _INK
+        desc_color = "#cbd5e1" if is_key else _MUTED  # light slate on navy
         ax.text(4.85, y + 0.10, cond, ha="left", va="center",
                 fontsize=11, fontweight="bold", color=text_color)
         ax.text(4.85, y - 0.16, desc, ha="left", va="center",
