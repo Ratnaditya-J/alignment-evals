@@ -796,10 +796,16 @@ class AnthropicClient:
         # an opus-4.7+ model, map budget -> effort using fixed cutoffs.
         thinking_budget = extra.pop("thinking_budget", None)
         thinking_effort = extra.pop("thinking_effort", None)
+        # opus-4.7 silently defaults thinking.display to "omitted", which
+        # returns a thinking content block with `thinking: ""` (only the
+        # opaque signature). Override to "summarized" so the API returns
+        # the summarized CoT text — required for any consumer that wants
+        # to read the reasoning trace (e.g. the VEA judge). Note: this
+        # is a *summary* of the full CoT produced by a separate model;
+        # full unsummarized CoT is sales-gated by Anthropic and not
+        # available via the public API.
+        thinking_display = extra.pop("thinking_display", "summarized")
         if (thinking_budget or thinking_effort) and is_reasoning:
-            # opus-4.7+ requires the adaptive shape. Detect by reusing the
-            # same prefix list that gates the temperature/top_p strip — any
-            # model in that list rejects the legacy thinking shape.
             if thinking_effort is None and thinking_budget is not None:
                 budget = int(thinking_budget)
                 if budget < 2048:
@@ -808,7 +814,10 @@ class AnthropicClient:
                     thinking_effort = "medium"
                 else:
                     thinking_effort = "high"
-            payload["thinking"] = {"type": "adaptive"}
+            payload["thinking"] = {
+                "type": "adaptive",
+                "display": thinking_display,
+            }
             payload["output_config"] = {"effort": str(thinking_effort)}
         elif thinking_budget:
             # Non-reasoning model that still supports the legacy budget
