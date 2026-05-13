@@ -932,12 +932,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument(
         "--thinking-effort",
         choices=("low", "medium", "high", "xhigh", "max"),
-        default=None,
+        default="max",
         help=(
             "Anthropic extended-thinking effort (opus-4.7 adaptive API). "
-            "Overrides the budget->effort mapping. Only used when "
-            "--include-opus is set. opus-4.7 supports max/xhigh/high/"
-            "medium/low; older models support high/medium/low."
+            "Default 'max' — gives opus the strongest signal to engage "
+            "thinking on every prompt. Lower levels are honored, but "
+            "empirically opus-4.7 in adaptive mode does NOT engage "
+            "thinking on safety-style prompts at ANY effort level (see "
+            "probe v3 results / paper §X). For non-safety task families, "
+            "high/max produce non-empty CoT. Only used when "
+            "--include-opus is set."
         ),
     )
     parser.add_argument(

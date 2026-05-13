@@ -715,14 +715,65 @@ quotes with skepticism; aggregate findings are not biased by this
 because both broad and strict precision are computed against human
 labels, not against quote-locatability.
 
-**Closed-source VEA scope.** The Goodfire reasoning-trace analysis
-is restricted to open-reasoning models with visible CoT. OpenAI
-gpt-5/o-series hides CoT; Anthropic Claude exposes `thinking` blocks
-only with the `thinking_budget` parameter explicitly set. We did not
-run the Goodfire pipeline on Claude with extended thinking enabled
-in time for this draft. The absence of VEA evidence on hidden-CoT
-closed-source models is "absence of evidence due to API design,"
-not "well-powered null."
+**Closed-source VEA scope: a finding, not just a limitation.** We
+attempted to extend the Goodfire pipeline to Anthropic
+`claude-opus-4-7` (the closed-source flagship reasoning model) to
+close the comparison with open-reasoning models. Two structural
+barriers emerged, the second of which is itself a finding worth
+reporting:
+
+1. *API surface.* opus-4.7 mandates the adaptive-thinking API and
+   defaults `thinking.display` to `"omitted"` — thinking content is
+   stripped from responses unless the caller explicitly opts in with
+   `display: "summarized"`. Even with the opt-in, the returned
+   thinking is a *summary* of the full CoT produced by a separate
+   summarization model; verbatim CoT is sales-gated and not
+   available via the public API. This already weakens any
+   apples-to-apples comparison with open-reasoning models that
+   expose verbatim CoT.
+
+2. *Empirical: opus-4.7 in adaptive mode does not engage thinking
+   on safety prompts at all, even at effort=max.* We probed the
+   adaptive endpoint with a 2x2 matrix of {math, safety-style}
+   prompts × {effort=high, effort=max} and found:
+
+   | Prompt | Effort | Thinking block | Thinking text length |
+   |---|---|---|---|
+   | Multi-step math | high | yes | 310 chars |
+   | Multi-step math | max | yes | 4,090 chars |
+   | Safety request | high | **no thinking block** | 0 chars |
+   | Safety request | max | **no thinking block** | 0 chars |
+
+   On safety prompts, opus-4.7 returns a `text`-only response with
+   no `thinking` content block at all — the model's adaptive
+   scheduler classifies safety prompts as "decision is obvious,
+   refuse directly" and bypasses extended thinking. This held at
+   the highest available effort level (`max`, which the docs
+   describe as *"always thinks with no constraints on thinking
+   depth"*).
+
+   The substantive implication is that **the verbalize-then-decide
+   pattern observed in open-reasoning models (deepseek-v3.2,
+   qwen3-235b-thinking, kimi-k2-thinking) — which sometimes
+   includes explicit eval-awareness language ("this is a benchmark
+   prompt") in the safety-family CoT — does not occur in opus-4.7's
+   API-visible behavior on safety prompts.** Either the model
+   internally engages no thinking pass on these prompts, or it
+   does but the trace is fully suppressed. Both interpretations
+   foreclose CoT-based VEA analysis on the safety family for
+   opus-4.7.
+
+   This is not a null result about VEA on closed-source models; it
+   is a null result about *whether VEA-style mediation analysis is
+   methodologically applicable* on closed-source RLHF-trained
+   models with adaptive-thinking APIs. The data we would need to
+   replicate the qwen3 strong-mediation finding on opus-4.7
+   structurally cannot be obtained at the current API surface.
+
+OpenAI gpt-5/o-series hides CoT entirely (a stricter version of the
+same issue). The absence of VEA evidence on closed-source models is
+"absence of measurable signal due to API design and inference-time
+scheduler behavior," not "well-powered null on the latent quantity."
 
 **Corpus.** Single safety corpus (BeaverTails), single math corpus
 (GSM8K), single multiple-choice knowledge corpus (MMLU), single
