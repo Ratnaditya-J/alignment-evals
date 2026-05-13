@@ -9,12 +9,18 @@ __pycache__/
 # the corresponding cross_protocol command. Not source.
 runs/
 
-# Paper release artifacts. release/ is built by scripts/build_paper.sh
-# from docs/paper_draft.md + docs/figures/. docs/figures/ is generated
-# by scripts/generate_paper_figures.py from the run JSONs. Both are
-# derivable; don't commit.
+# Paper release bundle: built locally by scripts/build_paper.sh from
+# docs/paper_draft.md + docs/figures/ for sharing outside GitHub (as a
+# tarball or directory). It's a transient build artifact; the canonical
+# GitHub-viewable copy of the paper lives at docs/paper_draft.md.
 release/
-docs/figures/
+
+# Note: docs/figures/*.png IS committed so docs/paper_draft.md renders
+# correctly on GitHub. The figures are rendered by
+# scripts/generate_paper_figures.py from the run JSONs and are
+# treated as the canonical visualization of those numbers — equivalent
+# to committing rendered paper text alongside LaTeX source. Regenerate
+# when run JSONs change; commit the updated PNGs.
 .Python
 build/
 develop-eggs/
