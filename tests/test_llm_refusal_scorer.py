@@ -5699,3 +5699,143 @@ def test_build_paper_latex_respects_build_pdf_zero(tmp_path, monkeypatch):
     assert len(log_lines) == 1
     assert "--to=latex" in log_lines[0]
     assert "Skipping PDF build" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Goodfire script: --corpus-offset (pre-registered replication tooling)
+# ---------------------------------------------------------------------------
+
+
+def test_run_rollouts_corpus_offset_picks_disjoint_slice(monkeypatch):
+    """corpus_offset=N must shift the slice taken from the dataset so the
+    returned examples don't overlap with the first N. Verified by stubbing
+    _build_corpus to return a deterministic sequence and checking the
+    sliced result.
+
+    Used by pre-registered replication runs that must operate on a prompt
+    sample disjoint from a prior run.
+    """
+    from scripts import run_goodfire_vea as script_module
+
+    captured = {}
+
+    def fake_build_corpus(n, **kwargs):
+        # Returns deterministic examples so the slice can be verified
+        # by index.
+        captured["requested"] = n
+        captured["kwargs"] = kwargs
+        # Return EvalAwarenessExample-like stubs with example_id encoding
+        # their position in the dataset.
+        from src.eval_awareness import EvalAwarenessExample, TranscriptInput
+
+        return [
+            EvalAwarenessExample(
+                example_id=f"ds:{i}",
+                label="safety_eval",
+                task_family="safety",
+                source="stub",
+                transcript=TranscriptInput(user_prompt=f"p{i}"),
+                expected_behavior="refuse",
+                scorer_names=("refusal",),
+            )
+            for i in range(n)
+        ]
+
+    monkeypatch.setattr(script_module, "_build_corpus", fake_build_corpus)
+    # Also stub run_arxiv_protocol so we don't try to dispatch real models.
+    monkeypatch.setattr(
+        script_module, "run_arxiv_protocol", lambda *a, **kw: None
+    )
+
+    # Default behaviour: offset=0 picks the first N.
+    script_module._run_rollouts(
+        models=[],
+        n_examples=10,
+        safety_only=True,
+        allow_network=False,
+        max_concurrent=1,
+        thinking_budget=0,
+        seed=0,
+        corpus_offset=0,
+    )
+    # No oversize requested when offset is 0; loader called with exactly N.
+    assert captured["requested"] == 10
+
+    # With offset=5: request 15 from loader, slice [5:15] -> ex_ids ds:5..ds:14.
+    examples_seen = []
+
+    def capture_examples(models, examples, **kwargs):
+        nonlocal examples_seen
+        examples_seen = list(examples)
+
+    monkeypatch.setattr(script_module, "run_arxiv_protocol", capture_examples)
+
+    script_module._run_rollouts(
+        models=[],
+        n_examples=10,
+        safety_only=True,
+        allow_network=False,
+        max_concurrent=1,
+        thinking_budget=0,
+        seed=0,
+        corpus_offset=5,
+    )
+    assert captured["requested"] == 15
+    assert [e.example_id for e in examples_seen] == [f"ds:{i}" for i in range(5, 15)]
+
+
+def test_run_rollouts_corpus_offset_errors_on_oversized_offset(monkeypatch):
+    """If the loaded corpus is smaller than the requested offset, the
+    script must error out clearly rather than returning an empty slice
+    or silently truncating."""
+    from scripts import run_goodfire_vea as script_module
+    from src.eval_awareness import EvalAwarenessExample, TranscriptInput
+
+    def small_corpus(n, **kwargs):
+        # Returns 5 examples even when 100 are requested (simulates a
+        # dataset that doesn't have enough rows).
+        return [
+            EvalAwarenessExample(
+                example_id=f"ds:{i}",
+                label="safety_eval",
+                task_family="safety",
+                source="stub",
+                transcript=TranscriptInput(user_prompt=f"p{i}"),
+                expected_behavior="refuse",
+                scorer_names=("refusal",),
+            )
+            for i in range(5)
+        ]
+
+    monkeypatch.setattr(script_module, "_build_corpus", small_corpus)
+    monkeypatch.setattr(script_module, "run_arxiv_protocol", lambda *a, **kw: None)
+
+    with pytest.raises(ValueError, match="corpus_offset=10 exceeds"):
+        script_module._run_rollouts(
+            models=[],
+            n_examples=5,
+            safety_only=True,
+            allow_network=False,
+            max_concurrent=1,
+            thinking_budget=0,
+            seed=0,
+            corpus_offset=10,
+        )
+
+
+def test_run_rollouts_corpus_offset_rejects_negative_values():
+    """Defensive: a negative offset is a caller error and should raise
+    immediately rather than producing surprising slice behavior."""
+    from scripts.run_goodfire_vea import _run_rollouts
+
+    with pytest.raises(ValueError, match="corpus_offset must be >= 0"):
+        _run_rollouts(
+            models=[],
+            n_examples=10,
+            safety_only=True,
+            allow_network=False,
+            max_concurrent=1,
+            thinking_budget=0,
+            seed=0,
+            corpus_offset=-1,
+        )
