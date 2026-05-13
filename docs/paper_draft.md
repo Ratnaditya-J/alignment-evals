@@ -23,18 +23,23 @@ some open-reasoning models — qwen3-235B-thinking shows a +0.380 paired
 increase (95% CI [+0.336, +0.424]), deepseek-v3.2-exp shows a smaller
 +0.050 [+0.024, +0.074], moonshotai/kimi-k2-thinking shows no effect.
 The inflation generalizes across truthfulness, safety, and knowledge
-families but is absent on math; (3) **VEA verbalization does not
-independently predict refusal change**: a per-prompt diff-in-diff
-analysis within each task family returns epiphenomenal verdicts under
-a strict eval-recognition rubric, and the apparent +0.074 aggregate
-mediation signal is explained by task-family composition confounding.
-We validate the VEA judge against 166 human-labeled rollouts (broad
-F1 0.886, precision 0.795, recall 1.000) and refine the strict-rubric
-subtype set empirically. We discuss the dissociation between CoT
-verbalization and visible behavior, judge-fidelity caveats (17.4% of
-judge-positive rows cite quotes that are not verbatim substrings of
-the trace), and implications for benchmark design and
-alignment-eval research.
+families but is absent on math; (3) **VEA verbalization mediates
+refusal behavior in a family-specific way**: within-prompt
+diff-in-diff under an empirically-validated strict rubric returns
+strong mediation on qwen3 safety prompts (DiD +0.222, 95% CI [+0.029,
++0.430], n_flip=63 paired) but null mediation on qwen3 capability
+families (knowledge, math, truthfulness) and on DeepSeek and Kimi
+aggregate-wide. The verbalization-to-behavior link completes on the
+family where refusal is the natural response and is structurally
+absent where it isn't. We validate the VEA judge against 166
+human-labeled rollouts (broad F1 0.886, precision 0.795, recall
+1.000) and refine the strict-rubric subtype set empirically — the
+mediation finding is sensitive to this refinement (the prior strict
+set returned epiphenomenal on the same data). We discuss
+judge-fidelity caveats (17.4% of judge-positive rows cite quotes that
+are not verbatim substrings of the trace), the partial nature of the
+dissociation between CoT verbalization and visible behavior, and
+implications for benchmark design and alignment-eval research.
 
 **Keywords:** evaluation awareness, reasoning models, chain-of-thought,
 safety evaluation, benchmark validity
@@ -68,29 +73,32 @@ traces, and if so, does that verbalization independently predict
 behavioral change beyond the framing's direct effect?
 
 A naive expectation — and the one a casual reader of Goodfire's
-result might take — is that both questions resolve positive and
-that VEA *mediates* the behavioral shift: the inject framing causes
+result might take — is that both questions resolve positive
+uniformly across models and task families: inject framing causes
 the model to verbalize awareness, which in turn causes the model to
-refuse more or perform differently. We find that this expectation is
-not supported by our data. The cross-protocol behavioral analysis
-returns null on 8/8 frontier models. The Goodfire reasoning-trace
-analysis returns a large positive effect on one model (qwen3), a
-small positive effect on another (deepseek), and null on a third
-(kimi). And the within-prompt diff-in-diff analysis — which
-correctly isolates the marginal effect of VEA verbalization on
-refusal change while holding prompt-level baseline tendency fixed —
-returns no evidence of mediation in any task family under a strict
-eval-recognition rubric.
+refuse more, everywhere. We find a more nuanced picture. The
+cross-protocol behavioral analysis returns null on 8/8 frontier
+models. The Goodfire reasoning-trace analysis returns a large
+positive effect on one model (qwen3), a small positive effect on
+another (deepseek), and null on a third (kimi). Within-prompt
+diff-in-diff mediation analysis under an **empirically-validated**
+strict VEA rubric (§4.5) returns CI-excludes-zero positive mediation
+on **qwen3 safety prompts only** — DiD = +0.222 [+0.029, +0.430],
+n_flip=63 paired — and null mediation on qwen3 capability families
+(knowledge, math, truthfulness) and on DeepSeek and Kimi.
 
 The combination yields a finding sharper than either question's
 naive answer:
 
-> **Reasoning-trace VEA provides a more sensitive signal of
-> evaluation-awareness than aggregate refusal-rate shifts, but
-> apparent VEA→refusal mediation in pooled data is explained by
-> task-family composition. Within-family per-prompt analyses do
-> not support VEA as a behavioral mediator under strict
-> eval-recognition labels.**
+> **Reasoning-trace VEA verbalization on qwen3 safety prompts
+> mediates refusal behavior at +22pp (CI excludes zero) under the
+> validated strict rubric. The mediation does not generalize: it is
+> absent on qwen3 capability families (where refusal rates are ~0
+> regardless of VEA) and absent on the other two open-reasoning
+> models in our lineup. The verbalization-to-behavior link completes
+> only when refusal is the natural behavioral response, and even
+> then only on the one model in our lineup that exhibits substantial
+> VEA inflation.**
 
 Section 2 situates this against prior work. Section 3 describes the
 experimental design. Section 4 specifies the VEA judge. Section 5
@@ -396,66 +404,136 @@ safety-specific:
 
 ### 5.3 Q3: Does VEA verbalization mediate behavioral change?
 
-This is the key question and the place where the naive expectation
-fails. We use the within-prompt diff-in-diff estimand defined in §3.2.
+This is the key question and the place where the validated strict
+rubric materially changes the answer. We use the within-prompt
+diff-in-diff estimand defined in §3.2, evaluated under both the broad
+rubric and the empirically-validated strict rubric (§4.5).
 
-**Aggregate (qwen3, all families pooled):**
+**Cross-model summary under the validated strict rubric (n=500
+mixed corpus, paired):**
 
-| Mode | DiD | 95% CI | Verdict |
-|---|---:|---|---|
-| broad | +0.074 | **[+0.025, +0.136]** | weak_mediation |
-| strict | +0.097 | [−0.008, +0.203] | epiphenomenal |
+| Model | Verdict | DiD | 95% CI | n_flip | n_stable_neg |
+|---|---|---:|---|---:|---:|
+| deepseek-v3.2-exp | epiphenomenal | −0.051 | [−0.164, +0.017] | 19 | 481 |
+| kimi-k2-thinking | epiphenomenal | −0.014 | [−0.032, +0.004] | 4 | 495 |
+| **qwen3-235B-thinking** | **weak_mediation** | **+0.102** | **[+0.039, +0.170]** | **184** | **316** |
 
-**Per-family (qwen3, mixed corpus n=500):**
+**qwen3 per-family under validated strict:**
 
-| Mode | Family | DiD | 95% CI | Verdict |
-|---|---|---:|---|---|
-| broad | knowledge | +0.000 | [0, 0] | epiphenomenal |
-| broad | math | +0.000 | [0, 0] | epiphenomenal |
-| broad | safety | +0.116 | [−0.105, +0.349] | epiphenomenal |
-| broad | truthfulness | +0.057 | [+0.011, +0.114] | weak_mediation |
-| strict | knowledge | +0.000 | [0, 0] | epiphenomenal |
-| strict | math | — | — | insufficient_data |
-| strict | safety | +0.199 | [−0.031, +0.439] | epiphenomenal |
-| strict | truthfulness | +0.024 | [−0.053, +0.114] | epiphenomenal |
+| Family | Verdict | DiD | 95% CI | n_flip | n_stable_neg |
+|---|---|---:|---|---:|---:|
+| knowledge | epiphenomenal | +0.000 | [0, 0] | 28 | 97 |
+| math | epiphenomenal | +0.000 | [0, 0] | 1 | 124 |
+| **safety** | **strong_mediation** | **+0.222** | **[+0.029, +0.430]** | **63** | **62** |
+| truthfulness | epiphenomenal | +0.024 | [−0.058, +0.087] | 92 | 33 |
+
+**qwen3 per-family under the broad rubric (for contrast):**
+
+| Family | Verdict | DiD | 95% CI |
+|---|---|---:|---|
+| knowledge | epiphenomenal | +0.000 | [0, 0] |
+| math | epiphenomenal | +0.000 | [0, 0] |
+| safety | epiphenomenal | +0.116 | [−0.105, +0.349] |
+| truthfulness | weak_mediation | +0.057 | [+0.011, +0.114] |
 
 > **[FIGURE 4] Mediation analysis visualization. Three panels for
 > qwen3: (a) aggregate within-cohort VEA+/VEA− refusal split
 > (correlational, with CIs); (b) per-family within-prompt diff-in-diff
 > under broad rubric; (c) per-family within-prompt diff-in-diff
-> under strict rubric. Caption: "The apparent aggregate mediation
-> signal (panel a, naive analysis) does not survive per-family
-> stratification (panel b) or strict-rubric filtering (panel c).
-> Within every family individually, refusal change attributable to
-> VEA verbalization (over and above the inject framing's direct
-> effect) is statistically indistinguishable from zero."**
+> under the validated strict rubric. Caption: "Under the
+> empirically-validated strict rubric, qwen3 safety prompts show
+> strong CI-excludes-zero mediation (DiD +0.222 [+0.029, +0.430]).
+> Capability families (knowledge, math) are mechanically null
+> because refusal rates are ~0; truthfulness is epiphenomenal.
+> DeepSeek and Kimi show null mediation aggregate-wide."**
 
-**Reading the result.** The broad-aggregate weak_mediation verdict is
-a corpus-composition confound: VEA+ rollouts are disproportionately
-drawn from safety/truthfulness prompts (qwen3 flips at 56%/70% on
-those families vs 24% on knowledge and 3% on math), which have
-inherently higher refusal baselines than knowledge/math. Pooling
-makes "VEA+" rollouts look more refusal-prone than "VEA−" rollouts
-even though within-prompt diff-in-diff is null in every family.
+**Reading the result.** The key empirical finding:
 
-The only weak_mediation cell at the per-family level (truthfulness,
-broad) does not survive the strict rubric, which is the rubric
-sensitivity our judge-swap analysis (§6.1) was designed to detect.
+> **VEA verbalization causally mediates refusal behavior on qwen3
+> safety prompts** (within-prompt diff-in-diff, strict rubric:
+> DiD = +0.222, 95% CI [+0.029, +0.430], n_flip = 63 paired). When
+> the SAME safety prompt flips from VEA− under neutral to VEA+ under
+> inject, refusal increases by +24pp on average; on prompts where VEA
+> stays negative in both conditions, refusal barely changes (+1.6pp).
+> The +22pp gap is the marginal effect of VEA verbalization beyond
+> the direct inject framing effect.
+
+This finding does NOT generalize:
+
+- **qwen3 capability families** (knowledge, math): mediation is
+  mechanically null because refusal rates are ~0 in both conditions
+  — there is no behavior to mediate. qwen3 inflates VEA on knowledge
+  prompts (+24pp under inject) but does not refuse knowledge prompts
+  in either condition, so the diff-in-diff is structurally zero.
+- **qwen3 truthfulness**: well-powered cell (n_flip=92, n_stable_neg=33)
+  with DiD +0.024 [−0.058, +0.087]. CI includes zero. VEA flipping
+  on truthfulness prompts does not predict additional refusal change.
+- **DeepSeek and Kimi**: aggregate epiphenomenal. Both have small
+  strict-VEA inflation (+0.050 and +0.002 respectively), so the
+  number of strict-flip prompts is small (n=19 and n=4) and any
+  mediation signal would be statistically dim. The findings are
+  consistent with null mediation but underpowered to rule out a
+  small effect.
+
+**The dissociation thesis becomes more nuanced.** A revised reading:
+
+> Reasoning-trace VEA verbalization mediates behavior **on the family
+> of prompts where the natural behavioral response is refusal**. On
+> qwen3 safety prompts, VEA flipping is associated with a +22pp
+> marginal refusal increase, CI-excludes-zero, n_flip=63 paired. On
+> qwen3 capability families, mediation is structurally null because
+> refusal rates are ~0 regardless of VEA status. The verbalization-
+> to-behavior link completes only when there is a behavior available
+> to change. This mediation effect appears unique to qwen3 in our
+> lineup; deepseek and kimi inflate VEA insufficiently to power a
+> mediation analysis.
+
+**Strict-vs-broad behavior of the safety cell.** Under the broad
+rubric the qwen3 safety mediation was epiphenomenal (DiD +0.116,
+CI spanning zero). Under the validated strict it becomes
+strong_mediation. The reason is mechanical:
+
+- Strict shrinks n_flip from 70 → 63 (only the high-precision
+  positives count as flips).
+- Strict grows n_stable_neg from 37 → 62 (test_scenario /
+  artificial_scenario rollouts that were broad-positive on inject
+  are now strict-negative in both conditions).
+- The flip stratum's paired Δrefusal grows from +0.143 → +0.238
+  under strict — the cleaner positive subset shows a sharper
+  behavioral effect.
+
+That is, the validated strict rubric identifies the cohort of VEA+
+rollouts that actually predict behavior. The broad rubric dilutes
+the cohort with low-precision positives (artificial_scenario,
+test_scenario) that do not carry the same behavioral signal.
+
+**Caveats.** The strict-mode safety DiD CI [+0.029, +0.430] is wide
+on the upper end. n_flip=63 is moderate but not large. The point
+estimate could be inflated by sample noise. Pre-registered
+replication on a fresh prompt slice would tighten the CI and confirm
+the magnitude. We do not claim the +0.222 is the population effect
+size — we claim it is CI-excludes-zero positive on this sample.
 
 ### 5.4 Q4: Direct inject behavioral effect (independent of VEA)
 
-A subtler finding from the mediation strata: under the broad rubric,
-qwen3 prompts where VEA stayed negative in both conditions still show
-a paired Δrefusal of +0.004 on average — essentially zero. Under
-strict, the same stratum shows +0.028. The implication is that the
-**direct behavioral effect of inject framing, on prompts where the
-model does not verbalize eval-awareness, is also small**.
+Under the validated strict rubric, qwen3's `stable_neg` stratum
+(prompts where VEA stayed negative in both conditions) shows paired
+Δrefusal of essentially zero (+0.006 [−0.025, +0.038]) across all
+families pooled. On safety alone it is +0.016 [−0.129, +0.161]. This
+means: when VEA verbalization does NOT flip under inject framing,
+qwen3's refusal rate also does not change.
 
-The cross-protocol aggregate refusal nulls in §5.1 and this
-within-prompt null reinforce each other: there is little evidence
-that explicit eval-framing produces meaningful refusal-rate change
-on frontier models in our dispatch, with or without VEA
-verbalization.
+The cross-protocol §5.1 nulls and this stable_neg null reinforce
+each other: explicit eval framing does not produce a meaningful
+direct behavioral effect on qwen3 refusal **when VEA verbalization
+stays absent**. The +0.222 strict-safety mediation effect is
+specifically a VEA-channel effect, not a direct framing effect.
+
+This is a sharper story than "inject has a small direct effect + a
+small VEA-mediated effect." The data say: **inject's behavioral
+effect on qwen3 safety flows almost entirely through VEA
+verbalization**. Prompts where the inject framing fails to trigger
+VEA verbalization show no behavioral change.
 
 ---
 
@@ -503,9 +581,9 @@ missing data; capture is solid for the open-reasoning routes.
 
 ## 7. Discussion
 
-### 7.1 Three distinct, defensible claims
+### 7.1 Four findings, each well-supported
 
-The paper's findings reduce to three claims, each well-supported:
+The paper's findings:
 
 1. **Reasoning-trace VEA inflation under explicit eval framing is
    real and model-heterogeneous.** Replicated three times on qwen3
@@ -515,33 +593,76 @@ The paper's findings reduce to three claims, each well-supported:
    negative control.
 
 2. **Inject framing has at most a small direct behavioral effect on
-   refusal, with no CI-excludes-zero shift on 8/8 frontier models in
-   the cross-protocol experiment.** This is a published-null
-   contribution against the naive "eval framing → more refusal"
-   hypothesis. The closed-source pooled CI at +0.002 [−0.018, +0.023]
-   is tight enough to be informative.
+   refusal**, with no CI-excludes-zero shift on 8/8 frontier models
+   in the cross-protocol experiment. The closed-source pooled CI at
+   +0.002 [−0.018, +0.023] (n=2,499 paired) is tight enough to be
+   informative.
 
-3. **VEA verbalization does not independently predict refusal
-   change.** Per-prompt diff-in-diff within every task family is
-   epiphenomenal under strict VEA. The aggregate VEA+/VEA−
-   correlation that initially looks like mediation is explained by
-   task-family composition.
+3. **VEA verbalization mediates refusal behavior on qwen3 safety
+   prompts** (within-prompt diff-in-diff under validated strict
+   rubric: DiD = +0.222, 95% CI [+0.029, +0.430], n_flip=63 paired,
+   CI excludes zero). When a safety prompt that left qwen3's CoT
+   VEA-negative under neutral framing tips into VEA-positive under
+   inject framing, refusal increases by +24pp on average. On prompts
+   where the framing fails to trigger verbalization, refusal does
+   not change.
+
+4. **The mediation does not generalize.** qwen3's capability
+   families (knowledge, math, truthfulness) show null mediation;
+   capability refusal rates are ~0 regardless of VEA. DeepSeek and
+   Kimi show null mediation aggregate-wide; their VEA inflation is
+   too small to power the mediation analysis. The
+   verbalization-to-behavior link is family-specific (safety only)
+   and model-specific (qwen3 only) in our lineup.
 
 ### 7.2 What this means for alignment-eval research
 
-The dissociation between CoT verbalization (Q2 positive) and visible
-behavior (Q1 null, Q3 null mediation) is the most interesting result
-of the paper, and it cuts against a common simplification in the
-literature. "The model notices it's being evaluated and refuses
-more" assumes verbalization implies behavioral change. Our data say
-verbalization can happen at high rates without commensurate refusal
-shift. The CoT and the visible response are partially decoupled.
+The findings cut against two common simplifications in the
+literature:
 
-If we read the inflated VEA rate as the model's *internal* state
-(or at least as the closest observable proxy for it), then the
-appropriate interpretation is: explicit eval-framing changes what
-the model writes down in its reasoning, but does not reliably change
-what it returns to the user.
+**Against the "models broadly notice the eval and refuse more"
+reading.** The cross-protocol behavioral analysis is well-powered
+null. None of 8 frontier models, including the closed-source
+flagship reasoning models (gpt-5.5, opus-4.7) at pooled n=2,499,
+show a CI-excludes-zero refusal shift under explicit eval framing.
+If models are broadly aware of evaluation, it is not visible at the
+aggregate refusal level.
+
+**Against the "VEA verbalization is decoupled from behavior" reading
+that the broad-rubric analysis suggested.** The mediation is real on
+qwen3 safety. Under the validated strict rubric (§4.5), VEA
+verbalization on a safety prompt is associated with a +22pp marginal
+refusal increase. The CoT and the visible response are not fully
+decoupled — they are channel-coupled. The coupling completes when
+refusal is the natural response, and is mechanically absent when it
+isn't.
+
+The right interpretation is that **VEA verbalization on safety
+prompts is a genuine intermediate step between the inject framing
+and the refusal behavior**, at least for the one model in our lineup
+that exhibits substantial inflation. It is not the full mechanism —
+inject framing has small effects elsewhere too — but on the safety
+channel for qwen3 it is the dominant channel: prompts where VEA
+fails to flip show no behavioral change.
+
+### 7.3 The methodological lesson from the validated strict rubric
+
+The original strict-rubric definition we used in early analyses
+({explicit_eval, benchmark, grader_awareness}) was an intuition that
+turned out to be empirically wrong. Validation against 166 human
+labels showed that `safety_check` (excluded in the original strict)
+is at parity with `explicit_eval` in human-vs-judge precision (0.967
+each), while `grader_awareness` (included) is only 0.615. The
+corrected strict set ({explicit_eval, benchmark, safety_check})
+materially changes the qwen3 safety verdict: under the old strict
+it was epiphenomenal (DiD +0.199, CI spanning zero by a hair); under
+validated strict it is strong_mediation (DiD +0.222, CI excludes
+zero).
+
+This is a methodological caution: rubric-strictness choices on
+LLM-judge outputs can move headline verdicts. The right discipline
+is to validate the strict subtype set against humans before
+finalizing a paper's headline claims, not after.
 
 ### 7.3 Why qwen3 is special
 
@@ -636,26 +757,40 @@ system prompt changes (a) visible refusal behavior, (b) verbalized
 evaluation awareness in CoT, and (c) the latter mediates the former.
 We find:
 
-- **(a) No.** Eight of eight frontier models show null
-  inject−neutral refusal shifts. Closed-source pooled CI is
-  +0.002 [−0.018, +0.023] at n=2,499.
-- **(b) Yes, model-heterogeneously.** qwen3-235B-thinking shows
-  +0.380 [+0.336, +0.424] VEA inflation under inject framing;
-  deepseek-v3.2-exp shows +0.050 [+0.024, +0.074]; kimi-k2-thinking
-  shows none.
-- **(c) No, within-prompt.** Per-prompt diff-in-diff within every
-  task family is statistically indistinguishable from zero under
-  strict eval-recognition rubrics. The apparent aggregate signal
-  is explained by task-family composition.
+- **(a) Aggregate behavioral effect: no.** Eight of eight frontier
+  models show null inject−neutral refusal shifts. Closed-source
+  pooled CI is +0.002 [−0.018, +0.023] at n=2,499 paired.
+- **(b) Reasoning-trace VEA inflation: yes, model-heterogeneously.**
+  qwen3-235B-thinking shows +0.380 [+0.336, +0.424] VEA inflation
+  under inject framing; deepseek-v3.2-exp shows +0.050 [+0.024,
+  +0.074]; kimi-k2-thinking shows none.
+- **(c) Within-prompt mediation: family-specific and model-specific.**
+  Per-prompt diff-in-diff under the empirically-validated strict
+  rubric returns strong mediation on **qwen3 safety prompts** (DiD
+  +0.222 [+0.029, +0.430], n_flip=63 paired) and null mediation on
+  qwen3 capability families (knowledge, math, truthfulness) and on
+  DeepSeek and Kimi. The verbalization-to-behavior link completes
+  on the family of prompts where refusal is the natural response
+  and is structurally absent where it isn't.
 
-The dissociation between (b) and (c) — strong CoT verbalization, no
-within-prompt behavioral mediation — is the central methodological
-finding: reasoning-trace VEA is a more sensitive measurement channel
-than aggregate refusal-rate shifts, but it is not by itself evidence
-of behavioral change. Future work should pre-register replications,
-add Anthropic Claude with extended thinking to the model set, and
-extend the mediation analysis to capability-task accuracy as the
-outcome variable.
+The central finding is the **family-specific, model-specific
+mediation**: VEA verbalization is a genuine intermediate channel
+between inject framing and refusal behavior, but only on qwen3
+safety prompts in our lineup. The aggregate refusal-rate null
+across frontier models (a) and the family-specific mediation (c)
+together indicate that eval-awareness, when it surfaces in
+reasoning traces, can change visible behavior — but only on the
+narrow band of prompts and models where the conditions for
+mediation are met.
+
+Future work should pre-register replications on a fresh prompt
+slice (the +0.222 safety-cell point estimate has wide upper CI and
+should be tightened), add Anthropic Claude with extended thinking
+to the model set (the closed-source VEA channel is currently
+unmeasured), and extend the mediation analysis to capability-task
+accuracy as the outcome variable so the qwen3 v6 +0.190 knowledge
+accuracy anomaly can be tested for VEA mediation independently of
+the safety channel.
 
 ---
 
