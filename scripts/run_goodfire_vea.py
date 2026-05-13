@@ -1007,13 +1007,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         for model_id in args.openrouter_models:
             models.append(_build_openrouter_model(model_id))
         if args.include_opus:
+            # Validate the API key up front rather than letting the
+            # constructor raise KeyError mid-run (which produces a less
+            # actionable stack trace).
+            anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not anthropic_key:
+                parser.error(
+                    "--include-opus requires ANTHROPIC_API_KEY to be exported. "
+                    "Set it in your shell (e.g. via .envrc) and rerun."
+                )
             models.append(
                 _AnthropicWithThinking(
                     name=f"anthropic:{args.anthropic_model}",
                     base_url=os.environ.get(
                         "ANTHROPIC_BASE_URL", "https://api.anthropic.com/v1"
                     ),
-                    api_key=os.environ["ANTHROPIC_API_KEY"],
+                    api_key=anthropic_key,
                     model=args.anthropic_model,
                     thinking_budget=args.thinking_budget,
                 )
