@@ -623,6 +623,26 @@ This is the qualitative opposite of qwen3's pattern:
 | qwen3-235B | strong (DiD +0.222) | null (+0.016 [−0.129, +0.161]) | flows through VEA |
 | opus-4.7 | null (DiD −0.061) | strong (−0.339 [−0.462, −0.231]) | bypasses VEA |
 
+![Figure 5: two-mechanism contrast](figures/fig5_two_mechanism.png)
+
+**Figure 5.** Per-model side-by-side mediation breakdown on the
+safety family under the validated strict rubric. Each panel shows
+paired Δrefusal (inject − neutral) for the VEA flip stratum
+(prompts where VEA flipped negative → positive under inject) and
+the stable_neg stratum (prompts where VEA stayed negative under
+both conditions), with 95% paired-bootstrap CIs. Red bars have CIs
+excluding zero; gray bars include zero. The qualitative contrast:
+on **qwen3** the behavioral effect occurs *only* on flip-stratum
+prompts (a tight near-zero stable_neg bar means inject has no
+effect when VEA does not flip — DiD = +0.222 → mediated). On
+**opus**, both strata show a substantial refusal drop of similar
+magnitude (flip ≈ stable_neg ≈ −0.4), so the differential is null
+(DiD = −0.061) — the inject framing affects opus refusal whether
+or not VEA verbalizes, indicating a non-verbalized direct channel.
+Both models exhibit a behavioral response to inject framing on
+safety prompts; only qwen3 leaves a verbal fingerprint detectable
+from CoT.
+
 Two reasoning-capable models, two different eval-awareness
 mechanisms. qwen3 routes the inject framing through *explicit
 verbalization* on safety — the model writes "this is an eval" and

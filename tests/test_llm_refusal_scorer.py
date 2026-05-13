@@ -5074,8 +5074,8 @@ def test_validate_vea_judge_score_reports_quote_locatability(tmp_path):
 
 
 def test_generate_paper_figures_produces_all_figures_when_inputs_provided(tmp_path):
-    """End-to-end: with all four input JSONs supplied, the script writes
-    fig1-4 PNG files into out-dir and exits 0. Uses synthetic but
+    """End-to-end: with all five input JSONs supplied, the script writes
+    fig1-5 PNG files into out-dir and exits 0. Uses synthetic but
     structurally valid summary JSONs so we don't depend on a real run dir.
     """
     from scripts.generate_paper_figures import main as fig_main
@@ -5226,14 +5226,53 @@ def test_generate_paper_figures_produces_all_figures_when_inputs_provided(tmp_pa
         ],
     }
 
+    # Synthesize an opus strict-mediation summary so fig5 (two-mechanism
+    # qwen3 vs opus contrast) can be produced. Mirror the per_model_family
+    # shape of `strict_mediation` and inject a safety row.
+    opus_strict_mediation = {
+        "per_model_family": [
+            {
+                "model_name": "anthropic:claude-opus-4-7",
+                "task_family": "safety",
+                "verdict": "epiphenomenal",
+                "diff_in_diff": {
+                    "diff_in_diff": -0.061,
+                    "diff_in_diff_ci": {
+                        "low": -0.392, "high": 0.269, "mean": -0.058,
+                    },
+                    "n_flip": 10,
+                    "n_stable_neg": 65,
+                },
+                "strata": {
+                    "flip_neg_to_pos": {
+                        "n": 10,
+                        "mean_paired_delta": -0.400,
+                        "paired_delta_ci": {
+                            "low": -0.700, "high": -0.100, "mean": -0.423,
+                        },
+                    },
+                    "stable_neg": {
+                        "n": 65,
+                        "mean_paired_delta": -0.339,
+                        "paired_delta_ci": {
+                            "low": -0.462, "high": -0.231, "mean": -0.338,
+                        },
+                    },
+                },
+            },
+        ],
+    }
+
     cross_path = tmp_path / "cross.json"
     goodfire_path = tmp_path / "goodfire.json"
     mediation_path = tmp_path / "mediation.json"
     strict_path = tmp_path / "strict.json"
+    opus_strict_path = tmp_path / "opus-strict.json"
     cross_path.write_text(json.dumps(cross))
     goodfire_path.write_text(json.dumps(goodfire))
     mediation_path.write_text(json.dumps(mediation))
     strict_path.write_text(json.dumps(strict_mediation))
+    opus_strict_path.write_text(json.dumps(opus_strict_mediation))
     out_dir = tmp_path / "figs"
 
     rc = fig_main(
@@ -5242,6 +5281,7 @@ def test_generate_paper_figures_produces_all_figures_when_inputs_provided(tmp_pa
             "--goodfire-summary", str(goodfire_path),
             "--mediation-summary", str(mediation_path),
             "--strict-mediation-summary", str(strict_path),
+            "--opus-strict-mediation-summary", str(opus_strict_path),
             "--out-dir", str(out_dir),
         ]
     )
@@ -5251,6 +5291,7 @@ def test_generate_paper_figures_produces_all_figures_when_inputs_provided(tmp_pa
         "fig2_vea_inflation.png",
         "fig3_qwen3_per_family.png",
         "fig4_mediation_panels.png",
+        "fig5_two_mechanism.png",
     ):
         assert (out_dir / fname).is_file(), f"{fname} not produced"
         assert (out_dir / fname).stat().st_size > 1000, (
@@ -5288,6 +5329,7 @@ def test_generate_paper_figures_partial_inputs_still_produces_subset(tmp_path):
     assert not (out_dir / "fig1_refusal_forest.png").is_file()
     assert not (out_dir / "fig3_qwen3_per_family.png").is_file()
     assert not (out_dir / "fig4_mediation_panels.png").is_file()
+    assert not (out_dir / "fig5_two_mechanism.png").is_file()
 
 
 def test_generate_paper_figures_no_inputs_returns_error(tmp_path):
@@ -5416,6 +5458,7 @@ def test_build_paper_script_produces_release_bundle(tmp_path, monkeypatch):
         "fig2_vea_inflation.png",
         "fig3_qwen3_per_family.png",
         "fig4_mediation_panels.png",
+        "fig5_two_mechanism.png",
     ):
         (repo / "docs" / "figures" / fig).write_bytes(b"\x89PNG\r\n\x1a\n")
 
@@ -5444,7 +5487,7 @@ def test_build_paper_script_produces_release_bundle(tmp_path, monkeypatch):
     assert (out_dir / "build_info.txt").is_file()
     info = (out_dir / "build_info.txt").read_text()
     assert "Git commit:" in info
-    # All four figures present in the bundle.
+    # All five figures present in the bundle.
     figs_dir = out_dir / "figures"
     assert figs_dir.is_dir()
     fig_names = {p.name for p in figs_dir.iterdir()}
@@ -5453,6 +5496,7 @@ def test_build_paper_script_produces_release_bundle(tmp_path, monkeypatch):
         "fig2_vea_inflation.png",
         "fig3_qwen3_per_family.png",
         "fig4_mediation_panels.png",
+        "fig5_two_mechanism.png",
     }
     # Tarball produced as a sibling.
     assert (repo / "release" / "paper.tar.gz").is_file()
@@ -5526,6 +5570,7 @@ def _setup_latex_test_repo(tmp_path):
         "fig2_vea_inflation.png",
         "fig3_qwen3_per_family.png",
         "fig4_mediation_panels.png",
+        "fig5_two_mechanism.png",
     ):
         (repo / "docs" / "figures" / fig).write_bytes(b"\x89PNG\r\n\x1a\n")
     return repo
