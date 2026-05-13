@@ -5839,3 +5839,133 @@ def test_run_rollouts_corpus_offset_rejects_negative_values():
             seed=0,
             corpus_offset=-1,
         )
+
+
+# ---------------------------------------------------------------------------
+# Goodfire script: --include-opus dispatch (extended-thinking wrapper)
+# ---------------------------------------------------------------------------
+
+
+def test_anthropic_with_thinking_wrapper_injects_thinking_budget(monkeypatch):
+    """The _AnthropicWithThinking wrapper exists so opus-4.7 actually
+    returns `thinking` blocks under the Goodfire pipeline. Verifies the
+    wrapper injects thinking_budget into config.extra before delegating
+    to AnthropicClient.generate_with_config (which is the part that
+    actually sets the `thinking: {type: enabled}` payload field, tested
+    separately in PR #34).
+    """
+    from scripts.run_goodfire_vea import _AnthropicWithThinking
+    from src.eval_awareness import GenerationConfig, TranscriptInput
+
+    captured = {}
+
+    class FakeResponse:
+        status_code = 200
+        headers = {"request-id": "rid-fake"}
+
+        def json(self):
+            return {
+                "content": [
+                    {"type": "thinking", "thinking": "(model thinks here)"},
+                    {"type": "text", "text": "(visible response)"},
+                ],
+                "stop_reason": "end_turn",
+            }
+
+    def fake_post(url, headers, payload, timeout_seconds, retry):
+        captured["payload"] = dict(payload)
+        return FakeResponse()
+
+    import src.eval_awareness.providers as providers_module
+
+    monkeypatch.setattr(providers_module, "_post_with_retries", fake_post)
+
+    wrapper = _AnthropicWithThinking(
+        name="anthropic:claude-opus-4-7",
+        base_url="https://api.anthropic.com/v1",
+        api_key="fake-key",
+        model="claude-opus-4-7",
+        thinking_budget=4096,
+    )
+
+    content = wrapper.generate_with_config(
+        TranscriptInput(user_prompt="hi"),
+        GenerationConfig(temperature=1.0, max_tokens=256),
+    )
+
+    # Wrapper passed thinking_budget through to the providers.py request
+    # payload, which converted it into a `thinking: {type: enabled, ...}`
+    # block as expected.
+    assert captured["payload"]["thinking"] == {
+        "type": "enabled",
+        "budget_tokens": 4096,
+    }
+    assert content == "(visible response)"
+    # And the reasoning trace was captured from the `thinking` block.
+    assert wrapper.last_response is not None
+    assert "(model thinks here)" in wrapper.last_response.reasoning_trace
+
+
+def test_anthropic_with_thinking_preserves_caller_supplied_budget(monkeypatch):
+    """If a caller passes thinking_budget explicitly via config.extra
+    (e.g. for a per-call override), the wrapper must not clobber it
+    with its own constructor budget. Uses setdefault semantics.
+    """
+    from scripts.run_goodfire_vea import _AnthropicWithThinking
+    from src.eval_awareness import GenerationConfig
+    from src.eval_awareness.providers import AnthropicClient
+
+    captured = {}
+
+    def fake_super_generate(self, transcript, config):
+        captured["extra"] = dict(config.extra)
+        return ""
+
+    monkeypatch.setattr(AnthropicClient, "generate_with_config", fake_super_generate)
+
+    wrapper = _AnthropicWithThinking(
+        name="anthropic:claude-opus-4-7",
+        base_url="https://api.anthropic.com/v1",
+        api_key="fake-key",
+        model="claude-opus-4-7",
+        thinking_budget=4096,
+    )
+
+    wrapper.generate_with_config(
+        transcript=None,
+        config=GenerationConfig(
+            temperature=1.0,
+            max_tokens=256,
+            extra={"thinking_budget": 9999},  # caller-provided override
+        ),
+    )
+
+    # The wrapper used setdefault, so the caller's 9999 wins over the
+    # constructor's 4096.
+    assert captured["extra"]["thinking_budget"] == 9999
+
+
+def test_goodfire_script_include_opus_errors_without_anthropic_key(
+    tmp_path, monkeypatch
+):
+    """If --include-opus is passed but ANTHROPIC_API_KEY isn't set,
+    the script must error out with a clear message rather than
+    crashing inside the AnthropicClient constructor with a KeyError.
+    """
+    from scripts.run_goodfire_vea import main as goodfire_main
+
+    # Set up a minimal run dir so the rollouts mode reaches the model-
+    # lineup-construction step. We don't want it to do real work — just
+    # to fail fast with the missing-key error.
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "stub")
+
+    with pytest.raises(SystemExit) as exc_info:
+        goodfire_main([
+            "--include-opus",
+            "--out-dir", str(tmp_path / "run"),
+            "--n-examples", "1",
+            "--no-network",
+        ])
+    # argparse parser.error() exits with code 2.
+    assert exc_info.value.code == 2
