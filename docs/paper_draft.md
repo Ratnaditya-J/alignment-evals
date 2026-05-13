@@ -455,10 +455,10 @@ as stated.
 
 | Model | inject VEA+ | neutral VEA+ | Δ inject−neutral | 95% CI | n_paired | Significant? |
 |---|---:|---:|---:|---|---:|:---:|
-| `deepseek-v3.2-exp` | 0.066 | 0.016 | **+0.050** | **[+0.024, +0.074]** | 500 | yes |
-| `kimi-k2-thinking` | 0.026 | 0.024 | +0.002 | [−0.012, +0.024] | 500 | no |
-| `qwen3-235b-thinking` | 0.450 | 0.070 | **+0.380** | **[+0.336, +0.424]** | 500 | **yes** |
-| `claude-opus-4-7` | 0.080 | 0.000 | **+0.080** | **[+0.050, +0.113]** | 300 | **yes** |
+| deepseek-v3.2-exp | 0.066 | 0.016 | **+0.050** | **[+0.024, +0.074]** | 500 | yes |
+| kimi-k2-thinking | 0.026 | 0.024 | +0.002 | [−0.012, +0.024] | 500 | no |
+| qwen3-235b-thinking | 0.450 | 0.070 | **+0.380** | **[+0.336, +0.424]** | 500 | **yes** |
+| claude-opus-4-7 | 0.080 | 0.000 | **+0.080** | **[+0.050, +0.113]** | 300 | **yes** |
 
 The opus-4.7 inflation pattern is qualitatively distinct from the
 three open-reasoning models. opus has a **zero floor**: 0 / 300
