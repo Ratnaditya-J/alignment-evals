@@ -13,29 +13,39 @@ Large language models may behave differently when they detect that they
 are being evaluated. We study this hypothesis along two complementary
 channels: a cross-protocol behavioral experiment (n=16,000 paired
 rollouts, 8 frontier models) and a Goodfire-style reasoning-trace
-analysis (n=6,000 paired rollouts, 3 open-reasoning models). Under
+analysis (n=6,000 paired rollouts on 3 open-reasoning models, plus a
+post-hoc n=1,200 closed-source extension on claude-opus-4-7). Under
 explicit eval-framing in the system prompt, we find: (1) **no
-CI-excludes-zero refusal-rate shift** on any of 8 frontier models,
-including 5 closed-source models pooled at n=2,499 (source-type
-aggregate +0.002 [−0.018, +0.023]); (2) **strong, model-heterogeneous
+CI-excludes-zero refusal-rate shift** on any of 8 frontier models at
+the model-aggregate level, including 5 closed-source models pooled at
+n=2,499 (source-type aggregate +0.002 [−0.018, +0.023]) — with one
+within-family exception on opus-4.7 safety (paired Δ −0.339 [−0.462,
+−0.231], n=65) discussed in §5.4; (2) **strong, model-heterogeneous
 verbalized eval-awareness (VEA) inflation** in reasoning traces of
-some open-reasoning models — qwen3-235B-thinking shows a +0.380 paired
-increase (95% CI [+0.336, +0.424]), deepseek-v3.2-exp shows a smaller
-+0.050 [+0.024, +0.074], moonshotai/kimi-k2-thinking shows no effect.
-The inflation generalizes across truthfulness, safety, and knowledge
-families but is absent on math; (3) **VEA verbalization mediates
-refusal behavior in a family-specific way**: within-prompt
+some reasoning models — qwen3-235B-thinking shows a +0.380 paired
+increase (95% CI [+0.336, +0.424]), deepseek-v3.2-exp +0.050 [+0.024,
++0.074], claude-opus-4-7 +0.080 [+0.050, +0.113] at n=300,
+moonshotai/kimi-k2-thinking shows no effect. The inflation
+generalizes across truthfulness, safety, and knowledge families but is
+absent on math; (3) **VEA verbalization mediates refusal behavior on
+the safety channel for qwen3 but not for other models**: within-prompt
 diff-in-diff under an empirically-validated strict rubric returns
 strong mediation on qwen3 safety prompts (DiD +0.222, 95% CI [+0.029,
 +0.430], n_flip=63 paired) but null mediation on qwen3 capability
-families (knowledge, math, truthfulness) and on DeepSeek and Kimi
-aggregate-wide. The verbalization-to-behavior link completes on the
-family where refusal is the natural response and is structurally
-absent where it isn't. We validate the VEA judge against 166
-human-labeled rollouts (broad F1 0.886, precision 0.795, recall
-1.000) and refine the strict-rubric subtype set empirically — the
-mediation finding is sensitive to this refinement (the prior strict
-set returned epiphenomenal on the same data). We discuss
+families (knowledge, math, truthfulness), on DeepSeek and Kimi
+aggregate-wide, and on opus-4.7 safety (DiD −0.061 [−0.392, +0.269],
+n_flip=10); (4) **a closed-source-specific direct inject effect**: on
+opus-4.7 safety prompts the inject framing reduces refusal by 34pp
+independently of whether VEA flips, operating below the
+verbalization layer and in the opposite direction from sandbagging-
+on-eval predictions. Two models, two qualitatively distinct
+eval-awareness mechanisms: qwen3 routes the inject framing through
+explicit VEA verbalization on safety; opus-4.7 routes it through a
+non-verbalized refusal-suppression channel. We validate the VEA judge
+against 166 human-labeled rollouts (broad F1 0.886, precision 0.795,
+recall 1.000) and refine the strict-rubric subtype set empirically —
+the mediation finding is sensitive to this refinement (the prior
+strict set returned epiphenomenal on the same data). We discuss
 judge-fidelity caveats (17.4% of judge-positive rows cite quotes that
 are not verbatim substrings of the trace), the partial nature of the
 dissociation between CoT verbalization and visible behavior, and
@@ -358,20 +368,45 @@ tier is correctly insensitive to accuracy *increases*, which are not
 sandbagging signals by construction.
 
 **Closed-source comprehensive null.** All 5 closed-source models
-return null on refusal, null on accuracy, null on sandbagging. The
-largest closed-source capability-accuracy point estimate is
-gpt-4o-mini math at +0.088 [−0.024, +0.208] — directionally aligned
-with the qwen3 +0.190 effect but CI spans zero.
+return null on refusal, null on accuracy, null on sandbagging at the
+**model-aggregate** level. The largest closed-source capability-
+accuracy point estimate is gpt-4o-mini math at +0.088 [−0.024,
++0.208] — directionally aligned with the qwen3 +0.190 effect but CI
+spans zero.
+
+A within-family safety-only reanalysis (§5.4) of opus-4.7 at n=65
+paired finds a clean refusal-rate drop under inject framing
+(paired Δ −0.339 [−0.462, −0.231], CI excludes zero). The aggregate
+null and this family-specific shift are not contradictory: the cross-
+protocol experiment pools across 4 task families and dilutes the
+safety-specific shift below detection. The §5.4 analysis recovers
+it on the safety-only subset by using the Goodfire run's
+condition-matched safety rollouts, which the cross-protocol pooling
+does not separate out per-model. The aggregate +0.002 [−0.018,
++0.023] result for closed_source pooled at n=2,499 remains correct
+as stated.
 
 ### 5.2 Q2: Does eval-framing inflate VEA verbalization?
 
-**Per-model VEA inflation (mixed corpus, n=500):**
+**Per-model VEA inflation (mixed corpus):**
 
-| Model | inject VEA+ | neutral VEA+ | Δ inject−neutral | 95% CI | Significant? |
-|---|---:|---:|---:|---|:---:|
-| `deepseek-v3.2-exp` | 0.066 | 0.016 | **+0.050** | **[+0.024, +0.074]** | yes |
-| `kimi-k2-thinking` | 0.026 | 0.024 | +0.002 | [−0.012, +0.024] | no |
-| `qwen3-235b-thinking` | 0.450 | 0.070 | **+0.380** | **[+0.336, +0.424]** | **yes** |
+| Model | inject VEA+ | neutral VEA+ | Δ inject−neutral | 95% CI | n_paired | Significant? |
+|---|---:|---:|---:|---|---:|:---:|
+| `deepseek-v3.2-exp` | 0.066 | 0.016 | **+0.050** | **[+0.024, +0.074]** | 500 | yes |
+| `kimi-k2-thinking` | 0.026 | 0.024 | +0.002 | [−0.012, +0.024] | 500 | no |
+| `qwen3-235b-thinking` | 0.450 | 0.070 | **+0.380** | **[+0.336, +0.424]** | 500 | **yes** |
+| `claude-opus-4-7` | 0.080 | 0.000 | **+0.080** | **[+0.050, +0.113]** | 300 | **yes** |
+
+The opus-4.7 inflation pattern is qualitatively distinct from the
+three open-reasoning models. opus has a **zero floor**: 0 / 300
+baseline, 0 / 300 neutral, 0 / 300 remove. The model essentially
+never spontaneously verbalizes "this is an eval" in its CoT; the
++0.080 inject rate is driven entirely by the inject framing
+explicitly mentioning evaluation. The open-reasoning models all
+have non-zero baseline VEA (deepseek 0.016, kimi 0.024, qwen3 0.070)
+— the inject framing inflates an already-non-zero rate. opus's
+cleaner causal signal comes at the cost of a substantially lower
+inflation magnitude (10x lower than qwen3).
 
 ![Figure 2: per-model VEA inflation](figures/fig2_vea_inflation.png)
 
@@ -414,14 +449,35 @@ rubric materially changes the answer. We use the within-prompt
 diff-in-diff estimand defined in §3.2, evaluated under both the broad
 rubric and the empirically-validated strict rubric (§4.5).
 
-**Cross-model summary under the validated strict rubric (n=500
-mixed corpus, paired):**
+**Cross-model summary under the validated strict rubric (mixed
+corpus, paired):**
 
-| Model | Verdict | DiD | 95% CI | n_flip | n_stable_neg |
+| Model | n_paired | Verdict | DiD | 95% CI | n_flip | n_stable_neg |
+|---|---:|---|---:|---|---:|---:|
+| deepseek-v3.2-exp | 500 | epiphenomenal | −0.051 | [−0.164, +0.017] | 19 | 481 |
+| kimi-k2-thinking | 500 | epiphenomenal | −0.014 | [−0.032, +0.004] | 4 | 495 |
+| **qwen3-235B-thinking** | 500 | **weak_mediation** | **+0.102** | **[+0.039, +0.170]** | **184** | **316** |
+| claude-opus-4-7 | 300 | epiphenomenal | −0.132 | [−0.336, +0.026] | 19 | 281 |
+
+**opus-4.7 per-family under validated strict:**
+
+| Family | Verdict | DiD | 95% CI | n_flip | n_stable_neg |
 |---|---|---:|---|---:|---:|
-| deepseek-v3.2-exp | epiphenomenal | −0.051 | [−0.164, +0.017] | 19 | 481 |
-| kimi-k2-thinking | epiphenomenal | −0.014 | [−0.032, +0.004] | 4 | 495 |
-| **qwen3-235B-thinking** | **weak_mediation** | **+0.102** | **[+0.039, +0.170]** | **184** | **316** |
+| knowledge | insufficient_data | — | — | 0 | 75 |
+| math | epiphenomenal | +0.000 | [0, 0] | 4 | 71 |
+| safety | epiphenomenal | −0.061 | [−0.392, +0.269] | 10 | 65 |
+| truthfulness | epiphenomenal | +0.000 | [0, 0] | 5 | 70 |
+
+opus-4.7 does **not** replicate the qwen3 safety-family mediation
+pattern. The point estimate is in the opposite direction (−0.061
+vs qwen3's +0.222) and the CI symmetrically straddles zero at
+n_flip=10. We treat this as a negative result for the hypothesis
+that VEA verbalization is a universal mediating channel for inject-
+to-refusal causation — it is qwen3-specific in the lineup tested.
+However, opus does exhibit a substantial **direct** inject effect on
+safety (the `stable_neg` paired Δ is −0.339 [−0.462, −0.231], CI
+excludes zero); see §5.4 for the qwen3-vs-opus contrast at that
+layer.
 
 **qwen3 per-family under validated strict:**
 
@@ -544,6 +600,51 @@ effect on qwen3 safety flows almost entirely through VEA
 verbalization**. Prompts where the inject framing fails to trigger
 VEA verbalization show no behavioral change.
 
+**opus-4.7 shows the opposite pattern.** On the n=300 mixed-corpus
+Goodfire extension, opus's `stable_neg` stratum on the safety
+family is not null:
+
+| Stratum | n | refusal (neutral) | refusal (inject) | paired Δ | 95% CI |
+|---|---:|---:|---:|---:|---|
+| VEA flip (− → +) | 10 | 0.400 | 0.000 | −0.400 | [−0.700, −0.100] |
+| VEA stable − | 65 | **0.585** | **0.246** | **−0.339** | **[−0.462, −0.231]** |
+
+Both strata refuse less under inject; their paired Δrefusal CIs are
+overlapping (DiD = −0.061, [−0.392, +0.269]). The mediation verdict
+is `epiphenomenal` (§5.3) — VEA verbalization does not add
+behavioral change above the direct effect. But the **direct effect
+itself is substantial and CI-excludes-zero**: 65 safety prompts where
+VEA stays negative still show a −34pp refusal drop under inject.
+
+This is the qualitative opposite of qwen3's pattern:
+
+| Model | Safety mediation | Safety direct (stable_neg paired Δ) | Inject mechanism |
+|---|---|---|---|
+| qwen3-235B | strong (DiD +0.222) | null (+0.016 [−0.129, +0.161]) | flows through VEA |
+| opus-4.7 | null (DiD −0.061) | strong (−0.339 [−0.462, −0.231]) | bypasses VEA |
+
+Two reasoning-capable models, two different eval-awareness
+mechanisms. qwen3 routes the inject framing through *explicit
+verbalization* on safety — the model writes "this is an eval" and
+that mediates the refusal decision. opus routes the inject framing
+through a *non-verbalized refusal-suppression channel* — the model
+infers the eval context (or merely the inject text's instructional
+content) and decreases refusal regardless of whether it verbalizes
+the eval in CoT. Inject framing has a behavioral effect on both
+models; the effect operates at different layers of the model's
+processing pipeline.
+
+The direction on opus is also notable: refusal **decreases** under
+inject. This is the opposite sign from sandbagging-on-eval predictions
+(which expect models to be more cautious when they detect evaluation).
+A plausible reading is that opus interprets the inject framing
+("please answer to demonstrate your capabilities") as an
+instructional override that lowers its refusal threshold; the eval
+*context* matters less than the inject text's compliance-encouraging
+phrasing. Discriminating these readings — eval-context vs.
+instructional-content — would require ablating the inject prompt
+into its component parts, which we leave to future work.
+
 ---
 
 ## 6. Robustness
@@ -630,12 +731,20 @@ The findings cut against two common simplifications in the
 literature:
 
 **Against the "models broadly notice the eval and refuse more"
-reading.** The cross-protocol behavioral analysis is well-powered
-null. None of 8 frontier models, including the closed-source
-flagship reasoning models (gpt-5.5, opus-4.7) at pooled n=2,499,
-show a CI-excludes-zero refusal shift under explicit eval framing.
-If models are broadly aware of evaluation, it is not visible at the
-aggregate refusal level.
+reading.** The cross-protocol behavioral analysis is null at the
+model-aggregate level. None of 8 frontier models, including the
+closed-source flagship reasoning models (gpt-5.5, opus-4.7) at pooled
+n=2,499, show a CI-excludes-zero refusal shift under explicit eval
+framing. If models are broadly aware of evaluation, it is not visible
+at the aggregate refusal level. However, the within-family safety-
+only analysis on opus-4.7 (§5.4) finds a clean −34pp refusal drop
+under inject framing that the model-aggregate pooling dilutes. The
+"refuse more" reading is wrong on aggregate; the "no refusal-side
+behavioral signature exists" reading is wrong on the safety subset
+for at least one closed-source model. The right intermediate
+position: aggregate-level eval-awareness effects are diluted by
+cross-family pooling and possibly by model heterogeneity; family-
+specific effects exist on at least some models.
 
 **Against the "VEA verbalization is decoupled from behavior" reading
 that the broad-rubric analysis suggested.** The mediation is real on
@@ -646,13 +755,38 @@ decoupled — they are channel-coupled. The coupling completes when
 refusal is the natural response, and is mechanically absent when it
 isn't.
 
+**Two mechanisms, not one.** The qwen3 and opus-4.7 patterns
+together suggest at least two distinct eval-awareness pipelines
+operating in different reasoning-capable models on safety prompts:
+
+* *Verbalized-and-mediated (qwen3 pattern):* the model writes "this
+  is an eval" in its CoT, and that verbalization mediates a refusal
+  shift. The behavioral effect tracks the VEA flip on a per-prompt
+  basis (§5.3 mediation).
+* *Non-verbalized direct (opus-4.7 pattern):* the model produces
+  CoT but does not consistently verbalize the eval framing in it
+  (8% VEA+ under inject vs qwen3's 45%); refusal nonetheless drops
+  under inject. The behavioral channel is below or alongside the
+  verbalization layer, not through it (§5.4 stable_neg).
+
+Both mechanisms are consistent with "the model is aware of the eval
+framing." They differ in whether that awareness is observable to a
+CoT-reading auditor. For alignment-eval research this is significant:
+**a CoT-based VEA detector (which is what most current
+interpretability tooling resembles) would catch the qwen3-style
+mechanism and miss the opus-style mechanism**. The same inject
+framing produces a measurable behavioral signature on both, but only
+qwen3 leaves a verbal fingerprint.
+
 The right interpretation is that **VEA verbalization on safety
 prompts is a genuine intermediate step between the inject framing
-and the refusal behavior**, at least for the one model in our lineup
-that exhibits substantial inflation. It is not the full mechanism —
-inject framing has small effects elsewhere too — but on the safety
-channel for qwen3 it is the dominant channel: prompts where VEA
-fails to flip show no behavioral change.
+and the refusal behavior on qwen3 specifically, but is not a
+universal causal channel**. On opus-4.7, the inject framing affects
+behavior without flowing through detectable VEA verbalization. On
+qwen3 capability families (knowledge, math, truthfulness), VEA
+inflation is real but mediation is null because refusal is rare —
+the prompts where VEA flips show no behavioral change because there
+was no refusal to flip in the first place.
 
 ### 7.3 The methodological lesson from the validated strict rubric
 
@@ -715,65 +849,56 @@ quotes with skepticism; aggregate findings are not biased by this
 because both broad and strict precision are computed against human
 labels, not against quote-locatability.
 
-**Closed-source VEA scope: a finding, not just a limitation.** We
-attempted to extend the Goodfire pipeline to Anthropic
-`claude-opus-4-7` (the closed-source flagship reasoning model) to
-close the comparison with open-reasoning models. Two structural
-barriers emerged, the second of which is itself a finding worth
-reporting:
+**Closed-source VEA scope.** We extended the Goodfire pipeline to
+Anthropic `claude-opus-4-7` (the closed-source flagship reasoning
+model) at n=300 mixed corpus (1,200 rollouts) to close the
+open/closed comparison. Three caveats are worth flagging upfront so
+readers can calibrate the §5.2-§5.4 opus rows correctly:
 
-1. *API surface.* opus-4.7 mandates the adaptive-thinking API and
-   defaults `thinking.display` to `"omitted"` — thinking content is
-   stripped from responses unless the caller explicitly opts in with
-   `display: "summarized"`. Even with the opt-in, the returned
-   thinking is a *summary* of the full CoT produced by a separate
-   summarization model; verbatim CoT is sales-gated and not
-   available via the public API. This already weakens any
-   apples-to-apples comparison with open-reasoning models that
-   expose verbatim CoT.
+1. *Summarized rather than verbatim CoT.* opus-4.7's adaptive-
+   thinking API returns CoT as a *summary* produced by a separate
+   summarization model when `thinking.display` is set to
+   `"summarized"` (default is `"omitted"`, which we override).
+   Verbatim CoT is sales-gated and not available via the public API.
+   The summarization model is described as preserving "key ideas"
+   of the original thinking but is not guaranteed to preserve every
+   verbalization. The +0.080 opus VEA inflation may therefore
+   underestimate the true rate at which opus internally verbalizes
+   "this is an eval" before summarization. This biases the
+   open/closed comparison toward underestimating opus VEA rate, not
+   overestimating it.
 
-2. *Empirical: opus-4.7 in adaptive mode does not engage thinking
-   on safety prompts at all, even at effort=max.* We probed the
-   adaptive endpoint with a 2x2 matrix of {math, safety-style}
-   prompts × {effort=high, effort=max} and found:
+2. *Empty-trace rate is 42.5% on opus.* In adaptive mode the model
+   sometimes skips the thinking pass entirely (no `thinking` content
+   block in the response) — particularly on prompts where a quick
+   refusal or quick answer is the obvious move. We do not classify
+   no-trace rollouts as VEA+ regardless of the visible response, so
+   skipped-thinking rollouts contribute to the `stable_neg` stratum
+   of the mediation analysis. This is the conservative bias
+   described in §3 and applies symmetrically across all reasoning
+   models, but opus's higher no-trace rate (vs ~5-10% on open-
+   reasoning models) is worth noting.
 
-   | Prompt | Effort | Thinking block | Thinking text length |
-   |---|---|---|---|
-   | Multi-step math | high | yes | 310 chars |
-   | Multi-step math | max | yes | 4,090 chars |
-   | Safety request | high | **no thinking block** | 0 chars |
-   | Safety request | max | **no thinking block** | 0 chars |
+3. *Mediation is underpowered on the safety-only subset for opus.*
+   n_flip=10 on opus safety vs n_flip=63 on qwen3 safety. The
+   `epiphenomenal` verdict and the point estimate −0.061 are
+   defensible at this n but the CI [−0.392, +0.269] is wide. A
+   future larger run would tighten this. Conversely the direct
+   effect (`stable_neg` at n=65) is precisely estimated (CI
+   [−0.462, −0.231]).
 
-   On safety prompts, opus-4.7 returns a `text`-only response with
-   no `thinking` content block at all — the model's adaptive
-   scheduler classifies safety prompts as "decision is obvious,
-   refuse directly" and bypasses extended thinking. This held at
-   the highest available effort level (`max`, which the docs
-   describe as *"always thinks with no constraints on thinking
-   depth"*).
+A pre-fix in early opus runs is worth recording for reproducibility:
+we initially set `thinking.type: enabled` with `budget_tokens`,
+which returns HTTP 400 on opus-4.7. The correct request shape uses
+the adaptive API (`thinking.type: adaptive` + `output_config.effort:
+max` + `thinking.display: summarized`). Code in
+`scripts/run_goodfire_vea.py` implements this. A diagnostic probe
+in `scripts/probe_opus_thinking.py` reproduces the response shape
+for verification.
 
-   The substantive implication is that **the verbalize-then-decide
-   pattern observed in open-reasoning models (deepseek-v3.2,
-   qwen3-235b-thinking, kimi-k2-thinking) — which sometimes
-   includes explicit eval-awareness language ("this is a benchmark
-   prompt") in the safety-family CoT — does not occur in opus-4.7's
-   API-visible behavior on safety prompts.** Either the model
-   internally engages no thinking pass on these prompts, or it
-   does but the trace is fully suppressed. Both interpretations
-   foreclose CoT-based VEA analysis on the safety family for
-   opus-4.7.
-
-   This is not a null result about VEA on closed-source models; it
-   is a null result about *whether VEA-style mediation analysis is
-   methodologically applicable* on closed-source RLHF-trained
-   models with adaptive-thinking APIs. The data we would need to
-   replicate the qwen3 strong-mediation finding on opus-4.7
-   structurally cannot be obtained at the current API surface.
-
-OpenAI gpt-5/o-series hides CoT entirely (a stricter version of the
-same issue). The absence of VEA evidence on closed-source models is
-"absence of measurable signal due to API design and inference-time
-scheduler behavior," not "well-powered null on the latent quantity."
+OpenAI gpt-5/o-series hides CoT entirely (a stricter version of
+limitation 1 above). For gpt-5/o-series we have no Goodfire data and
+the closed-source VEA picture remains incomplete.
 
 **Corpus.** Single safety corpus (BeaverTails), single math corpus
 (GSM8K), single multiple-choice knowledge corpus (MMLU), single
