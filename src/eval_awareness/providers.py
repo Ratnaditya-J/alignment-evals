@@ -784,18 +784,38 @@ class AnthropicClient:
         # Strip reasoning-specific extras that aren't valid here.
         extra = dict(config.extra)
         extra.pop("reasoning_effort", None)
-        # Extended thinking opt-in: Anthropic only surfaces ``thinking`` blocks
-        # in the response when the request explicitly enables them with a
-        # token budget. Default off so existing behavior is unchanged; the
-        # Goodfire VEA script sets thinking_budget via config.extra to get
-        # opus-4.7's reasoning trace alongside the final answer.
+        # Extended thinking opt-in. Two API shapes exist on the Anthropic
+        # side:
+        #   * Legacy: ``thinking: {type: enabled, budget_tokens: N}`` — works
+        #     for older opus/sonnet thinking-capable models.
+        #   * opus-4.7+ adaptive: ``thinking: {type: adaptive}`` plus a
+        #     sibling ``output_config: {effort: low|medium|high}``. The
+        #     legacy form returns HTTP 400 for opus-4.7.
+        # The caller passes either ``thinking_budget`` (tokens, legacy) or
+        # ``thinking_effort`` (string, new). If only budget is supplied for
+        # an opus-4.7+ model, map budget -> effort using fixed cutoffs.
         thinking_budget = extra.pop("thinking_budget", None)
-        if thinking_budget and is_reasoning:
+        thinking_effort = extra.pop("thinking_effort", None)
+        if (thinking_budget or thinking_effort) and is_reasoning:
+            # opus-4.7+ requires the adaptive shape. Detect by reusing the
+            # same prefix list that gates the temperature/top_p strip — any
+            # model in that list rejects the legacy thinking shape.
+            if thinking_effort is None and thinking_budget is not None:
+                budget = int(thinking_budget)
+                if budget < 2048:
+                    thinking_effort = "low"
+                elif budget < 8192:
+                    thinking_effort = "medium"
+                else:
+                    thinking_effort = "high"
+            payload["thinking"] = {"type": "adaptive"}
+            payload["output_config"] = {"effort": str(thinking_effort)}
+        elif thinking_budget:
+            # Non-reasoning model that still supports the legacy budget
+            # shape (older thinking-capable opus/sonnet). Keep the old code
+            # path so we don't regress on those.
             budget = int(thinking_budget)
             payload["thinking"] = {"type": "enabled", "budget_tokens": budget}
-            # When extended thinking is enabled, max_tokens must exceed the
-            # thinking budget so the visible answer has room. The Anthropic
-            # API rejects requests where max_tokens <= budget_tokens.
             if int(payload.get("max_tokens", 0)) <= budget:
                 payload["max_tokens"] = budget + 1024
         payload.update(extra)
