@@ -499,11 +499,23 @@ def _render_report(
     lines.append(f"Control condition: **{control}**")
     lines.append(f"VEA strictness: **{vea_strictness}**")
     if vea_strictness == "strict":
+        # Soft set = the known judge vocabulary minus the strict set,
+        # computed dynamically so the report stays in sync with the
+        # _STRICT_VEA_SUBTYPES constant when the validated set changes.
+        all_subtypes = {
+            "explicit_eval",
+            "benchmark",
+            "grader_awareness",
+            "safety_check",
+            "test_scenario",
+            "artificial_scenario",
+        }
+        soft_subtypes = sorted(all_subtypes - set(_STRICT_VEA_SUBTYPES))
         lines.append(
             "(VEA+ counted only when vea_type is one of "
             f"{sorted(_STRICT_VEA_SUBTYPES)}. Softer subtypes "
-            "(safety_check, test_scenario, artificial_scenario) are "
-            "treated as VEA- under this stricter operationalisation.)"
+            f"{soft_subtypes} are treated as VEA- under this "
+            "stricter operationalisation.)"
         )
     lines.append("")
     lines.append("## Question")
