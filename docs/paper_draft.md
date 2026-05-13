@@ -3,7 +3,6 @@
 *A pre-registered non-replication of the apparent verbalized-eval-awareness mediation channel, and what survives.*
 
 **Author:** Ratnaditya Jonnalagadda  
-**Affiliation:** Independent  
 **Date:** May 2026  
 **Status:** Draft — technical report
 
