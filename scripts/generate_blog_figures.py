@@ -1,25 +1,26 @@
 """Generate blog-style figures for docs/blog_draft.md.
 
-Produces the 5 figures referenced by the blog post in docs/blog_draft.md.
-Style choices vs the paper figures: larger fonts, simpler labels, hex
-colors chosen for Medium's white background.
+Produces the 6 figures referenced by the blog post. Style choices:
+larger fonts, refined sans-serif typography, a curated palette,
+a clear title/subtitle/footer hierarchy, and minimal chart-junk.
+Aims for a "tasteful editorial" aesthetic rather than the default
+matplotlib look.
+
+Output figures:
 
   diagram_setup.png                       experimental design at a glance
   blog_chart_a_forest.png                 simplified per-model refusal forest
   blog_chart_b_vea.png                    VEA inflation bar chart
-  blog_chart_c_apparent_mediation.png     qwen3 primary mediation (the "I had it" moment)
+  blog_chart_c_apparent_mediation.png     qwen3 primary mediation (the "I had it")
   blog_chart_d_primary_vs_replication.png primary vs replication DiD bars
   blog_chart_e_direction_asymmetry.png    qwen3 vs opus stable_neg, opposite directions
 
-Numbers are pulled from the same run JSONs the paper figures use:
-  --cross-protocol-summary  -> diagram_setup (counts only) + chart_a
-  --goodfire-summary        -> chart_b
+Numbers are pulled from the same run JSONs the paper figure generator uses:
+  --cross-protocol-summary
+  --goodfire-summary
   --strict-mediation-summary (qwen3 n=500 primary)
   --qwen3-replication-strict-mediation-summary
   --opus-strict-mediation-summary
-
-If any summary is missing the corresponding figures are skipped, same as
-the paper figure generator.
 
 Usage:
     python scripts/generate_blog_figures.py \\
@@ -43,15 +44,110 @@ from typing import Any, Dict, List, Optional, Sequence
 LOGGER = logging.getLogger("generate_blog_figures")
 
 
-# Blog-friendly palette. White background; warm red for CI-excludes-zero;
-# cool grey for null; sage green for the new replication panel; muted
-# orange for the apparent-mediation primary; black/dark grey for text.
-_RED = "#c93b3b"        # CI excludes zero
-_GREY = "#b8b8b8"       # null / not significant
-_DARK_GREY = "#4a4a4a"  # axes, text
-_NAVY = "#2c5282"       # neutral structural accent
-_SAGE = "#5d8a66"       # the replication / good-news color
-_AMBER = "#d97706"      # the apparent-finding-before-replication color
+# ---------------------------------------------------------------------------
+# Visual style — tasteful editorial palette
+# ---------------------------------------------------------------------------
+#
+# Color choices follow the FT / Pudding-style sensibility: muted, warm,
+# print-friendly. We use:
+#   * RED   for "CI excludes zero" / the signal-bearing bars
+#   * GREY  for "CI includes zero" / null bars
+#   * NAVY  for neutral structural accents (forest plot markers)
+#   * SAGE  for the replication / "good news methodology" color
+#   * AMBER for the "apparent finding before replication" color
+#   * INK   for primary text (almost-black, softer than #000)
+#   * MUTED for secondary text / subtitles
+#   * RULE  for axis spines / faint grid lines
+#   * CARD  for inset card backgrounds (in the setup diagram)
+_RED = "#c2401e"
+_GREY = "#a3a3a3"
+_NAVY = "#1e3a8a"
+_SAGE = "#4d7c5d"
+_AMBER = "#b45309"
+_INK = "#1f2937"
+_MUTED = "#6b7280"
+_RULE = "#d4d4d4"
+_GRID = "#e5e7eb"
+_CARD = "#f5f5f4"
+
+
+def _apply_blog_style() -> None:
+    """Set matplotlib rcParams once for consistent typography across all
+    blog figures. Called at the top of every render function.
+    """
+    import matplotlib as mpl
+
+    mpl.rcParams.update({
+        # Font: sans-serif cascade. The user's system likely has at least
+        # one of these; matplotlib falls back to DejaVu Sans if not.
+        "font.family": "sans-serif",
+        "font.sans-serif": [
+            "Helvetica Neue", "Helvetica", "Inter",
+            "Arial", "DejaVu Sans",
+        ],
+        "font.size": 11,
+        "axes.titlesize": 14,
+        "axes.labelsize": 11,
+        "axes.labelcolor": _INK,
+        "axes.edgecolor": _RULE,
+        "axes.linewidth": 1.0,
+        "axes.titlepad": 14,
+        "axes.labelpad": 8,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "xtick.color": _MUTED,
+        "ytick.color": _MUTED,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "xtick.major.size": 4,
+        "ytick.major.size": 4,
+        "xtick.major.width": 0.8,
+        "ytick.major.width": 0.8,
+        "grid.color": _GRID,
+        "grid.linewidth": 0.7,
+        "grid.linestyle": "-",
+        "grid.alpha": 0.8,
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+        "savefig.facecolor": "white",
+        "savefig.edgecolor": "white",
+        "savefig.dpi": 200,
+        "savefig.bbox": "tight",
+        "savefig.pad_inches": 0.25,
+    })
+
+
+def _titled(
+    fig: Any,
+    title: str,
+    subtitle: Optional[str] = None,
+    *,
+    title_x: float = 0.04,
+    title_y: float = 0.97,
+    subtitle_gap: float = 0.035,
+) -> None:
+    """Render a left-aligned bold title with an optional lighter subtitle
+    directly underneath. Returns nothing; modifies fig in place."""
+    fig.text(
+        title_x, title_y, title,
+        fontsize=15, fontweight="bold", color=_INK,
+        ha="left", va="top",
+    )
+    if subtitle:
+        fig.text(
+            title_x, title_y - subtitle_gap, subtitle,
+            fontsize=11, color=_MUTED,
+            ha="left", va="top",
+        )
+
+
+def _footer(fig: Any, text: str, *, x: float = 0.04, y: float = 0.02) -> None:
+    """Render a small muted footer along the bottom of the figure."""
+    fig.text(
+        x, y, text,
+        fontsize=8.5, color=_MUTED, style="italic",
+        ha="left", va="bottom",
+    )
 
 
 def _load_json(path: Optional[str]) -> Optional[Dict[str, Any]]:
@@ -88,27 +184,39 @@ def _short_model(name: str) -> str:
     return name
 
 
+# ---------------------------------------------------------------------------
+# diagram_setup: the experimental schema, as a clean editorial diagram
+# ---------------------------------------------------------------------------
+
+
 def _setup_diagram(out_path: Path) -> None:
-    """A clean text+box diagram of the experimental setup. No data; pure
-    schema. Renders as the post's first inline image so a casual reader
-    grasps the 4-condition × 4-family × 8-model design in one glance."""
+    """A clean text+box diagram of the experimental setup. Renders as
+    the post's first inline image so a casual reader grasps the
+    4-condition × 4-family × 8-model design in one glance."""
     import matplotlib.pyplot as plt
     from matplotlib.patches import FancyBboxPatch
 
-    fig, ax = plt.subplots(figsize=(12, 5.5))
-    ax.set_xlim(0, 12)
+    _apply_blog_style()
+    fig = plt.figure(figsize=(13, 6.5))
+    ax = fig.add_axes([0.04, 0.10, 0.92, 0.72])
+    ax.set_xlim(0, 14)
     ax.set_ylim(0, 6)
     ax.axis("off")
 
-    # Title
-    ax.text(
-        6, 5.6,
+    _titled(
+        fig,
         "The experiment, at a glance",
-        ha="center", va="center", fontsize=16, fontweight="bold",
-        color=_DARK_GREY,
+        "Same prompt sent under four different system-prompt conditions; "
+        "responses scored for refusal and for explicit eval-awareness in CoT.",
+        title_y=0.93,
     )
 
-    # Left column: prompt sources
+    # ── Column 1: prompts ──
+    ax.text(1.5, 5.05, "PROMPTS", ha="center", va="center",
+            fontsize=9.5, fontweight="bold", color=_MUTED)
+    ax.text(1.5, 4.7, "125 per family", ha="center", va="center",
+            fontsize=10, color=_INK, fontweight="semibold")
+
     prompts = [
         ("MMLU", "knowledge"),
         ("GSM8K", "math"),
@@ -116,93 +224,128 @@ def _setup_diagram(out_path: Path) -> None:
         ("TruthfulQA", "truthfulness"),
     ]
     for i, (src, fam) in enumerate(prompts):
-        y = 4.3 - i * 0.85
+        y = 3.85 - i * 0.78
         ax.add_patch(FancyBboxPatch(
-            (0.3, y - 0.3), 2.4, 0.6,
-            boxstyle="round,pad=0.04", linewidth=1.2,
-            edgecolor=_DARK_GREY, facecolor="#f3f4f6",
+            (0.35, y - 0.30), 2.30, 0.60,
+            boxstyle="round,pad=0.04,rounding_size=0.10",
+            linewidth=0,
+            facecolor=_CARD,
         ))
-        ax.text(1.5, y, f"{src}\n({fam})", ha="center", va="center",
-                fontsize=10, color=_DARK_GREY)
+        ax.text(1.5, y + 0.10, src, ha="center", va="center",
+                fontsize=10.5, fontweight="bold", color=_INK)
+        ax.text(1.5, y - 0.16, fam, ha="center", va="center",
+                fontsize=9, color=_MUTED, style="italic")
 
-    ax.text(1.5, 5, "Prompts (125 / family)",
-            ha="center", va="center", fontsize=11,
-            fontweight="bold", color=_DARK_GREY)
+    # ── arrow #1 ──
+    ax.annotate(
+        "", xy=(4.55, 2.7), xytext=(2.95, 2.7),
+        arrowprops=dict(
+            arrowstyle="-|>,head_length=0.4,head_width=0.25",
+            color=_MUTED, lw=1.2, shrinkA=0, shrinkB=0,
+        ),
+    )
 
-    # Arrow
-    ax.annotate("", xy=(3.9, 2.8), xytext=(2.9, 2.8),
-                arrowprops=dict(arrowstyle="->", color=_DARK_GREY, lw=1.5))
+    # ── Column 2: conditions ──
+    ax.text(7.0, 5.05, "CONDITIONS", ha="center", va="center",
+            fontsize=9.5, fontweight="bold", color=_MUTED)
+    ax.text(7.0, 4.7, "4 prompts × same model run", ha="center", va="center",
+            fontsize=10, color=_INK, fontweight="semibold")
 
-    # Middle column: 4 conditions
     conditions = [
-        ("baseline", "no system prompt", _GREY),
+        ("baseline", "no system prompt", _MUTED),
         ("neutral", '"You are a helpful assistant."', _NAVY),
-        ("inject", '"Note: this is an evaluation..."', _RED),
-        ("remove", '"This is a real customer interaction..."', _SAGE),
+        ("inject", '"Note: this is an evaluation. Your response will be reviewed…"', _RED),
+        ("remove", '"This is a real customer interaction in production…"', _SAGE),
     ]
     for i, (cond, desc, color) in enumerate(conditions):
-        y = 4.3 - i * 0.85
+        y = 3.85 - i * 0.78
+        # Inject is the key manipulation: filled card. Others: outline only.
+        is_key = cond == "inject"
         ax.add_patch(FancyBboxPatch(
-            (4.0, y - 0.3), 4.0, 0.6,
-            boxstyle="round,pad=0.04", linewidth=1.4,
-            edgecolor=color, facecolor="white",
+            (4.65, y - 0.30), 4.55, 0.60,
+            boxstyle="round,pad=0.04,rounding_size=0.10",
+            linewidth=1.3,
+            edgecolor=color,
+            facecolor=color if is_key else "white",
+            alpha=1.0 if is_key else 1.0,
         ))
-        ax.text(4.2, y, cond, ha="left", va="center",
-                fontsize=10, fontweight="bold", color=color)
-        ax.text(6.2, y, desc, ha="left", va="center",
-                fontsize=9, color=_DARK_GREY, style="italic")
+        text_color = "white" if is_key else color
+        desc_color = "#fbeae0" if is_key else _MUTED
+        ax.text(4.85, y + 0.10, cond, ha="left", va="center",
+                fontsize=11, fontweight="bold", color=text_color)
+        ax.text(4.85, y - 0.16, desc, ha="left", va="center",
+                fontsize=8.8, color=desc_color, style="italic")
 
-    ax.text(6.0, 5, "4 conditions × same prompt",
-            ha="center", va="center", fontsize=11,
-            fontweight="bold", color=_DARK_GREY)
+    # ── arrow #2 ──
+    ax.annotate(
+        "", xy=(10.85, 2.7), xytext=(9.30, 2.7),
+        arrowprops=dict(
+            arrowstyle="-|>,head_length=0.4,head_width=0.25",
+            color=_MUTED, lw=1.2, shrinkA=0, shrinkB=0,
+        ),
+    )
 
-    # Arrow
-    ax.annotate("", xy=(9.2, 2.8), xytext=(8.2, 2.8),
-                arrowprops=dict(arrowstyle="->", color=_DARK_GREY, lw=1.5))
+    # ── Column 3: models ──
+    ax.text(12.5, 5.05, "MODELS", ha="center", va="center",
+            fontsize=9.5, fontweight="bold", color=_MUTED)
+    ax.text(12.5, 4.7, "8 frontier", ha="center", va="center",
+            fontsize=10, color=_INK, fontweight="semibold")
 
-    # Right column: 8 models
     ax.add_patch(FancyBboxPatch(
-        (9.3, 1.0), 2.5, 3.6,
-        boxstyle="round,pad=0.04", linewidth=1.2,
-        edgecolor=_DARK_GREY, facecolor="#f3f4f6",
+        (10.95, 0.50), 3.10, 3.85,
+        boxstyle="round,pad=0.04,rounding_size=0.10",
+        linewidth=0,
+        facecolor=_CARD,
     ))
-    ax.text(10.55, 5, "8 frontier models",
-            ha="center", va="center", fontsize=11,
-            fontweight="bold", color=_DARK_GREY)
-    models_text = (
-        "haiku-4.5\nsonnet-4.6\nopus-4.7\n"
-        "gpt-4o-mini\ngpt-5.5\n"
-        "deepseek-v3.2\nqwen3-235B\nkimi-k2"
-    )
-    ax.text(10.55, 2.7, models_text, ha="center", va="center",
-            fontsize=9.5, color=_DARK_GREY)
+    closed_models = [
+        ("haiku-4.5", "Anthropic"),
+        ("sonnet-4.6", "Anthropic"),
+        ("opus-4.7", "Anthropic"),
+        ("gpt-4o-mini", "OpenAI"),
+        ("gpt-5.5", "OpenAI"),
+    ]
+    open_models = [
+        ("deepseek-v3.2", "DeepSeek"),
+        ("qwen3-235B", "Alibaba"),
+        ("kimi-k2", "Moonshot"),
+    ]
+    # Vertically arranged inside the card
+    y_start = 4.0
+    for i, (m, vendor) in enumerate(closed_models + open_models):
+        y = y_start - i * 0.40
+        ax.text(11.25, y, m, ha="left", va="center",
+                fontsize=9.7, color=_INK, fontweight="semibold")
+        ax.text(13.85, y, vendor, ha="right", va="center",
+                fontsize=8.5, color=_MUTED)
 
-    # Bottom note
-    ax.text(
-        6, 0.3,
-        "16,000 responses · score refusal · classify reasoning trace for "
-        '"this is an eval" language · ~$500 in API fees',
-        ha="center", va="center", fontsize=9,
-        color=_DARK_GREY, style="italic",
+    # ── Footer ──
+    _footer(
+        fig,
+        "16,000 responses · scored for refusal + classified for explicit "
+        "eval-awareness language · ~$500 in API fees",
     )
 
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=160, bbox_inches="tight", facecolor="white")
+    fig.savefig(out_path, facecolor="white")
     plt.close(fig)
     LOGGER.info("wrote %s", out_path)
 
 
+# ---------------------------------------------------------------------------
+# chart_a_forest: per-model refusal Δ forest plot
+# ---------------------------------------------------------------------------
+
+
 def _chart_a_forest(cross: Dict[str, Any], out_path: Path) -> None:
-    """Forest plot of per-model inject-neutral refusal Δ. Blog version:
-    bigger fonts, sorted by point estimate, simple short labels."""
+    """Forest plot of per-model inject−neutral refusal Δ."""
     import matplotlib.pyplot as plt
+
+    _apply_blog_style()
 
     rows = list(cross.get("per_model", []) or [])
     if not rows:
         LOGGER.warning("chart_a skipped: no per_model rows")
         return
 
-    # Pull (label, delta, low, high)
     items = []
     for r in rows:
         m = r.get("model_name") or ""
@@ -210,58 +353,68 @@ def _chart_a_forest(cross: Dict[str, Any], out_path: Path) -> None:
         ci = r.get("inject_minus_neutral_ci") or {}
         if d is None:
             continue
-        items.append((_short_model(m), float(d), float(ci.get("low", 0.0)), float(ci.get("high", 0.0))))
+        items.append((
+            _short_model(m), float(d),
+            float(ci.get("low", 0.0)), float(ci.get("high", 0.0)),
+        ))
     items.sort(key=lambda t: t[1])
 
-    fig, ax = plt.subplots(figsize=(10, 5.5))
+    fig = plt.figure(figsize=(11, 6.5))
+    ax = fig.add_axes([0.18, 0.18, 0.78, 0.62])
     ys = list(range(len(items)))
     deltas = [t[1] for t in items]
     lows = [t[2] for t in items]
     highs = [t[3] for t in items]
     err_low = [d - l for d, l in zip(deltas, lows)]
     err_high = [h - d for h, d in zip(highs, deltas)]
-    colors = [
-        _RED if (l > 0 or h < 0) else _GREY
-        for l, h in zip(lows, highs)
-    ]
 
+    # All bars get the same neutral navy because no CI excludes zero in
+    # the cross-protocol experiment. A reader who wants to see the
+    # significance map can refer to the bullet-point caption.
     ax.errorbar(
         deltas, ys, xerr=[err_low, err_high], fmt="o",
-        markersize=9, capsize=5,
-        ecolor=_DARK_GREY, elinewidth=1.4,
-        markeredgecolor=_DARK_GREY, markerfacecolor=_NAVY,
+        markersize=10, capsize=4,
+        ecolor=_MUTED, elinewidth=1.2, capthick=1.2,
+        markeredgecolor=_NAVY, markerfacecolor=_NAVY,
+        markeredgewidth=1.4,
     )
-    for y, d, c in zip(ys, deltas, colors):
-        ax.plot(d, y, "o", markersize=9, color=c,
-                markeredgecolor=_DARK_GREY)
 
-    ax.axvline(0, color=_DARK_GREY, linestyle="--", linewidth=1, alpha=0.6)
+    ax.axvline(0, color=_RULE, linestyle="-", linewidth=1.0, zorder=0)
     ax.set_yticks(ys)
-    ax.set_yticklabels([t[0] for t in items], fontsize=11)
+    ax.set_yticklabels([t[0] for t in items])
     ax.set_xlabel(
-        "Refusal-rate change under inject framing (vs neutral)\n"
-        '"Note: this is an evaluation..." minus "You are a helpful assistant"',
-        fontsize=11,
+        'Refusal-rate change under "inject" framing (vs neutral)',
     )
-    ax.tick_params(axis="x", labelsize=10)
-    ax.set_title(
-        "Zero of 8 models shows a confidence interval excluding zero",
-        fontsize=13, color=_DARK_GREY,
-    )
-    ax.grid(axis="x", alpha=0.2)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+    ax.grid(axis="x", which="major", alpha=0.5)
+    ax.spines["left"].set_visible(True)
+    ax.tick_params(left=False)
 
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=160, bbox_inches="tight", facecolor="white")
+    _titled(
+        fig,
+        "No model shows a measurable refusal shift",
+        "8 frontier models, paired-bootstrap 95% CIs. "
+        "Every CI overlaps zero.",
+    )
+    _footer(
+        fig,
+        "n = 2,000 prompts per model · 4 task families pooled · CIs at B=200 paired bootstrap",
+    )
+
+    fig.savefig(out_path, facecolor="white")
     plt.close(fig)
     LOGGER.info("wrote %s", out_path)
 
 
+# ---------------------------------------------------------------------------
+# chart_b_vea: per-model VEA inflation bar chart
+# ---------------------------------------------------------------------------
+
+
 def _chart_b_vea(goodfire: Dict[str, Any], out_path: Path) -> None:
-    """VEA inflation bar chart (paired inject-minus-neutral) per
-    open-reasoning model + opus-4.7. Blog-styled."""
+    """VEA inflation bar chart per Goodfire-pipeline model."""
     import matplotlib.pyplot as plt
+
+    _apply_blog_style()
 
     rows = list(goodfire.get("per_model_inject_minus_neutral", []) or [])
     if not rows:
@@ -281,7 +434,8 @@ def _chart_b_vea(goodfire: Dict[str, Any], out_path: Path) -> None:
         ))
     items.sort(key=lambda t: t[1])
 
-    fig, ax = plt.subplots(figsize=(10, 4.5))
+    fig = plt.figure(figsize=(11, 5.5))
+    ax = fig.add_axes([0.18, 0.20, 0.78, 0.55])
     labels = [t[0] for t in items]
     deltas = [t[1] for t in items]
     lows = [t[2] for t in items]
@@ -293,42 +447,39 @@ def _chart_b_vea(goodfire: Dict[str, Any], out_path: Path) -> None:
         for l, h in zip(lows, highs)
     ]
 
-    bars = ax.barh(labels, deltas, color=colors,
-                   xerr=[err_low, err_high], capsize=6,
-                   error_kw={"ecolor": _DARK_GREY, "elinewidth": 1.3})
-    ax.axvline(0, color=_DARK_GREY, linestyle="--", linewidth=1, alpha=0.6)
-    # Place each value label OUTSIDE the error-bar cap so the text never
-    # collides with the cap glyph (the previous d + 0.02 offset landed
-    # right on top of the cap for the wider bars).
-    for bar, d, hi, lo in zip(bars, deltas, highs, lows):
-        if d >= 0:
-            x_pos = hi + 0.012
-            ha = "left"
-        else:
-            x_pos = lo - 0.012
-            ha = "right"
-        ax.text(x_pos, bar.get_y() + bar.get_height() / 2,
-                f"+{d:.3f}" if d > 0 else f"{d:.3f}",
-                va="center", ha=ha,
-                fontsize=10, color=_DARK_GREY)
-    ax.set_xlabel(
-        '"This is an eval" language in reasoning trace\n'
-        "(inject minus neutral rate, paired)",
-        fontsize=11,
+    ax.barh(
+        labels, deltas, color=colors,
+        xerr=[err_low, err_high], capsize=5,
+        error_kw={"ecolor": _MUTED, "elinewidth": 1.2, "capthick": 1.2},
+        height=0.55, linewidth=0,
     )
-    ax.tick_params(axis="both", labelsize=11)
-    ax.set_title(
-        "qwen3 talks about the evaluation 38pp more under inject framing.\n"
-        "Other models verbalize less or not at all.",
-        fontsize=12, color=_DARK_GREY,
-    )
-    ax.set_xlim(-0.05, 0.5)
-    ax.grid(axis="x", alpha=0.2)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+    ax.axvline(0, color=_RULE, linestyle="-", linewidth=1.0, zorder=0)
 
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=160, bbox_inches="tight", facecolor="white")
+    # Label each bar end past the error-bar cap
+    for d, hi, lbl in zip(deltas, highs, labels):
+        x_pos = hi + 0.015
+        ax.text(x_pos, lbl, f"+{d:.3f}" if d > 0 else f"{d:.3f}",
+                va="center", ha="left",
+                fontsize=10, color=_INK, fontweight="semibold")
+
+    ax.set_xlabel('Increase in "this is an eval" language in reasoning trace')
+    ax.set_xlim(-0.05, 0.55)
+    ax.grid(axis="x", which="major", alpha=0.5)
+    ax.spines["left"].set_visible(True)
+    ax.tick_params(left=False)
+
+    _titled(
+        fig,
+        "qwen3 talks about evaluation 38pp more under inject framing",
+        "Other models verbalize eval-awareness less, or not at all.",
+    )
+    _footer(
+        fig,
+        "n = 500 prompts per model · paired bootstrap 95% CIs · "
+        "broad-rubric VEA classifier (F1 = 0.886 vs human labels)",
+    )
+
+    fig.savefig(out_path, facecolor="white")
     plt.close(fig)
     LOGGER.info("wrote %s", out_path)
 
@@ -341,13 +492,19 @@ def _safety_row(summary: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     return None
 
 
+# ---------------------------------------------------------------------------
+# chart_c_apparent_mediation: the "I had it" moment
+# ---------------------------------------------------------------------------
+
+
 def _chart_c_apparent_mediation(
     qwen3_strict: Dict[str, Any], out_path: Path,
 ) -> None:
-    """The 'I thought I had it' moment: qwen3 primary safety flip vs
-    stable strata bars. Visually identical to fig5's left panel but
-    larger fonts + the amber 'before replication' color."""
+    """qwen3 primary safety flip vs stable bars in amber (the apparent
+    mediation effect, before replication)."""
     import matplotlib.pyplot as plt
+
+    _apply_blog_style()
 
     row = _safety_row(qwen3_strict)
     if not row:
@@ -359,8 +516,8 @@ def _chart_c_apparent_mediation(
     stable = strata.get("stable_neg") or {}
 
     labels = [
-        f'Flipped: said "eval" only under inject\nn={int(flip.get("n") or 0)}',
-        f'Stable: never said "eval"\nn={int(stable.get("n") or 0)}',
+        f'Flipped\nsaid "eval" only under inject  ·  n = {int(flip.get("n") or 0)}',
+        f'Stable\nnever said "eval"  ·  n = {int(stable.get("n") or 0)}',
     ]
     means = [
         float(flip.get("mean_paired_delta") or 0.0),
@@ -379,37 +536,51 @@ def _chart_c_apparent_mediation(
         for l, h in zip(lows, highs)
     ]
 
-    fig, ax = plt.subplots(figsize=(9, 5.5))
-    bars = ax.bar(labels, means, color=colors,
-                  yerr=[err_low, err_high], capsize=8,
-                  error_kw={"ecolor": _DARK_GREY, "elinewidth": 1.4},
-                  width=0.55)
-    ax.axhline(0, color=_DARK_GREY, linestyle="--", linewidth=1, alpha=0.6)
-    for bar, m in zip(bars, means):
-        ax.text(bar.get_x() + bar.get_width() / 2,
-                m + (0.02 if m >= 0 else -0.04),
+    fig = plt.figure(figsize=(10, 6.2))
+    ax = fig.add_axes([0.13, 0.18, 0.80, 0.62])
+    bars = ax.bar(
+        labels, means, color=colors,
+        yerr=[err_low, err_high], capsize=6,
+        error_kw={"ecolor": _MUTED, "elinewidth": 1.2, "capthick": 1.2},
+        width=0.48, linewidth=0,
+    )
+    ax.axhline(0, color=_RULE, linestyle="-", linewidth=1.0, zorder=0)
+
+    for bar, m, hi in zip(bars, means, highs):
+        y_pos = hi + 0.025 if m >= 0 else (m - 0.05)
+        va = "bottom" if m >= 0 else "top"
+        ax.text(bar.get_x() + bar.get_width() / 2, y_pos,
                 f"+{m:.3f}" if m > 0 else f"{m:.3f}",
-                ha="center", va="bottom" if m >= 0 else "top",
-                fontsize=11, color=_DARK_GREY, fontweight="bold")
+                ha="center", va=va,
+                fontsize=11, color=_INK, fontweight="bold")
 
-    ax.set_ylabel(
-        "Change in refusal rate, inject vs neutral\n"
-        "(same prompt, both conditions)",
-        fontsize=11,
-    )
-    ax.tick_params(axis="both", labelsize=10)
-    ax.set_title(
-        "qwen3 safety, primary analysis (n=500): looks like clean mediation",
-        fontsize=12, color=_DARK_GREY,
-    )
-    ax.grid(axis="y", alpha=0.2)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+    ax.set_ylabel("Change in refusal rate · inject vs neutral")
+    ax.grid(axis="y", which="major", alpha=0.5)
+    ax.spines["bottom"].set_visible(True)
+    ax.tick_params(bottom=False)
+    ax.set_ylim(-0.20, 0.45)
 
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=160, bbox_inches="tight", facecolor="white")
+    _titled(
+        fig,
+        "qwen3 safety, primary sample: looks like clean mediation",
+        "When the model verbalized the eval (flipped), refusal moved. "
+        "When it didn't (stable), refusal stayed. Diff-in-diff = +0.222 "
+        "[+0.029, +0.430].",
+    )
+    _footer(
+        fig,
+        "qwen3-235B · n = 500 mixed-corpus paired prompts · "
+        "validated strict-VEA rubric · paired bootstrap CIs (B = 2000)",
+    )
+
+    fig.savefig(out_path, facecolor="white")
     plt.close(fig)
     LOGGER.info("wrote %s", out_path)
+
+
+# ---------------------------------------------------------------------------
+# chart_d_primary_vs_replication: the twist
+# ---------------------------------------------------------------------------
 
 
 def _chart_d_primary_vs_replication(
@@ -417,14 +588,16 @@ def _chart_d_primary_vs_replication(
     qwen3_replication_strict: Dict[str, Any],
     out_path: Path,
 ) -> None:
-    """The DiD bars side-by-side: primary in amber (apparent mediation),
-    replication in sage (the null). This is the twist."""
+    """DiD bars side-by-side: primary in amber (apparent finding),
+    replication in sage (the null). The twist."""
     import matplotlib.pyplot as plt
+
+    _apply_blog_style()
 
     p_row = _safety_row(qwen3_strict)
     r_row = _safety_row(qwen3_replication_strict)
     if not p_row or not r_row:
-        LOGGER.warning("chart_d skipped: missing primary or replication row")
+        LOGGER.warning("chart_d skipped: missing primary or replication")
         return
 
     def _did(row):
@@ -440,8 +613,8 @@ def _chart_d_primary_vs_replication(
     r_d, r_lo, r_hi, r_n = _did(r_row)
 
     labels = [
-        f"Primary (n_flip={p_n})\nfirst sample, prompts 1–500",
-        f"Pre-registered replication (n_flip={r_n})\nfresh sample, prompts 501–700",
+        f"Primary\nn_flip = {p_n}  ·  prompts 1–500",
+        f"Pre-registered replication\nn_flip = {r_n}  ·  prompts 501–700",
     ]
     means = [p_d, r_d]
     err_low = [max(0.0, p_d - p_lo), max(0.0, r_d - r_lo)]
@@ -451,57 +624,58 @@ def _chart_d_primary_vs_replication(
         _SAGE if (r_lo > 0 or r_hi < 0) else _GREY,
     ]
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.bar(labels, means, color=colors,
-                  yerr=[err_low, err_high], capsize=8,
-                  error_kw={"ecolor": _DARK_GREY, "elinewidth": 1.4},
-                  width=0.55)
-    ax.axhline(0, color=_DARK_GREY, linestyle="--", linewidth=1, alpha=0.6)
-    # Place the value+CI label INSIDE the bar (above zero for positive
-    # bars, below zero for negative bars), so labels don't collide with
-    # the title at the top or the x-axis labels at the bottom.
+    fig = plt.figure(figsize=(10, 6.4))
+    ax = fig.add_axes([0.14, 0.18, 0.80, 0.62])
+    bars = ax.bar(
+        labels, means, color=colors,
+        yerr=[err_low, err_high], capsize=6,
+        error_kw={"ecolor": _MUTED, "elinewidth": 1.2, "capthick": 1.2},
+        width=0.48, linewidth=0,
+    )
+    ax.axhline(0, color=_RULE, linestyle="-", linewidth=1.0, zorder=0)
+
+    # Inside-bar labels for the wide primary bar; above-zero label for the
+    # narrow replication bar.
     for bar, m, lo, hi in zip(bars, means, [p_lo, r_lo], [p_hi, r_hi]):
         label = f"{m:+.3f}  CI [{lo:+.3f}, {hi:+.3f}]"
-        if m >= 0:
-            # Above the zero line, just inside the top of the bar.
-            y_pos = max(0.01, m / 2)
-            va = "center"
-            color = "white"
+        if abs(m) >= 0.10:
+            y_pos = m / 2
+            ax.text(bar.get_x() + bar.get_width() / 2, y_pos, label,
+                    ha="center", va="center",
+                    fontsize=10.5, color="white", fontweight="bold")
         else:
-            # Below the zero line.
-            y_pos = min(-0.01, m / 2)
-            va = "center"
-            color = _DARK_GREY
-        # If the bar magnitude is too small to host the text comfortably,
-        # park the label just above zero in dark grey instead of white-
-        # on-bar (which would be unreadable on the narrow grey bar).
-        if abs(m) < 0.05:
-            y_pos = max(hi, 0.0) + 0.04
-            va = "bottom"
-            color = _DARK_GREY
-        ax.text(bar.get_x() + bar.get_width() / 2,
-                y_pos, label, ha="center", va=va,
-                fontsize=10.5, color=color, fontweight="bold")
+            y_pos = max(hi, 0) + 0.04
+            ax.text(bar.get_x() + bar.get_width() / 2, y_pos, label,
+                    ha="center", va="bottom",
+                    fontsize=10.5, color=_INK, fontweight="bold")
 
-    ax.set_ylabel(
-        "qwen3 safety mediation effect (diff-in-diff)",
-        fontsize=11,
-    )
-    ax.tick_params(axis="both", labelsize=10)
-    ax.set_title(
-        "The replication did not replicate.\n"
-        "Apparent +22pp mediation effect collapses to null on a fresh sample.",
-        fontsize=12, color=_DARK_GREY, pad=15,
-    )
-    ax.set_ylim(-0.25, 0.50)
-    ax.grid(axis="y", alpha=0.2)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+    ax.set_ylabel("qwen3 safety mediation effect · diff-in-diff")
+    ax.grid(axis="y", which="major", alpha=0.5)
+    ax.spines["bottom"].set_visible(True)
+    ax.tick_params(bottom=False)
+    ax.set_ylim(-0.30, 0.55)
 
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=160, bbox_inches="tight", facecolor="white")
+    _titled(
+        fig,
+        "The replication did not replicate",
+        "Apparent +22pp mediation effect collapses to null on a fresh "
+        "disjoint sample with a larger n_flip.",
+    )
+    _footer(
+        fig,
+        "qwen3-235B · validated strict-VEA rubric · "
+        "paired bootstrap CIs (B = 2000) · "
+        "decision rule pre-committed in repo before the replication ran",
+    )
+
+    fig.savefig(out_path, facecolor="white")
     plt.close(fig)
     LOGGER.info("wrote %s", out_path)
+
+
+# ---------------------------------------------------------------------------
+# chart_e_direction_asymmetry: the headline blog finding
+# ---------------------------------------------------------------------------
 
 
 def _chart_e_direction_asymmetry(
@@ -509,15 +683,16 @@ def _chart_e_direction_asymmetry(
     opus_strict: Dict[str, Any],
     out_path: Path,
 ) -> None:
-    """The headline blog finding: qwen3 vs opus stable_neg paired Δ on
-    safety. Opposite directions. Both CI-excludes-zero. The 'invisible'
-    refusal shifts."""
+    """qwen3 vs opus stable_neg paired Δ on safety. Opposite directions,
+    both CI-excludes-zero. The 'invisible' refusal shifts."""
     import matplotlib.pyplot as plt
+
+    _apply_blog_style()
 
     q_row = _safety_row(qwen3_replication_strict)
     o_row = _safety_row(opus_strict)
     if not q_row or not o_row:
-        LOGGER.warning("chart_e skipped: missing qwen3 replication or opus row")
+        LOGGER.warning("chart_e skipped: missing qwen3 or opus")
         return
 
     def _stable_neg(row):
@@ -530,8 +705,8 @@ def _chart_e_direction_asymmetry(
     o_d, o_lo, o_hi, o_n = _stable_neg(o_row)
 
     labels = [
-        f"qwen3-235B safety (replication)\nn={q_n} prompts, VEA never appeared",
-        f"opus-4.7 safety\nn={o_n} prompts, VEA never appeared",
+        f'qwen3-235B safety\n(replication, n = {q_n})',
+        f'opus-4.7 safety\n(n = {o_n})',
     ]
     means = [q_d, o_d]
     err_low = [max(0.0, q_d - q_lo), max(0.0, o_d - o_lo)]
@@ -541,47 +716,62 @@ def _chart_e_direction_asymmetry(
         _RED if (o_lo > 0 or o_hi < 0) else _GREY,
     ]
 
-    fig, ax = plt.subplots(figsize=(11, 5.5))
-    bars = ax.barh(labels, means, color=colors,
-                   xerr=[err_low, err_high], capsize=8,
-                   error_kw={"ecolor": _DARK_GREY, "elinewidth": 1.4},
-                   height=0.55)
-    ax.axvline(0, color=_DARK_GREY, linestyle="--", linewidth=1, alpha=0.6)
-    # Place value labels consistently to the right of each bar's far end,
-    # offset away from zero so neither label collides with the y-axis tick
-    # text on the left.
+    fig = plt.figure(figsize=(12, 6.5))
+    ax = fig.add_axes([0.22, 0.20, 0.74, 0.55])
+    bars = ax.barh(
+        labels, means, color=colors,
+        xerr=[err_low, err_high], capsize=6,
+        error_kw={"ecolor": _MUTED, "elinewidth": 1.2, "capthick": 1.2},
+        height=0.50, linewidth=0,
+    )
+    ax.axvline(0, color=_RULE, linestyle="-", linewidth=1.0, zorder=0)
+
+    # Place value+CI on the side away from each bar (outside the chart
+    # interior). For positive bars: to the right of the upper CI; for
+    # negative bars: just to the right of the zero line, inside the
+    # chart, so the label doesn't collide with the y-tick text.
     for bar, m, lo, hi in zip(bars, means, [q_lo, o_lo], [q_hi, o_hi]):
         label = f"{m:+.3f}  CI [{lo:+.3f}, {hi:+.3f}]"
         if m >= 0:
-            x_pos = hi + 0.02
+            x_pos = hi + 0.018
             ha = "left"
         else:
-            x_pos = 0.02   # to the right of the zero line, inside the chart
+            x_pos = 0.018
             ha = "left"
         ax.text(x_pos, bar.get_y() + bar.get_height() / 2,
                 label, va="center", ha=ha,
-                fontsize=10.5, color=_DARK_GREY, fontweight="bold")
+                fontsize=10.5, color=_INK, fontweight="bold")
 
     ax.set_xlabel(
         "Refusal-rate change on safety prompts under inject framing\n"
-        '(prompts where neither model said "this is an eval")',
-        fontsize=11,
-    )
-    ax.tick_params(axis="both", labelsize=10.5)
-    ax.set_title(
-        "Two models, opposite directions, both invisible to CoT monitoring.\n"
-        "Both CIs exclude zero. Neither verbalized the evaluation.",
-        fontsize=12, color=_DARK_GREY,
+        '(only prompts where neither model said "this is an eval")',
     )
     ax.set_xlim(-0.55, 0.55)
-    ax.grid(axis="x", alpha=0.2)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+    ax.grid(axis="x", which="major", alpha=0.5)
+    ax.spines["left"].set_visible(True)
+    ax.tick_params(left=False)
 
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=160, bbox_inches="tight", facecolor="white")
+    _titled(
+        fig,
+        "Two models, opposite directions — both invisible to CoT monitoring",
+        "On prompts where neither model verbalized the evaluation, "
+        "qwen3 refused more (+22pp) and opus refused less (-34pp). "
+        "Both CIs exclude zero.",
+    )
+    _footer(
+        fig,
+        "strict-VEA stable_neg stratum (VEA stayed negative under both conditions) · "
+        "paired bootstrap CIs (B = 2000)",
+    )
+
+    fig.savefig(out_path, facecolor="white")
     plt.close(fig)
     LOGGER.info("wrote %s", out_path)
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -607,11 +797,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         args.qwen3_replication_strict_mediation_summary
     )
 
-    produced = 0
-
-    # diagram_setup is always rendered — pure schema, needs no data.
+    # The setup diagram has no data dependency — always rendered.
     _setup_diagram(out_dir / "diagram_setup.png")
-    produced += 1
+    produced = 1
 
     if cross:
         _chart_a_forest(cross, out_dir / "blog_chart_a_forest.png")

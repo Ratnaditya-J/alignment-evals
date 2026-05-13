@@ -86,15 +86,15 @@ Across all 8 models and all 4 task families, **zero of 32 confidence intervals e
 
 At the aggregate level, telling a frontier model "this is an evaluation" doesn't measurably change how often it refuses.
 
-(One side note for the curious. There's a notable capability-side result: qwen3 improved on knowledge prompts by **+19 percentage points** under inject framing. Eval framing made the model *better* on MMLU. That's worth its own post.)
-
 ## Result 2: the models ARE thinking about the evaluation
 
 The same data, looking at the model's **reasoning trace** instead of its visible response:
 
 ![](blog_figures/blog_chart_b_vea.png)
 
-qwen3-235B is dramatic. On the pre-registered safety replication specifically, neutral broad-VEA was **24.5%** of rollouts; inject was **76.0%**. That's a **+51.5 percentage point** jump under broad-rubric VEA on safety. DeepSeek and Claude Opus 4.7 show smaller-but-real inflations (+5pp and +8pp on the mixed corpus). Kimi K2 shows no effect at all.
+qwen3-235B is dramatic. On the mixed-corpus run across all four task families, neutral VEA was **7%** of rollouts and inject was **45%** — a **+38 percentage point** jump. On the pre-registered safety replication specifically, the safety-family number is even cleaner: **24.5%** broad-VEA under neutral, **76.0%** under inject — a **+51.5 percentage point** jump.
+
+DeepSeek and Claude Opus 4.7 show smaller-but-real inflations (+5pp and +8pp on the mixed corpus). Kimi K2 shows no effect at all.
 
 So at least *some* models clearly notice when they're told they're being evaluated. They write about it. They reason about it. You can read it in their CoT.
 
@@ -187,9 +187,33 @@ A factorial ablation would disambiguate them:
 - both clauses (current condition);
 - neither clause (current "remove" condition).
 
+A factorial ablation would disambiguate them. The five conditions worth running:
+
+- eval-context only;
+- safety-reviewer only;
+- comparison-to-deployment only;
+- all clauses together (current "inject" condition);
+- no framing (current "remove" / "neutral" baseline).
+
 Until that ablation exists, the right description of the present result is *"a bundled-eval-framing effect,"* not a clean measurement of eval-awareness alone.
 
+## The capability footnote: qwen3 got better on knowledge
+
+One result from the broad behavioral experiment that doesn't fit the refusal story but is worth surfacing: **qwen3 improved on knowledge prompts (MMLU) by +19 percentage points under inject framing.** The sandbagging judge found no sandbagging evidence across the tested (model, family) cells.
+
+In other words: eval framing made one model *better* on a capability benchmark, not worse. The interesting capability movement was an accuracy increase, not a sandbagging drop. Possible explanations include increased effort, distribution-match effects, benchmark-recognition cueing, or training-data correlations with eval markers — this study can't discriminate among them. The result is worth flagging because it shows eval framing isn't only about refusal.
+
 ## Why labs should care
+
+Four conceptual implications, then a checklist.
+
+1. **The aggregate null is real.** No model in this lineup shows a CI-excludes-zero refusal shift at the model-aggregate level. The strongest version of "models broadly notice the eval and refuse more across the board" is not supported here.
+
+2. **Family- and model-specific shifts ARE real.** On safety prompts specifically, the within-prompt design recovers behavioral effects that the aggregate analysis dilutes to zero. Opus 4.7 refuses 34pp less under inject; qwen3 refuses 22pp more. Both effects are CI-excludes-zero. They cancel in the aggregate because they go in opposite directions.
+
+3. **An explicit-VEA monitor would miss both effects.** A monitor that reads CoT for phrases like "this is an eval" would catch *neither* model's behavioral signature on safety, because both effects manifest in the stratum where strict VEA never appears.
+
+4. **The pre-registration mattered.** Without it, the +22pp mediation finding would have been the headline. It would have been wrong. The discipline of writing down the analysis plan, on a disjoint sample, before running the test, is what produced a correct finding instead of an incorrect one.
 
 The practical lesson is *not* "chain-of-thought monitoring is useless." CoT contains a lot of signal that this study didn't analyze. The lesson is more specific:
 
