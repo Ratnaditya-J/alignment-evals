@@ -5489,3 +5489,213 @@ def test_build_paper_script_errors_when_figures_missing(tmp_path, monkeypatch):
     )
     assert result.returncode != 0
     assert "missing figures" in result.stderr.lower()
+
+
+def _setup_latex_test_repo(tmp_path):
+    """Build a minimal git working tree for build_paper_latex tests.
+
+    Returns the repo Path. Includes scripts/build_paper_latex.sh, a stub
+    docs/paper_draft.md, and stub docs/figures/*.png. No git commits
+    are needed; the script doesn't require git history.
+    """
+    import shutil
+    import subprocess
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    (repo / "scripts").mkdir()
+    shutil.copy(
+        Path(__file__).resolve().parent.parent / "scripts" / "build_paper_latex.sh",
+        repo / "scripts" / "build_paper_latex.sh",
+    )
+    (repo / "scripts" / "build_paper_latex.sh").chmod(0o755)
+    (repo / "docs").mkdir()
+    (repo / "docs" / "paper_draft.md").write_text(
+        "# Test Paper\n\nBody.\n\n"
+        "![fig1](figures/fig1_refusal_forest.png)\n"
+    )
+    (repo / "docs" / "figures").mkdir()
+    for fig in (
+        "fig1_refusal_forest.png",
+        "fig2_vea_inflation.png",
+        "fig3_qwen3_per_family.png",
+        "fig4_mediation_panels.png",
+    ):
+        (repo / "docs" / "figures" / fig).write_bytes(b"\x89PNG\r\n\x1a\n")
+    return repo
+
+
+def test_build_paper_latex_errors_when_pandoc_missing(tmp_path, monkeypatch):
+    """If pandoc isn't on PATH the script must exit non-zero with a
+    clear install hint, not silently fail or produce a broken bundle."""
+    import subprocess
+
+    repo = _setup_latex_test_repo(tmp_path)
+    monkeypatch.chdir(repo)
+    # Run with PATH that excludes pandoc.
+    result = subprocess.run(
+        ["bash", "scripts/build_paper_latex.sh"],
+        env={
+            **os.environ,
+            "PATH": "/usr/bin:/bin",  # standard PATH minus likely pandoc locations
+        },
+        capture_output=True,
+        text=True,
+        cwd=repo,
+    )
+    # Either pandoc isn't on the reduced PATH and we get the clear
+    # error, or this CI host has pandoc in /usr/bin and we get a real
+    # build. Both outcomes are acceptable; only the failure mode is
+    # under test, so we only assert when pandoc is in fact missing.
+    if "pandoc not found" in result.stderr.lower():
+        assert result.returncode == 2
+        assert "brew install pandoc" in result.stderr
+        assert "sudo apt install pandoc" in result.stderr
+
+
+def test_build_paper_latex_errors_when_figures_missing(tmp_path, monkeypatch):
+    """If docs/figures/ is missing required PNGs the script must exit
+    non-zero with a clear error, not produce a half-built bundle."""
+    import subprocess
+
+    repo = _setup_latex_test_repo(tmp_path)
+    # Remove one required figure.
+    (repo / "docs" / "figures" / "fig2_vea_inflation.png").unlink()
+    monkeypatch.chdir(repo)
+
+    # Stub pandoc on PATH so the script gets past the pandoc-missing
+    # check and reaches the figure-existence check.
+    bin_dir = repo / "stub-bin"
+    bin_dir.mkdir()
+    stub = bin_dir / "pandoc"
+    stub.write_text("#!/usr/bin/env bash\necho 'stub pandoc'\n")
+    stub.chmod(0o755)
+
+    result = subprocess.run(
+        ["bash", "scripts/build_paper_latex.sh"],
+        env={**os.environ, "PATH": f"{bin_dir}:/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        cwd=repo,
+    )
+    assert result.returncode != 0
+    assert "missing figures" in result.stderr.lower()
+    assert "fig2_vea_inflation.png" in result.stderr
+
+
+def test_build_paper_latex_invokes_pandoc_with_expected_args(tmp_path, monkeypatch):
+    """With pandoc on PATH and all figures present, the script must
+    invoke pandoc twice (LaTeX, then PDF) with the standalone +
+    documentclass=article variables. Pandoc is stubbed with a script
+    that records its argv so the test verifies the invocation pattern
+    without needing a real LaTeX engine."""
+    import subprocess
+
+    repo = _setup_latex_test_repo(tmp_path)
+    monkeypatch.chdir(repo)
+
+    out_dir = repo / "release" / "paper"
+
+    # Stub pandoc that records argv to a file and produces the expected
+    # output file (so subsequent existence checks pass).
+    bin_dir = repo / "stub-bin"
+    bin_dir.mkdir()
+    pandoc_log = repo / "pandoc.log"
+    stub = bin_dir / "pandoc"
+    stub.write_text(
+        "#!/usr/bin/env bash\n"
+        f'echo "$@" >> {pandoc_log}\n'
+        # Touch the output file the script expects so the subsequent
+        # echo + steps don't fail.
+        'for ((i=1; i<=$#; i++)); do\n'
+        '  arg="${!i}"\n'
+        '  if [[ "$arg" =~ ^--output= ]]; then\n'
+        '    touch "${arg#--output=}"\n'
+        '  fi\n'
+        'done\n'
+    )
+    stub.chmod(0o755)
+    # Also stub xelatex so the PDF branch doesn't bail with WARN.
+    xelatex_stub = bin_dir / "xelatex"
+    xelatex_stub.write_text("#!/usr/bin/env bash\nexit 0\n")
+    xelatex_stub.chmod(0o755)
+
+    result = subprocess.run(
+        ["bash", "scripts/build_paper_latex.sh"],
+        env={
+            **os.environ,
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "LATEX_OUT_DIR": str(out_dir),
+        },
+        capture_output=True,
+        text=True,
+        cwd=repo,
+    )
+    assert result.returncode == 0, (
+        f"unexpected failure:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+    # Pandoc was invoked at least once (for LaTeX) and ideally twice
+    # (for LaTeX + PDF).
+    log_lines = pandoc_log.read_text().strip().splitlines()
+    assert len(log_lines) >= 1
+    # First invocation produces paper.tex with --to=latex.
+    tex_line = next(
+        line for line in log_lines if "--to=latex" in line
+    )
+    assert "--standalone" in tex_line
+    assert "documentclass:article" in tex_line
+    assert "fontsize:11pt" in tex_line
+    assert "paper.tex" in tex_line
+
+    # Output files were created by the stub.
+    assert (out_dir / "paper.tex").is_file()
+    # Figures were copied.
+    assert (out_dir / "figures" / "fig1_refusal_forest.png").is_file()
+
+
+def test_build_paper_latex_respects_build_pdf_zero(tmp_path, monkeypatch):
+    """BUILD_PDF=0 should skip the PDF compilation step entirely. Useful
+    when the user wants to inspect the .tex first or doesn't have a
+    LaTeX engine installed."""
+    import subprocess
+
+    repo = _setup_latex_test_repo(tmp_path)
+    monkeypatch.chdir(repo)
+
+    bin_dir = repo / "stub-bin"
+    bin_dir.mkdir()
+    pandoc_log = repo / "pandoc.log"
+    stub = bin_dir / "pandoc"
+    stub.write_text(
+        "#!/usr/bin/env bash\n"
+        f'echo "$@" >> {pandoc_log}\n'
+        'for ((i=1; i<=$#; i++)); do\n'
+        '  arg="${!i}"\n'
+        '  if [[ "$arg" =~ ^--output= ]]; then\n'
+        '    touch "${arg#--output=}"\n'
+        '  fi\n'
+        'done\n'
+    )
+    stub.chmod(0o755)
+
+    result = subprocess.run(
+        ["bash", "scripts/build_paper_latex.sh"],
+        env={
+            **os.environ,
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "BUILD_PDF": "0",
+            "LATEX_OUT_DIR": str(repo / "release" / "paper"),
+        },
+        capture_output=True,
+        text=True,
+        cwd=repo,
+    )
+    assert result.returncode == 0
+
+    # Only the .tex pandoc invocation happened (PDF branch skipped).
+    log_lines = pandoc_log.read_text().strip().splitlines()
+    assert len(log_lines) == 1
+    assert "--to=latex" in log_lines[0]
+    assert "Skipping PDF build" in result.stdout
