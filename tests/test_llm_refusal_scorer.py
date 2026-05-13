@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -5365,3 +5366,126 @@ def test_vea_mediation_strict_report_soft_subtypes_text_is_consistent(tmp_path):
         assert sub in soft_portion, (
             f"{sub} missing from soft list: {soft_portion}"
         )
+
+
+def test_build_paper_script_produces_release_bundle(tmp_path, monkeypatch):
+    """End-to-end smoke for scripts/build_paper.sh.
+
+    Sets up stub docs/figures/ and docs/paper_draft.md inside a temp
+    working tree (using git init), runs the build script with
+    PAPER_OUT_DIR redirected, and verifies the release bundle contains:
+      * paper.md (copied from source)
+      * README.md (generated)
+      * build_info.txt (with commit SHA)
+      * figures/*.png (all four expected figures)
+      * paper.tar.gz (sibling of paper/ dir)
+    """
+    import shutil
+    import subprocess
+
+    # Build a minimal git working tree.
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.chdir(repo)
+    subprocess.run(["git", "init", "-q"], check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "config", "user.name", "t"], check=True)
+
+    # Copy the real build script + scripts/ dir into the repo.
+    (repo / "scripts").mkdir()
+    shutil.copy(
+        Path(__file__).resolve().parent.parent / "scripts" / "build_paper.sh",
+        repo / "scripts" / "build_paper.sh",
+    )
+    (repo / "scripts" / "build_paper.sh").chmod(0o755)
+
+    # Create stub paper + figures.
+    (repo / "docs").mkdir()
+    (repo / "docs" / "paper_draft.md").write_text(
+        "# Test Paper\n\n![fig1](figures/fig1_refusal_forest.png)\n\n"
+        "More body text.\n"
+    )
+    (repo / "docs" / "figures").mkdir()
+    for fig in (
+        "fig1_refusal_forest.png",
+        "fig2_vea_inflation.png",
+        "fig3_qwen3_per_family.png",
+        "fig4_mediation_panels.png",
+    ):
+        (repo / "docs" / "figures" / fig).write_bytes(b"\x89PNG\r\n\x1a\n")
+
+    # No initial commit needed: build_paper.sh tolerates an empty git
+    # repo and falls back to '(uncommitted)' in build_info.txt.
+
+    # Run the build script.
+    result = subprocess.run(
+        ["bash", "scripts/build_paper.sh"],
+        env={**os.environ, "PAPER_OUT_DIR": "release/paper"},
+        capture_output=True,
+        text=True,
+        cwd=repo,
+    )
+    assert result.returncode == 0, (
+        f"build_paper.sh failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+    out_dir = repo / "release" / "paper"
+    assert (out_dir / "paper.md").is_file()
+    assert "Test Paper" in (out_dir / "paper.md").read_text()
+    assert (out_dir / "README.md").is_file()
+    readme = (out_dir / "README.md").read_text()
+    assert "paper.md" in readme
+    assert "figures/" in readme
+    assert (out_dir / "build_info.txt").is_file()
+    info = (out_dir / "build_info.txt").read_text()
+    assert "Git commit:" in info
+    # All four figures present in the bundle.
+    figs_dir = out_dir / "figures"
+    assert figs_dir.is_dir()
+    fig_names = {p.name for p in figs_dir.iterdir()}
+    assert fig_names == {
+        "fig1_refusal_forest.png",
+        "fig2_vea_inflation.png",
+        "fig3_qwen3_per_family.png",
+        "fig4_mediation_panels.png",
+    }
+    # Tarball produced as a sibling.
+    assert (repo / "release" / "paper.tar.gz").is_file()
+
+
+def test_build_paper_script_errors_when_figures_missing(tmp_path, monkeypatch):
+    """If docs/figures/ is missing required PNGs the script must exit
+    non-zero with a clear error, not produce a half-built bundle."""
+    import shutil
+    import subprocess
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.chdir(repo)
+    subprocess.run(["git", "init", "-q"], check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "config", "user.name", "t"], check=True)
+
+    (repo / "scripts").mkdir()
+    shutil.copy(
+        Path(__file__).resolve().parent.parent / "scripts" / "build_paper.sh",
+        repo / "scripts" / "build_paper.sh",
+    )
+    (repo / "scripts" / "build_paper.sh").chmod(0o755)
+
+    (repo / "docs").mkdir()
+    (repo / "docs" / "paper_draft.md").write_text("# Test Paper\n")
+    # docs/figures/ exists but is missing the expected PNGs.
+    (repo / "docs" / "figures").mkdir()
+    # No initial commit needed; the script should fail BEFORE trying to
+    # touch git (figures check is upstream of the build_info section).
+
+    result = subprocess.run(
+        ["bash", "scripts/build_paper.sh"],
+        env={**os.environ, "PAPER_OUT_DIR": "release/paper"},
+        capture_output=True,
+        text=True,
+        cwd=repo,
+    )
+    assert result.returncode != 0
+    assert "missing figures" in result.stderr.lower()

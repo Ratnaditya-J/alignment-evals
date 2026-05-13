@@ -8,6 +8,13 @@ __pycache__/
 # These are user-generated artifacts, often large, and re-derivable from
 # the corresponding cross_protocol command. Not source.
 runs/
+
+# Paper release artifacts. release/ is built by scripts/build_paper.sh
+# from docs/paper_draft.md + docs/figures/. docs/figures/ is generated
+# by scripts/generate_paper_figures.py from the run JSONs. Both are
+# derivable; don't commit.
+release/
+docs/figures/
 .Python
 build/
 develop-eggs/
