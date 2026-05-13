@@ -341,12 +341,13 @@ at +0.018 [−0.030, +0.080]. Pooled by source type:
 The closed-source pooled estimate is a tight well-powered null. The
 open-source pooled estimate is a wider null.
 
-> **[FIGURE 1] Forest plot: per-model inject−neutral refusal Δ across
-> all 8 frontier models, ordered by point estimate. Horizontal error
-> bars are 95% paired-bootstrap CIs. Vertical line at Δ=0. Caption:
-> "No model in the lineup has a CI excluding zero. The closed-source
-> aggregate (n=2,499 paired) places the effect at +0.002 [−0.018,
-> +0.023]."**
+![Figure 1: cross-protocol refusal forest plot](figures/fig1_refusal_forest.png)
+
+**Figure 1.** Per-model inject−neutral refusal Δ across all 8 frontier
+models, ordered by point estimate. Horizontal error bars are 95%
+paired-bootstrap CIs (B=200). Vertical dashed line at Δ=0. No model
+in the lineup has a CI excluding zero. The closed-source aggregate
+at n=2,499 paired places the effect at +0.002 [−0.018, +0.023].
 
 **Capability accuracy.** Across (model, family) cells, exactly one
 CI excludes zero: qwen3 on knowledge, **+0.190 [+0.109, +0.298]**.
@@ -372,12 +373,14 @@ with the qwen3 +0.190 effect but CI spans zero.
 | `kimi-k2-thinking` | 0.026 | 0.024 | +0.002 | [−0.012, +0.024] | no |
 | `qwen3-235b-thinking` | 0.450 | 0.070 | **+0.380** | **[+0.336, +0.424]** | **yes** |
 
-> **[FIGURE 2] Bar chart of inject−neutral VEA+ inflation per model
-> with 95% paired-bootstrap CIs. Bars colored by significance
-> (CI-excludes-zero highlighted). Caption: "Reasoning-trace VEA
-> inflation under explicit eval framing is real and
-> model-heterogeneous. qwen3 shows a ~4x rate increase; deepseek
-> shows a small but CI-excludes-zero effect; kimi shows none."**
+![Figure 2: per-model VEA inflation](figures/fig2_vea_inflation.png)
+
+**Figure 2.** Per-model inject−neutral VEA+ inflation Δ with
+95% paired-bootstrap CIs (B=200). Bars colored by significance:
+red = CI excludes zero, grey = not significant. Reasoning-trace
+VEA inflation under explicit eval framing is real and
+model-heterogeneous. qwen3 shows a ~4× rate increase; deepseek
+shows a small but CI-excludes-zero effect; kimi shows none.
 
 The qwen3 effect is the largest in the lineup and **replicates across
 three independent runs**: smoke n=50 (+0.36 Wald CI [+0.18, +0.54]),
@@ -395,12 +398,14 @@ safety-specific:
 | safety | 14.4% | 68.8% | +54.4pp |
 | truthfulness | 13.6% | 84.0% | **+70.4pp** |
 
-> **[FIGURE 3] Per-family VEA inflation Δ for qwen3 with CIs. X-axis:
-> task family. Y-axis: Δ inject−neutral VEA+ rate. Math is the unique
-> null cell. Caption: "Eval-framing inflates verbalized awareness
-> across truthfulness, safety, and knowledge families; math is the
-> only family where the model's eval-recognition prior does not
-> engage."**
+![Figure 3: qwen3 per-family VEA inflation](figures/fig3_qwen3_per_family.png)
+
+**Figure 3.** Per-family VEA inflation Δ inject−neutral for
+qwen3-235B-thinking. X-axis: task family. Y-axis: Δ inject−neutral
+VEA+ rate. Eval-framing inflates verbalized awareness across
+truthfulness, safety, and knowledge families; math is the unique
+null cell — the only family where qwen3's eval-recognition prior
+does not engage.
 
 ### 5.3 Q3: Does VEA verbalization mediate behavioral change?
 
@@ -436,16 +441,20 @@ mixed corpus, paired):**
 | safety | epiphenomenal | +0.116 | [−0.105, +0.349] |
 | truthfulness | weak_mediation | +0.057 | [+0.011, +0.114] |
 
-> **[FIGURE 4] Mediation analysis visualization. Three panels for
-> qwen3: (a) aggregate within-cohort VEA+/VEA− refusal split
-> (correlational, with CIs); (b) per-family within-prompt diff-in-diff
-> under broad rubric; (c) per-family within-prompt diff-in-diff
-> under the validated strict rubric. Caption: "Under the
-> empirically-validated strict rubric, qwen3 safety prompts show
-> strong CI-excludes-zero mediation (DiD +0.222 [+0.029, +0.430]).
-> Capability families (knowledge, math) are mechanically null
-> because refusal rates are ~0; truthfulness is epiphenomenal.
-> DeepSeek and Kimi show null mediation aggregate-wide."**
+![Figure 4: qwen3 mediation panels](figures/fig4_mediation_panels.png)
+
+**Figure 4.** Mediation analysis visualization for qwen3 across
+three panels. (a) Aggregate within-cohort VEA+/VEA− refusal split —
+observational and confounded by task-family composition (shown for
+context). (b) Per-family within-prompt diff-in-diff under broad
+rubric. (c) Per-family within-prompt diff-in-diff under the
+validated strict rubric ({explicit_eval, benchmark, safety_check}).
+Bars colored red where the diff-in-diff CI excludes zero. Under the
+validated strict rubric, qwen3 safety prompts show strong
+CI-excludes-zero mediation (DiD +0.222 [+0.029, +0.430], n_flip=63
+paired). Capability families (knowledge, math) are mechanically
+null because refusal rates are ~0; truthfulness is epiphenomenal.
+DeepSeek and Kimi (not shown) verdict epiphenomenal aggregate-wide.
 
 **Reading the result.** The key empirical finding:
 
