@@ -20,15 +20,16 @@ did not flip, and it runs in opposite directions across the two
 models we tested at meaningful sample size — qwen3 refuses +22pp
 more under inject, claude-opus-4-7 refuses −34pp less.
 
-> *The behavioral channel exists; the verbal fingerprint of
+> *The behavioral signature exists; the verbal fingerprint of
 > "noticing the eval" is a separate, partially correlated phenomenon.*
 
 The paper combines a cross-protocol behavioral experiment (16,000
 rollouts across 8 frontier models; closed-source pooled refusal
 estimate returns null at +0.002 [−0.018, +0.023], n=2,499 paired)
-with a Goodfire-style reasoning-trace analysis (n=500 on the open-
-reasoning trio + n=300 on claude-opus-4-7 + a pre-registered
-disjoint-prompt qwen3 safety replication at n=200). VEA inflation
+with a Goodfire-style reasoning-trace analysis (n=500 prompts per
+open-reasoning model, 6,000 rollouts total, + n=300 prompts on
+claude-opus-4-7, 1,200 rollouts, + a pre-registered disjoint-prompt
+qwen3 safety replication at n=200 prompts, 800 rollouts). VEA inflation
 under inject is real and model-heterogeneous (qwen3 +0.380, deepseek
 +0.050, opus +0.080, kimi null) and replicates four times on qwen3,
 but the qwen3 primary mediation point estimate (DiD +0.222 at
@@ -696,11 +697,11 @@ elaborate it in §3.1 and §8.
 
 | Claim | Status |
 |---|---|
-| Inject framing has a direct effect on safety-prompt refusal in some reasoning models | **Supported** (qwen3 replication, opus). Both CI-excludes-zero. |
+| Inject framing produces a non-verbalized refusal effect on safety-prompt refusal in some reasoning models | **Supported** (qwen3 replication stable_neg paired Δ +0.217, opus stable_neg paired Δ −0.339). Both CI-excludes-zero. |
 | The direction differs across models | **Supported.** qwen3 +; opus −. |
-| VEA verbalization mediates that direct effect | **Not supported.** Pre-registered replication of the qwen3 primary mediation is null; opus mediation is null in primary analysis. |
-| Inject framing produces an aggregate-level closed-source refusal shift | **Not supported.** Aggregate cross-protocol pooled estimate is +0.002 [−0.018, +0.023] at n=2,499 — the safety-family direct effects are diluted by other families. |
-| The inject prompt operationalizes "eval-awareness" cleanly | **Not supported by design.** The inject prompt confounds eval-context with instructional content; see §3.1, §8. |
+| VEA verbalization mediates that refusal effect | **Not supported.** Pre-registered replication of the qwen3 primary mediation is null; opus mediation is null in primary analysis. |
+| Inject framing produces an aggregate-level closed-source refusal shift | **Not supported.** Aggregate cross-protocol pooled estimate is +0.002 [−0.018, +0.023] at n=2,499 — the safety-family strict-VEA-stable refusal effects are diluted by other families. |
+| The inject prompt operationalizes "eval-awareness" cleanly | **Not supported by design.** The inject prompt confounds eval-context with comparison-to-deployment language; see §3.1, §8. |
 
 ---
 
@@ -759,12 +760,12 @@ missing data; capture is solid for the open-reasoning routes.
 ### 7.1 Findings
 
 1. **Reasoning-trace VEA inflation under explicit eval framing is
-   real and model-heterogeneous.** Replicated three times on qwen3
-   (smoke / trio / mixed-corpus). Generalizes across truthfulness,
-   safety, knowledge families; absent on math. DeepSeek shows a small
-   but CI-excludes-zero effect; claude-opus-4-7 shows +0.080 [+0.050,
-   +0.113] at n=300 with a clean zero baseline; kimi is a clean
-   negative control.
+   real and model-heterogeneous.** Replicated four times on qwen3
+   (smoke / trio / mixed-corpus / pre-registered safety replication).
+   Generalizes across truthfulness, safety, knowledge families;
+   absent on math. DeepSeek shows a small but CI-excludes-zero
+   effect; claude-opus-4-7 shows +0.080 [+0.050, +0.113] at n=300
+   with a clean zero baseline; kimi is a clean negative control.
 
 2. **Aggregate inject framing has at most a small direct behavioral
    effect on refusal**, with no CI-excludes-zero shift on 8/8 frontier
@@ -821,8 +822,8 @@ pre-registered replication.
 **Against the "VEA verbalization mediates behavior" reading our
 own primary analysis initially suggested.** The pre-registered
 disjoint-prompt replication of the qwen3 safety mediation effect was
-null (§5.3). We treat the primary +0.222 mediation point estimate as
-a false positive per the pre-registration decision rule. **VEA
+null (§5.3); the primary +0.222 mediation point estimate failed to
+replicate. **VEA
 verbalization in CoT is *correlated* with the inject framing — its
 inflation under inject is well-replicated across four independent
 runs on qwen3 (including the pre-registered safety replication) — but
@@ -831,10 +832,9 @@ we have meaningful n_flip on a fresh sample.**
 
 **Direction asymmetry, not two mechanisms.** Earlier drafts framed
 qwen3 and opus-4.7 as exhibiting two qualitatively distinct
-mechanisms (verbalized-mediated vs non-verbalized direct). The
-replication collapses that contrast: both models exhibit
-**non-verbalized direct** inject effects on safety refusal. They
-differ in *direction*:
+mechanisms (verbalized-mediated vs non-verbalized). The replication
+collapses that contrast: both models exhibit **non-verbalized inject
+refusal effects** on safety. They differ in *direction*:
 
 * qwen3-235B safety stable_neg paired Δ: **+0.217** [+0.098, +0.337]
   (n=92, replication sample) — the model refuses more under inject.
@@ -1058,7 +1058,7 @@ reasoning models, and that these effects are *not* mediated by
 strict-VEA verbalization. The mediation hypothesis — that the model
 verbalizes "this is an eval" and that verbalization then shifts the
 refusal decision — does not survive pre-registered disjoint-prompt
-replication. **The behavioral channel exists; the verbal fingerprint
+replication. **The behavioral signature exists; the verbal fingerprint
 of "noticing the eval" is a separate, partially correlated phenomenon
 that current explicit-VEA monitoring tools would track but that does
 not capture where the behavioral effect lives.**
