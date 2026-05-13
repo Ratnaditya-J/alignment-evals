@@ -652,9 +652,8 @@ n=62 underpowered did not.
 verbalized-and-mediated.** Both qwen3 (under the larger replication
 sample) and opus exhibit CI-excludes-zero stable_neg refusal shifts
 under inject — *VEA stayed negative throughout, yet refusal moved.*
-Inject framing therefore affects safety-prompt refusal behavior
-through a channel that is not visible in CoT verbalization. The
-directions differ:
+Inject framing therefore shifts safety-prompt refusal behavior even
+when the strict-VEA signal remains absent. The directions differ:
 
 | Model | Stable_neg direction | Magnitude | Interpretation |
 |---|---|---|---|
