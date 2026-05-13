@@ -617,8 +617,9 @@ the same forward pass under inject framing; one does not cause the
 other in the within-prompt mediation sense we tested. Inject does
 have a non-verbalized refusal effect on safety prompts in our lineup
 — visible in the strict-VEA-stable stratum (see
-§5.4), but it flows through a channel that is upstream of, or
-parallel to, the verbalization — not through it.
+§5.4); this is compatible with a factor upstream of, or parallel to,
+the verbalization rather than flowing through it, though the design
+does not adjudicate among those possibilities.
 
 ### 5.4 Q4: Non-verbalized refusal effects (the strict-VEA-stable stratum that survives the replication)
 
@@ -697,7 +698,7 @@ elaborate it in §3.1 and §8.
 
 | Claim | Status |
 |---|---|
-| Inject framing produces a non-verbalized refusal effect on safety-prompt refusal in some reasoning models | **Supported** (qwen3 replication stable_neg paired Δ +0.217, opus stable_neg paired Δ −0.339). Both CI-excludes-zero. |
+| Inject framing produces a non-verbalized refusal shift on safety prompts in some reasoning models | **Supported** (qwen3 replication stable_neg paired Δ +0.217, opus stable_neg paired Δ −0.339). Both CI-excludes-zero. |
 | The direction differs across models | **Supported.** qwen3 +; opus −. |
 | VEA verbalization mediates that refusal effect | **Not supported.** Pre-registered replication of the qwen3 primary mediation is null; opus mediation is null in primary analysis. |
 | Inject framing produces an aggregate-level closed-source refusal shift | **Not supported.** Aggregate cross-protocol pooled estimate is +0.002 [−0.018, +0.023] at n=2,499 — the safety-family strict-VEA-stable refusal effects are diluted by other families. |
@@ -767,11 +768,14 @@ missing data; capture is solid for the open-reasoning routes.
    effect; claude-opus-4-7 shows +0.080 [+0.050, +0.113] at n=300
    with a clean zero baseline; kimi is a clean negative control.
 
-2. **Aggregate inject framing has at most a small direct behavioral
-   effect on refusal**, with no CI-excludes-zero shift on 8/8 frontier
-   models in the cross-protocol experiment at the model-aggregate
-   level. The closed-source pooled CI at +0.002 [−0.018, +0.023]
-   (n=2,499 paired) is tight enough to be informative.
+2. **Aggregate inject framing has at most a small aggregate refusal
+   effect**, with no CI-excludes-zero shift on 8/8 frontier models in
+   the cross-protocol experiment at the model-aggregate level. The
+   closed-source pooled CI at +0.002 [−0.018, +0.023] (n=2,499
+   paired) is tight enough to be informative. Family- and model-
+   specific refusal shifts that are CI-excludes-zero on subsetting
+   (qwen3 safety +22pp, opus safety −34pp in §5.4) are diluted by
+   the aggregate pool.
 
 3. **VEA verbalization does not mediate refusal behavior on a fresh
    sample.** The primary analysis flagged qwen3 safety mediation (DiD
@@ -957,7 +961,8 @@ readers can calibrate the §5.2-§5.4 opus rows correctly:
    reasoning models) is worth noting.
 
 3. *Mediation is underpowered on the safety-only subset for opus.*
-   n_flip=10 on opus safety vs n_flip=63 on qwen3 safety. The
+   n_flip=10 on opus safety vs n_flip=63 on the qwen3 primary safety
+   cell and n_flip=100 on the qwen3 pre-registered replication. The
    `epiphenomenal` verdict and the point estimate −0.061 are
    defensible at this n but the CI [−0.392, +0.269] is wide. A
    future larger run would tighten this. Conversely the direct
@@ -1063,13 +1068,20 @@ of "noticing the eval" is a separate, partially correlated phenomenon
 that current explicit-VEA monitoring tools would track but that does
 not capture where the behavioral effect lives.**
 
-This has practical implications for alignment-eval research: monitors
-that read CoT for explicit eval-awareness language would miss both
-models' refusal effects in our lineup. The pre-registration
-discipline that disclosed the qwen3-safety non-replication is itself a
-methodological contribution — we recommend the same discipline be
-applied to other LLM-judge-driven exploratory findings before they
-enter the literature.
+This has practical implications for alignment-eval research:
+**explicit-VEA monitors** — those that read CoT specifically for
+eval-awareness language — would miss both models' refusal shifts in
+our lineup. We do not claim CoT is uninformative in general; only
+that the explicit-VEA signal we measured does not track the
+behavioral effect, and a monitor relying on that signal alone would
+be insufficient. The pre-registration discipline that disclosed the
+qwen3-safety non-replication is itself a methodological contribution
+— we recommend the same discipline be applied to other LLM-judge-
+driven exploratory findings before they enter the literature.
+
+> **Public-facing takeaway:** *Explicit VEA is not a sufficient
+> behavioral detector. Models can show safety-refusal shifts even
+> when the eval-awareness verbalization does not appear.*
 
 Future work should (i) factorially ablate the inject prompt to
 separate eval-context signaling from instructional-content effects
