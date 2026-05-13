@@ -1162,7 +1162,3 @@ earlier cross-protocol behavioral analyses (§5.1, §5.2) use B=200.
 Per §3.2, the higher iteration count materially tightens precision
 on the qwen3 primary safety DiD CI lower bound (the cell where it
 matters most) but does not change the verdict.
-
----
-
-*End of draft.*
