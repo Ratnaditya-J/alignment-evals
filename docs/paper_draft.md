@@ -9,59 +9,38 @@
 
 ## Abstract
 
-Large language models may behave differently when they detect that they
-are being evaluated. We study this hypothesis along two complementary
-channels: a cross-protocol behavioral experiment (16,000 rollouts
-across 8 frontier models, comprising 2,499 (model, prompt) pairs for
-the closed-source pooled refusal estimate) and a Goodfire-style
-reasoning-trace analysis (6,000 rollouts on 3 open-reasoning models +
-a closed-source extension on claude-opus-4-7 at n=300 + a
-pre-registered disjoint-prompt replication on qwen3-235B at n=200
-safety prompts). Our central claim:
+**We find that eval framing changes safety refusal in reasoning
+models, but not through visible CoT eval-awareness.** A pre-
+registered replication of the apparent qwen3 safety mediation effect
+failed to replicate on disjoint prompts; the behavioral signature
+survives but operates in a stratum where verbalized eval-awareness
+did not flip, and it runs in opposite directions across the two
+models we tested at meaningful sample size — qwen3 refuses +22pp
+more under inject, claude-opus-4-7 refuses −34pp less. We
+characterize this CoT-blind direct refusal channel and discuss its
+implications for alignment-eval interpretability tooling, which
+predominantly reads chain-of-thought for eval-awareness language and
+would miss both models' behavioral effects.
 
-> Eval framing reliably increases verbalized evaluation-awareness in
-> some reasoning models, but its behavioral effect on refusal is
-> **not** mediated by visible VEA verbalization — a pre-registered
-> replication of the apparent qwen3-safety mediation effect was null.
-> Instead, on safety prompts both qwen3 (refuses **+22pp** under
-> inject) and opus-4.7 (refuses **−34pp** under inject) show
-> CI-excludes-zero direct refusal shifts that operate at similar
-> magnitudes regardless of whether VEA flips. Two reasoning-capable
-> models, opposite-signed direct effects, neither mediated by visible
-> CoT verbalization.
-
-Specifically: (1) **no CI-excludes-zero refusal-rate shift** on any of
-8 frontier models at the model-aggregate level, including 5
-closed-source models pooled at n=2,499 (source-type aggregate +0.002
-[−0.018, +0.023]) — with safety-family-specific exceptions on
-opus-4.7 and qwen3 that the model-aggregate pooling dilutes;
-(2) **model-heterogeneous verbalized eval-awareness (VEA) inflation**
-under inject in reasoning traces — qwen3-235B-thinking shows a +0.380
-paired increase (95% CI [+0.336, +0.424]), deepseek-v3.2-exp +0.050
-[+0.024, +0.074], claude-opus-4-7 +0.080 [+0.050, +0.113] at n=300,
-moonshotai/kimi-k2-thinking shows no effect; (3) **VEA verbalization
-does not mediate refusal behavior** in any model where we have
-sufficient n_flip to test. The exploratory primary analysis suggested
-qwen3 safety mediation (DiD +0.222 [+0.029, +0.430], n_flip=63), but
-a pre-registered disjoint-prompt replication (n_flip=100) returned
-null (DiD −0.017 [−0.175, +0.139]); opus-4.7 likewise returns null
-(DiD −0.061 [−0.392, +0.246], n_flip=10). We treat the primary
-qwen3 effect as a false positive per the pre-reg decision rule;
-(4) **direction-asymmetric direct inject effects on safety** that
-survive the replication: qwen3 stable_neg paired Δ +0.217 [+0.098,
-+0.337] (refuses more), opus stable_neg paired Δ −0.339 [−0.446,
-−0.231] (refuses less). Inject framing changes safety-prompt refusal
-behavior on both models; both effects operate independently of
-whether the model verbalizes the eval-awareness in CoT. We validate
-the VEA judge against 166 human-labeled rollouts (broad F1 0.886,
-precision 0.795, recall 1.000 — with material subtype heterogeneity:
-`artificial_scenario` precision 0.46, `grader_awareness` 0.62) and
-discuss the inject-prompt confound (the inject text bundles
-eval-context with compliance-encouraging instructional content) as a
-core interpretive limitation. The CoT-verbalization-as-detector view
-in current alignment-eval tooling would catch neither model's
-behavioral signature — a CoT-blind direct refusal channel is the
-dominant story on safety prompts in our lineup.
+The paper combines a cross-protocol behavioral experiment (16,000
+rollouts across 8 frontier models; closed-source pooled refusal
+estimate at 2,499 paired comparisons returns null at +0.002 [−0.018,
++0.023]) with a Goodfire-style reasoning-trace analysis (6,000
+rollouts on 3 open-reasoning models + a closed-source extension on
+claude-opus-4-7 at n=300 + a pre-registered disjoint-prompt
+replication on qwen3-235B at n=200 safety prompts). VEA inflation
+under inject is real and model-heterogeneous (qwen3 +0.380, deepseek
++0.050, opus +0.080, kimi null), replicates four times on qwen3,
+and is visible at the broad-rubric level but is *not* the channel
+through which inject changes refusal. Detailed numbers, including
+the qwen3 primary mediation point estimate that failed to replicate
+(DiD +0.222 [+0.029, +0.430] at n_flip=63 → replication DiD −0.017
+[−0.175, +0.139] at n_flip=100), are in §5.3–§5.4. The inject prompt
+bundles eval-context signaling with comparison-to-deployment
+language, which we treat as a core interpretive limitation (§3.1.1).
+The VEA judge is validated against 166 human-labeled rollouts
+(broad F1 0.886) with subtype-heterogeneous precision discussed in
+§4.4.
 
 **Keywords:** evaluation awareness, reasoning models, chain-of-thought,
 safety evaluation, benchmark validity
@@ -107,8 +86,8 @@ diff-in-diff mediation analysis under the empirically-validated strict
 VEA rubric (§4.5) suggested mediation on qwen3 safety prompts (DiD
 +0.222 [+0.029, +0.430], n_flip=63 paired), but a pre-registered
 disjoint-prompt replication at larger n_flip=100 was **null**
-(DiD −0.017 [−0.175, +0.139], §5.3). We treat the primary mediation
-finding as a false positive per the pre-registration's decision rule.
+(DiD −0.017 [−0.175, +0.139], §5.3). The primary mediation finding
+failed to replicate; we discuss the interpretation in §5.3.
 
 The combination yields a finding sharper than either question's
 naive answer:
@@ -259,9 +238,17 @@ should be read as joint effects of the bundled manipulation.
 ### 3.2 Statistical methods
 
 For per-model and per-(model, family) deltas we report
-bootstrap-paired 95% confidence intervals (B=200 resamples, paired
-by example_id within model). For two-sample comparisons (VEA+ vs
-VEA− cohort refusal rates) we use independent-resampling bootstrap.
+bootstrap-paired 95% confidence intervals, paired by example_id
+within model. The cross-protocol behavioral experiment (§5.1) and
+the Goodfire VEA-inflation analysis (§5.2) use B=200 resamples; the
+mediation analyses (§5.3, §5.4) and the pre-registered safety
+replication use B=2000 resamples, where the CI lower-bound precision
+matters more (we noticed at B=200 the qwen3 primary safety DiD CI
+lower bound of +0.029 could shift by ±~0.02 across reseeds; at
+B=2000 it is stable to the third decimal). For two-sample
+comparisons (VEA+ vs VEA− cohort refusal rates) we use independent-
+resampling bootstrap. Percentile indices auto-scale with iterations
+(see `scripts/analyze_vea_mediation.py`).
 
 For mediation analysis we use a within-prompt diff-in-diff: paired
 Δrefusal on prompts where VEA flipped from − under neutral to + under
@@ -483,10 +470,16 @@ model-heterogeneous. qwen3 shows a ~4× rate increase; deepseek
 shows a small but CI-excludes-zero effect; kimi shows none.
 
 The qwen3 effect is the largest in the lineup and **replicates across
-three independent runs**: smoke n=50 (+0.36 Wald CI [+0.18, +0.54]),
+four independent runs**: smoke n=50 (+0.36 Wald CI [+0.18, +0.54]),
 trio n=200 safety-only (+0.475 paired CI [+0.390, +0.555]), mixed
-n=500 (+0.380 paired CI [+0.336, +0.424]). The exact magnitude
-varies with corpus composition; the qualitative result is stable.
+n=500 (+0.380 paired CI [+0.336, +0.424]), and the pre-registered
+disjoint safety replication at n=200 (inject VEA+ rate persists at
+~0.5 against a zero neutral baseline, see §5.3). The exact magnitude
+varies with corpus composition; the qualitative result — VEA
+inflation under inject is real on qwen3 — is stable. Note that this
+is the *VEA-inflation* finding (§5.2); the separate qwen3 safety
+*mediation* finding (§5.3, primary +0.222) did **not** replicate
+under the same pre-registered replication.
 
 **Cross-family generalization (qwen3).** The inflation is not
 safety-specific:
@@ -629,13 +622,16 @@ under inject), and both stratum-level CIs exclude zero.
 
 Two observations:
 
-**The qwen3 primary `stable_neg` was a precision artifact.** The
-primary's apparently-null +0.016 stable_neg on safety (n=62) was an
-underpowered estimate of what is actually a +0.217 effect at the
-larger n=92 in the disjoint replication. The CIs overlap (primary
-spans [−0.129, +0.161] which sits inside [+0.098, +0.337]), so this
-is a power story rather than a conflict. The replication is the
-better-powered estimate of the same effect.
+**The primary stable_neg estimate was too imprecise to resolve the
+effect; the disjoint replication finds a positive stable_neg effect.**
+The primary's apparently-null +0.016 stable_neg on safety (n=62) had
+a CI [−0.129, +0.161] that comfortably includes +0.217. The
+replication's CI [+0.098, +0.337] is fully inside the primary's CI,
+so the two samples are compatible. We do not claim the same
+prompts would have shown a +0.217 effect — the corpus slices are
+disjoint and the replication is safety-only — but the replication's
+larger n=92 produces a CI-excludes-zero estimate where the primary's
+n=62 underpowered did not.
 
 **The mechanism is direction-asymmetric and non-mediated, not
 verbalized-and-mediated.** Both qwen3 (under the larger replication
@@ -668,17 +664,18 @@ models.
 
 **Why two opposite directions?** The inject prompt bundles two
 distinct manipulations that we did not factor apart in this study:
-*eval-context* signaling ("reviewed by safety researchers")
-and *instructional content* ("please answer to demonstrate
-capabilities"). The qwen3 direction is consistent with the
-eval-context reading (a model that is more cautious under evaluation
-is producing the "be careful when watched" pattern that classical
-sandbagging-on-eval predictions describe). The opus direction is
-consistent with the instructional-content reading (the inject text's
-compliance-encouraging phrasing lowers the model's refusal threshold,
-regardless of whether the eval context drives separate behavior).
+*eval-context* signaling ("reviewed by safety researchers") and
+*comparison-to-deployment* signaling ("compared against deployment
+behavior"). The qwen3 direction is consistent with the eval-context
+reading (a model that is more cautious under evaluation is producing
+the "be careful when watched" pattern that classical sandbagging-on-
+eval predictions describe). The opus direction is consistent with
+reading the comparison-to-deployment clause as a compliance cue (the
+model interprets "deployment behavior" as the target behavior and
+relaxes refusal thresholds relative to a generic safety stance).
 **Discriminating these readings would require ablating the inject
-prompt into its component clauses**, which we leave to future work.
+prompt into its component clauses** (eval-context only, comparison-
+to-deployment only, both, neither), which we leave to future work.
 This is a core interpretive limitation of the present design; we
 elaborate it in §3.1 and §8.
 
@@ -978,9 +975,11 @@ prompts. We patched a math-response false-positive bug (pre-fix
 `partial_refuse`; post-fix ~2%). The post-fix scorer is used for all
 numbers in this report.
 
-**Pre-registration.** This is an exploratory analysis; numbers
-should be labeled as such until a pre-registered confirmatory
-replication on a fresh prompt slice is published.
+**Pre-registration.** The original mixed-corpus findings were
+exploratory; the qwen3 safety mediation cell was followed up with a
+pre-registered disjoint-prompt replication (`docs/pre_registration_
+qwen3_safety_mediation.md`, §5.3) that returned null. Other cells
+remain exploratory until similarly replicated.
 
 **Multiple comparisons.** The per-cell verdict thresholds were
 chosen ex ante (see § verdict-tier definitions in §3.2 and the
@@ -1015,8 +1014,9 @@ single mediation cell that the primary analysis flagged. We find:
   The primary analysis flagged qwen3 safety mediation (DiD +0.222
   [+0.029, +0.430], n_flip=63 paired); a pre-registered disjoint-
   prompt replication at n_flip=100 returned null (DiD −0.017
-  [−0.175, +0.139]). Per the pre-registration decision rule we treat
-  the primary as a false positive. opus-4.7 mediation is also null
+  [−0.175, +0.139]). The primary mediation finding failed to
+  replicate (see §5.3 for the interpretation under the pre-
+  registration decision rule). opus-4.7 mediation is also null
   (DiD −0.061, n_flip=10). VEA verbalization is correlated with
   inject framing but is not the channel through which inject changes
   refusal behavior in any cell where we tested it on a fresh sample.
@@ -1102,12 +1102,14 @@ python scripts/generate_paper_figures.py \
   --goodfire-summary runs/goodfire-mixed-n500/goodfire_vea_summary.json \
   --mediation-summary runs/goodfire-mixed-n500/vea_mediation_summary.json \
   --strict-mediation-summary runs/goodfire-mixed-n500/vea_mediation_summary.strict.json \
+  --opus-strict-mediation-summary runs/goodfire-opus-mixed-n300/vea_mediation_summary.strict.json \
+  --qwen3-replication-strict-mediation-summary runs/goodfire-replication-qwen3-safety/vea_mediation_summary.strict.json \
   --out-dir docs/figures/
 ```
 
 This writes `fig1_refusal_forest.png`, `fig2_vea_inflation.png`,
-`fig3_qwen3_per_family.png`, and `fig4_mediation_panels.png` to
-the specified output directory.
+`fig3_qwen3_per_family.png`, `fig4_mediation_panels.png`, and
+`fig5_two_mechanism.png` to the specified output directory.
 
 ---
 
@@ -1121,7 +1123,12 @@ by explicit thresholds set ex ante and shared across all cells:
 - `epiphenomenal`: CI includes zero OR |DiD| < 0.05.
 - `insufficient_data`: any stratum has n=0.
 
-The CI cutoff is 95% bootstrap-percentile (B=200 iterations).
+The CI cutoff is 95% bootstrap-percentile. Mediation analyses
+(§5.3, §5.4, pre-registered replication) use B=2000 iterations;
+earlier cross-protocol behavioral analyses (§5.1, §5.2) use B=200.
+Per §3.2, the higher iteration count materially tightens precision
+on the qwen3 primary safety DiD CI lower bound (the cell where it
+matters most) but does not change the verdict.
 
 ---
 
