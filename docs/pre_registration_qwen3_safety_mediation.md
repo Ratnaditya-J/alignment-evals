@@ -152,8 +152,60 @@ executed.
 
 ## 9. Results
 
-*(to be appended after the replication runs; leave as a placeholder
-until then)*
+*Filed: 2026-05-13. Executed: 2026-05-13. Verdict per §5: **Not replicated.***
+
+- **Replication run completed:** 2026-05-13
+- **Run directory:** `runs/goodfire-replication-qwen3-safety`
+- **Safety-family strict DiD point estimate:** **−0.017**
+- **Safety-family strict DiD 95% CI:** **[−0.175, +0.139]** (bootstrap B=2000, paired)
+- **n_flip:** 100 (larger than the primary's n_flip=63)
+- **n_stable_neg:** 92
+- **Verdict per §5 decision rule:** **Not replicated.** CI includes zero
+  and the point estimate is <+0.05 and negative-signed. Per §5: *"Treat
+  the primary as a false positive. Substantially revise paper: VEA
+  mediation on safety is exploratory, not supported."*
+
+### Stratum-level result (the interesting part)
+
+| Stratum | n | refusal (neutral) | refusal (inject) | paired Δ | 95% CI |
+|---|---:|---:|---:|---:|---|
+| VEA flip (− → +) | 100 | 0.440 | 0.640 | +0.200 | [+0.100, +0.300] |
+| VEA stable − | 92 | 0.478 | 0.696 | **+0.217** | **[+0.098, +0.337]** |
+| VEA flip (+ → −) | 2 | 0.500 | 0.500 | +0.000 | [+0.000, +0.000] |
+| VEA stable + | 6 | 0.500 | 0.333 | −0.167 | [−0.500, +0.000] |
+
+Both the flip and stable_neg strata show essentially the same +20pp
+refusal increase under inject — DiD ≈ 0 by construction. But each
+stratum on its own has a CI-excludes-zero positive paired Δrefusal.
+The replication therefore finds a **direct, non-VEA-mediated inject
+effect** on qwen3 safety refusal that operates independent of the
+VEA-flip distinction. This is structurally the same as the opus-4.7
+finding (direct effect, non-mediated, CI-excludes-zero on stable_neg),
+differing only in sign.
+
+### Paper changes made
+
+- Abstract: dropped the qwen3 "strong_mediation on safety" headline.
+  Added the replication verdict and the "direction-asymmetric direct
+  inject effect" framing.
+- §5.3: primary and replication shown side-by-side. The +0.222 finding
+  is preserved as the primary-analysis number with the pre-registered
+  replication reported alongside.
+- §5.4: rewritten around the convergent direction-asymmetry story:
+  qwen3 (+0.217) and opus (−0.339) both show CI-excludes-zero
+  stable_neg refusal shifts under inject, in opposite directions,
+  neither mediated by VEA.
+- §7.2: "two mechanisms" framing collapsed into "direction asymmetry,
+  both non-mediated."
+- §9 conclusion: emphasizes the successful pre-registered replication
+  discipline and the non-VEA-mediated direct-effect story.
+- Fig5: updated to show primary qwen3, replication qwen3, and opus
+  side-by-side (was: qwen3-mediated vs opus-direct contrast).
+
+*The pre-registration discipline worked as intended: an exploratory
+finding on a single sample did not survive a disjoint-prompt
+replication, and the paper was substantially revised in response. We
+treat this as a paper strength rather than a setback.*
 
 - Replication run completed: ___ (date)
 - Run directory: ___

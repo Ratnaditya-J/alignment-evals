@@ -403,13 +403,17 @@ def _render_two_mechanism(
     qwen3_strict: Dict[str, Any],
     opus_strict: Dict[str, Any],
     out_path: Path,
+    qwen3_replication_strict: Optional[Dict[str, Any]] = None,
 ) -> None:
-    """Side-by-side per-model panel contrasting qwen3 (VEA-mediated)
-    vs opus (non-verbalized direct) on the safety family. Each panel
-    shows paired Δrefusal for the flip-neg-to-pos stratum and the
-    stable_neg stratum with bootstrap CIs. The qualitative contrast:
-    qwen3's effect lives in the flip stratum; opus's effect lives in
-    the stable_neg stratum.
+    """Per-sample side-by-side panel showing paired Δrefusal for the
+    safety family under the validated strict rubric.
+
+    If ``qwen3_replication_strict`` is supplied, renders a 3-panel
+    layout (qwen3 primary, qwen3 pre-registered disjoint replication,
+    opus) that supports the §5.4 direction-asymmetry/non-replication
+    finding. Otherwise renders the legacy 2-panel layout (qwen3
+    primary, opus) — kept for back-compat with run dirs that pre-date
+    the replication.
 
     Strict-rubric, safety-family-only. Reads each model's
     ``vea_mediation_summary.strict.json``.
@@ -428,7 +432,16 @@ def _render_two_mechanism(
         LOGGER.warning("fig5: missing safety row in qwen3 or opus summary")
         return
 
-    fig, axes = plt.subplots(1, 2, figsize=(11, 5))
+    qwen3_repl_row = (
+        _safety_row(qwen3_replication_strict)
+        if qwen3_replication_strict
+        else None
+    )
+
+    panel_count = 3 if qwen3_repl_row else 2
+    fig, axes = plt.subplots(1, panel_count, figsize=(5.5 * panel_count, 5))
+    if panel_count == 1:
+        axes = [axes]
 
     def _panel(ax: Any, row: Dict[str, Any], model_label: str) -> None:
         strata = row.get("strata") or {}
@@ -479,24 +492,38 @@ def _render_two_mechanism(
         ax.set_title(f"{model_label}\n{did_text}\nverdict: {verdict}")
         ax.grid(axis="y", alpha=0.25)
 
-    _panel(axes[0], qwen3_row, "qwen3-235B-thinking (n=500)")
-    _panel(axes[1], opus_row, "claude-opus-4-7 (n=300)")
+    if qwen3_repl_row:
+        _panel(axes[0], qwen3_row, "qwen3-235B (primary, n=500)")
+        _panel(axes[1], qwen3_repl_row, "qwen3-235B (replication, n=200)")
+        _panel(axes[2], opus_row, "claude-opus-4-7 (n=300)")
+    else:
+        _panel(axes[0], qwen3_row, "qwen3-235B-thinking (n=500)")
+        _panel(axes[1], opus_row, "claude-opus-4-7 (n=300)")
 
     # Unify y-limits so the magnitude contrast is visually faithful
     # rather than each panel auto-scaling independently.
-    yl0 = axes[0].get_ylim()
-    yl1 = axes[1].get_ylim()
-    lo = min(yl0[0], yl1[0])
-    hi = max(yl0[1], yl1[1])
-    axes[0].set_ylim(lo, hi)
-    axes[1].set_ylim(lo, hi)
+    ylims = [ax.get_ylim() for ax in axes]
+    lo = min(yl[0] for yl in ylims)
+    hi = max(yl[1] for yl in ylims)
+    for ax in axes:
+        ax.set_ylim(lo, hi)
 
-    fig.suptitle(
-        "Two mechanisms on safety (validated strict rubric):\n"
-        "qwen3: behavioral effect only on VEA-flip prompts (mediated). "
-        "opus: behavioral effect on flip AND stable_neg prompts (direct).",
-        fontsize=11,
-    )
+    if qwen3_repl_row:
+        fig.suptitle(
+            "Safety-family stratum-level paired Δrefusal under inject "
+            "(validated strict rubric):\n"
+            "qwen3 primary mediation suggestive → replication null; "
+            "both samples + opus show CI-excludes-zero stable_neg "
+            "effects in opposite directions.",
+            fontsize=11,
+        )
+    else:
+        fig.suptitle(
+            "Safety-family stratum-level paired Δrefusal under inject "
+            "(validated strict rubric):\n"
+            "qwen3 primary vs opus on the same task family.",
+            fontsize=11,
+        )
     fig.tight_layout(rect=[0, 0, 1, 0.88])
     fig.savefig(out_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
@@ -539,8 +566,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help=(
             "Strict-rubric mediation summary for opus-4.7 (n=300). "
             "Combined with --strict-mediation-summary (qwen3 n=500) to "
-            "render fig5 — the two-mechanism contrast figure on the "
-            "safety family. See §5.4 of the paper."
+            "render fig5 — the safety-family stratum-level paired "
+            "Δrefusal figure. See §5.4 of the paper."
+        ),
+    )
+    parser.add_argument(
+        "--qwen3-replication-strict-mediation-summary",
+        default=None,
+        help=(
+            "Strict-rubric mediation summary for the pre-registered "
+            "qwen3 safety replication (n=200 disjoint). When supplied, "
+            "fig5 becomes a 3-panel layout including the replication; "
+            "the §5.4 direction-asymmetry / non-replication finding is "
+            "what this panel exists to show."
         ),
     )
     parser.add_argument("--out-dir", default="docs/figures")
@@ -556,6 +594,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     mediation = _load_json(args.mediation_summary)
     strict_mediation = _load_json(args.strict_mediation_summary)
     opus_strict_mediation = _load_json(args.opus_strict_mediation_summary)
+    qwen3_replication_strict_mediation = _load_json(
+        args.qwen3_replication_strict_mediation_summary
+    )
 
     produced = 0
 
@@ -586,6 +627,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             strict_mediation,
             opus_strict_mediation,
             out_dir / "fig5_two_mechanism.png",
+            qwen3_replication_strict=qwen3_replication_strict_mediation,
         )
         produced += 1
     else:
