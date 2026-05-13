@@ -374,8 +374,9 @@ def _render_mediation_panels(
     _panel_did(axes[2], per_family_strict or [], "strict")
 
     fig.suptitle(
-        "Aggregate vs per-family vs strict-rubric mediation analysis (qwen3)\n"
-        "the apparent aggregate signal is a corpus-composition confound",
+        "Aggregate vs per-family vs validated-strict mediation analysis (qwen3)\n"
+        "validated strict surfaces qwen3 safety strong_mediation; "
+        "capability families are mechanically null (refusal ~0)",
         fontsize=12,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.92])

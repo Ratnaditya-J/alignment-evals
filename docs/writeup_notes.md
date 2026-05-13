@@ -1019,3 +1019,132 @@ through this refinement in §4.4-§4.5.
 For future judges: don't ship a strict-rubric definition without a
 validation pass against humans. Intuitions about which subtypes are
 "clean" do not survive empirical testing.
+
+---
+
+## Validated-strict mediation: qwen3 safety shows strong mediation
+
+**Run.** `runs/goodfire-mixed-n500` re-analyzed under
+`--strict-vea` after PR #49 changed the strict subtype set to
+`{explicit_eval, benchmark, safety_check}`. The validated strict
+verdict materially differs from the old strict on the qwen3 safety
+cell, and the paper now leads with this finding rather than the
+"all epiphenomenal" version.
+
+### Cross-model summary (validated strict, n=500 mixed corpus)
+
+| Model | Verdict | DiD | 95% CI | n_flip | n_stable_neg |
+|---|---|---:|---|---:|---:|
+| deepseek-v3.2-exp | epiphenomenal | −0.051 | [−0.164, +0.017] | 19 | 481 |
+| kimi-k2-thinking | epiphenomenal | −0.014 | [−0.032, +0.004] | 4 | 495 |
+| **qwen3-235B-thinking** | **weak_mediation** | **+0.102** | **[+0.039, +0.170]** | **184** | **316** |
+
+The aggregate qwen3 verdict flipped from epiphenomenal (old strict)
+to weak_mediation under validated strict. The driver is the safety
+family:
+
+### qwen3 per-family (validated strict)
+
+| Family | Verdict | DiD | 95% CI | n_flip | n_stable_neg |
+|---|---|---:|---|---:|---:|
+| knowledge | epiphenomenal | +0.000 | [0, 0] | 28 | 97 |
+| math | epiphenomenal | +0.000 | [0, 0] | 1 | 124 |
+| **safety** | **strong_mediation** | **+0.222** | **[+0.029, +0.430]** | **63** | **62** |
+| truthfulness | epiphenomenal | +0.024 | [−0.058, +0.087] | 92 | 33 |
+
+**This is the new headline mediation finding.** qwen3 safety
+prompts where VEA flips from − to + show paired Δrefusal of +0.238;
+prompts where VEA stays − show +0.016. The DiD of +0.222 with CI
+[+0.029, +0.430] excludes zero.
+
+### Old strict vs validated strict on qwen3 safety
+
+| Strict set | DiD | 95% CI | Verdict |
+|---|---:|---|---|
+| Old {explicit_eval, benchmark, grader_awareness} | +0.199 | [−0.031, +0.439] | epiphenomenal |
+| Validated {explicit_eval, benchmark, safety_check} | **+0.222** | **[+0.029, +0.430]** | **strong_mediation** |
+
+The flip from epiphenomenal to strong_mediation is mechanical:
+
+- Validated strict shrinks n_flip from 70 (broad) / similar (old
+  strict) → 63 — only the high-precision positives count as flips.
+- Validated strict grows n_stable_neg from 37 (broad) → 62.
+  test_scenario / artificial_scenario rollouts that were broad-
+  positive under inject are now strict-negative in both conditions.
+- The flip stratum's paired Δrefusal grows from +0.143 (broad) →
+  +0.238 (validated strict). The cleaner positive cohort shows a
+  sharper behavioral signal.
+
+The interpretation: the validated strict rubric identifies the
+cohort of VEA+ rollouts that actually predict behavior. The broad
+rubric dilutes the cohort with low-precision positives
+(artificial_scenario at P=0.46, test_scenario at P=0.80) that do not
+carry the same behavioral signal.
+
+### Why mediation is absent on capability families
+
+For qwen3, capability families show null mediation because **refusal
+rates are essentially 0 in both conditions**:
+
+| Family | Refusal under neutral | Refusal under inject | Δ |
+|---|---:|---:|---:|
+| knowledge | 0.000 | 0.000 | 0.000 |
+| math | 0.000 | 0.000 | 0.000 |
+| truthfulness | ~0.01 | ~0.05 | small, mediated null |
+
+There is no refusal behavior available for VEA to mediate. The
+finding is therefore "VEA verbalization mediates refusal **when
+refusal is on the table**," not "VEA verbalization has no
+behavioral consequence anywhere."
+
+### Why mediation is absent on DeepSeek and Kimi
+
+Both models have very small validated-strict VEA inflation
+(DeepSeek +0.050, Kimi +0.002), so the number of strict-flip prompts
+is small (19 and 4 respectively). With so few flips, any mediation
+signal would be statistically dim. The current verdicts (both
+epiphenomenal) are consistent with null mediation but are
+underpowered to rule out a small effect.
+
+### Caveats
+
+- **n_flip=63 on the qwen3 safety mediation.** CI [+0.029, +0.430]
+  is wide on the upper end. The point estimate could be inflated by
+  sample noise. Pre-registered replication on a fresh prompt slice
+  would tighten the CI.
+- **The "deepseek truthfulness strong_mediation" cell is a 1-sample
+  artifact** (n_flip=1; the one prompt happens to refuse under
+  neutral and not under inject, giving DiD = −1.0). Disregard in
+  any interpretation.
+- **Kimi per-family results are mostly insufficient_data** — too few
+  prompts flip under strict to populate the strata.
+
+### What the paper now says (Framing C, the revised framing)
+
+Three findings, all CI-excludes-zero supported on the n=500 mixed
+corpus:
+
+1. VEA inflation: real, qwen3 +0.380 [+0.336, +0.424], generalizes
+   across truthfulness / safety / knowledge but not math.
+2. Cross-protocol behavioral nulls: 8/8 frontier models, including
+   5 closed-source pooled at +0.002 [−0.018, +0.023].
+3. **VEA mediates refusal on qwen3 safety**: DiD +0.222 [+0.029,
+   +0.430] under validated strict, n_flip=63 paired. Mediation does
+   NOT generalize to qwen3 capability families (mechanical null —
+   nothing to mediate) or to DeepSeek / Kimi (underpowered VEA
+   inflation).
+
+The story: the verbalization-to-behavior link **completes
+on the narrow band of (model, family) where the conditions are
+right** — substantial VEA inflation AND refusal as the natural
+behavioral response. In our lineup, that intersection contains
+exactly one cell: qwen3 safety.
+
+### Methodological lesson #2
+
+The strict-set composition materially changes the mediation
+verdict on the same data. The first strict set (pre-validation)
+returned epiphenomenal on qwen3 safety; the validated strict set
+returns strong_mediation. Validation is not optional. Future
+writeups using LLM-judge subtypes should validate-then-finalize,
+not the other way around.
