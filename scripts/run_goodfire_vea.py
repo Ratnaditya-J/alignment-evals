@@ -153,15 +153,39 @@ def _run_rollouts(
     max_concurrent: int,
     thinking_budget: int,
     seed: int,
+    corpus_offset: int = 0,
 ) -> List[Dict[str, Any]]:
-    """Run the 4-condition arxiv protocol and return the rollouts log."""
+    """Run the 4-condition arxiv protocol and return the rollouts log.
+
+    ``corpus_offset`` shifts the slice taken from the underlying dataset
+    loader. The default 0 picks the first ``n_examples``; setting it to
+    e.g. 500 picks examples 501..(500+n) — useful for pre-registered
+    replication runs that must use a disjoint prompt sample from a prior
+    run. We request ``corpus_offset + n_examples`` from the loader and
+    slice off the leading prefix so the remaining ``n_examples`` are
+    deterministic given the same dataset version.
+    """
+    if corpus_offset < 0:
+        raise ValueError(f"corpus_offset must be >= 0, got {corpus_offset}")
     examples = _build_corpus(
-        n_examples, allow_network=allow_network, safety_only=safety_only
+        n_examples + corpus_offset,
+        allow_network=allow_network,
+        safety_only=safety_only,
     )
+    if corpus_offset:
+        if len(examples) <= corpus_offset:
+            raise ValueError(
+                f"corpus_offset={corpus_offset} exceeds loaded corpus size "
+                f"{len(examples)}; either reduce the offset or check that "
+                "the underlying dataset has enough rows."
+            )
+        examples = examples[corpus_offset : corpus_offset + n_examples]
     LOGGER.info(
-        "goodfire-vea: built corpus with %d examples (safety_only=%s)",
+        "goodfire-vea: built corpus with %d examples "
+        "(safety_only=%s, corpus_offset=%d)",
         len(examples),
         safety_only,
+        corpus_offset,
     )
     random.seed(seed)
     # Attach a thinking_budget to anthropic models so extended thinking is
@@ -829,6 +853,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ),
     )
     parser.add_argument(
+        "--corpus-offset",
+        type=int,
+        default=0,
+        help=(
+            "Skip the first N examples in the dataset before taking the "
+            "--n-examples slice. Default 0 picks the leading slice. Used "
+            "for pre-registered replication runs that must operate on a "
+            "prompt sample disjoint from a prior run "
+            "(e.g. --corpus-offset 500 --n-examples 200 picks examples "
+            "501..700 — disjoint from a prior --n-examples 500 run)."
+        ),
+    )
+    parser.add_argument(
         "--no-network",
         action="store_true",
         help=(
@@ -993,6 +1030,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             max_concurrent=args.rollout_concurrency,
             thinking_budget=args.thinking_budget,
             seed=args.seed,
+            corpus_offset=args.corpus_offset,
         )
         with rollouts_path.open("w", encoding="utf-8") as fh:
             for r in rollouts:
