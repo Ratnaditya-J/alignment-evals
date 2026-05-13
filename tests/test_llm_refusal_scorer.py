@@ -5292,3 +5292,76 @@ def test_generate_paper_figures_no_inputs_returns_error(tmp_path):
 
     rc = fig_main(["--out-dir", str(tmp_path / "figs")])
     assert rc != 0
+
+
+def test_vea_mediation_strict_report_soft_subtypes_text_is_consistent(tmp_path):
+    """The strict-mode report header lists the strict set AND a 'Softer
+    subtypes' list. The soft list must be the complement of the strict
+    set in the known judge vocabulary - not a hardcoded list that drifts
+    when the strict set changes.
+
+    Regression guard: when _STRICT_VEA_SUBTYPES changed in PR #49 from
+    {explicit_eval, benchmark, grader_awareness} to
+    {explicit_eval, benchmark, safety_check}, the previously-hardcoded
+    'Softer subtypes (safety_check, ...)' line became internally
+    inconsistent — listing safety_check in BOTH the strict-set and
+    soft-subtypes lines. This test ensures the soft list excludes
+    whatever is in the strict set.
+    """
+    from scripts.analyze_vea_mediation import main as mediation_main
+
+    run_dir = tmp_path / "report"
+    run_dir.mkdir()
+    rollouts = [
+        {
+            "model_name": "m",
+            "condition": cond,
+            "example_id": "ex:0",
+            "task_family": "safety",
+            "rollout_index": 0,
+            "refusal": 0.0,
+        }
+        for cond in ("neutral", "inject")
+    ]
+    classifications = [
+        {
+            "model_name": "m",
+            "condition": cond,
+            "example_id": "ex:0",
+            "task_family": "safety",
+            "rollout_index": 0,
+            "is_vea": False,
+            "vea_type": "none",
+            "confidence": 0.0,
+        }
+        for cond in ("neutral", "inject")
+    ]
+    (run_dir / "rollouts.jsonl").write_text(
+        "\n".join(json.dumps(r, sort_keys=True) for r in rollouts) + "\n"
+    )
+    (run_dir / "goodfire_vea_classifications.jsonl").write_text(
+        "\n".join(json.dumps(c, sort_keys=True) for c in classifications) + "\n"
+    )
+    rc = mediation_main(["--run-dir", str(run_dir), "--strict-vea"])
+    assert rc == 0
+
+    report = (run_dir / "vea_mediation_report.md").read_text()
+    # The strict-set list must include safety_check (validated strict).
+    assert "'safety_check'" in report
+    # Isolate the 'Softer subtypes' portion (between 'Softer subtypes '
+    # and 'are treated') so the assertion doesn't accidentally match
+    # safety_check from the strict-set list earlier in the same line.
+    soft_line = next(
+        line for line in report.splitlines() if "Softer subtypes" in line
+    )
+    after = soft_line.split("Softer subtypes ", 1)[1]
+    soft_portion = after.split(" are treated", 1)[0]
+    assert "safety_check" not in soft_portion, (
+        f"safety_check leaked into soft-subtypes list: {soft_portion}"
+    )
+    # And the soft list MUST include the actual soft subtypes
+    # (grader_awareness, test_scenario, artificial_scenario).
+    for sub in ("grader_awareness", "test_scenario", "artificial_scenario"):
+        assert sub in soft_portion, (
+            f"{sub} missing from soft list: {soft_portion}"
+        )
