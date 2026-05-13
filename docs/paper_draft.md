@@ -1005,9 +1005,30 @@ All rollouts, classifications, summary JSONs, analysis scripts,
 prompt templates, and figure-generation code are released at the
 project repository. Each summary JSON records the seeds, judge model
 identifiers, and prompt-template hashes used in its production.
-Reproducing every number in this report from the raw rollouts is
-roughly a $10 judge-rescoring cost and ~30 minutes of compute on a
-laptop.
+
+Two reproduction costs are worth distinguishing:
+
+* **Full reproduction** (rerun every model-under-test and judge call
+  from scratch): approximately **$500 in API fees** as of this draft,
+  accumulated across the cross-protocol experiment (8 frontier models
+  × 4 conditions × n=2,000 prompts per model = ~16k rollouts), the
+  Goodfire-style open-reasoning experiment (3 models × 4 conditions ×
+  n=500 = 6k rollouts), the closed-source opus-4.7 extension (1 model
+  × 4 conditions × n=300 = 1.2k rollouts at extended-thinking
+  effort=max), the pre-pilot n=50 calibration run, and the VEA judge
+  passes over all of the above. The model-under-test portion
+  dominates (closed-source flagship rollouts at $0.05–$0.50 per call,
+  opus-4.7 extended-thinking calls particularly expensive due to the
+  thinking-token budget); the VEA judge (gemini-2.5-flash-lite via
+  OpenRouter) contributes roughly $10–$20 of the total.
+
+* **Judge-only reproduction** (rerun only the VEA judge against the
+  released raw rollouts): approximately **$10–$20 in OpenRouter API
+  fees** at ~30 minutes wall time. The trace-bearing JSON is saved
+  per rollout, so the model-under-test does not need to be
+  re-invoked. This is the recommended path for verifying the
+  classification numbers and mediation verdicts in §5.2–§5.4
+  without rerunning the rollout pipeline.
 
 ### Figure generation
 
