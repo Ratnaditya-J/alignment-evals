@@ -1,4 +1,6 @@
-# Verbalized Evaluation Awareness in Reasoning Models: Strong Internal Signals, Weak Aggregate Behavioral Effects
+# When Models Notice Evals: Verbalized Awareness Fails to Mediate Safety Behavior
+
+*A pre-registered non-replication of the apparent verbalized-eval-awareness mediation channel, and what survives.*
 
 **Author:** Ratnaditya Jonnalagadda  
 **Affiliation:** Independent  
@@ -13,34 +15,28 @@
 models, but not through visible CoT eval-awareness.** A pre-
 registered replication of the apparent qwen3 safety mediation effect
 failed to replicate on disjoint prompts; the behavioral signature
-survives but operates in a stratum where verbalized eval-awareness
+survives but operates in a stratum where strict-VEA verbalization
 did not flip, and it runs in opposite directions across the two
 models we tested at meaningful sample size — qwen3 refuses +22pp
-more under inject, claude-opus-4-7 refuses −34pp less. We
-characterize this CoT-blind direct refusal channel and discuss its
-implications for alignment-eval interpretability tooling, which
-predominantly reads chain-of-thought for eval-awareness language and
-would miss both models' behavioral effects.
+more under inject, claude-opus-4-7 refuses −34pp less.
+
+> *The behavioral channel exists; the verbal fingerprint of
+> "noticing the eval" is a separate, partially correlated phenomenon.*
 
 The paper combines a cross-protocol behavioral experiment (16,000
 rollouts across 8 frontier models; closed-source pooled refusal
-estimate at 2,499 paired comparisons returns null at +0.002 [−0.018,
-+0.023]) with a Goodfire-style reasoning-trace analysis (6,000
-rollouts on 3 open-reasoning models + a closed-source extension on
-claude-opus-4-7 at n=300 + a pre-registered disjoint-prompt
-replication on qwen3-235B at n=200 safety prompts). VEA inflation
+estimate returns null at +0.002 [−0.018, +0.023], n=2,499 paired)
+with a Goodfire-style reasoning-trace analysis (n=500 on the open-
+reasoning trio + n=300 on claude-opus-4-7 + a pre-registered
+disjoint-prompt qwen3 safety replication at n=200). VEA inflation
 under inject is real and model-heterogeneous (qwen3 +0.380, deepseek
-+0.050, opus +0.080, kimi null), replicates four times on qwen3,
-and is visible at the broad-rubric level but is *not* the channel
-through which inject changes refusal. Detailed numbers, including
-the qwen3 primary mediation point estimate that failed to replicate
-(DiD +0.222 [+0.029, +0.430] at n_flip=63 → replication DiD −0.017
-[−0.175, +0.139] at n_flip=100), are in §5.3–§5.4. The inject prompt
-bundles eval-context signaling with comparison-to-deployment
-language, which we treat as a core interpretive limitation (§3.1.1).
-The VEA judge is validated against 166 human-labeled rollouts
-(broad F1 0.886) with subtype-heterogeneous precision discussed in
-§4.4.
++0.050, opus +0.080, kimi null) and replicates four times on qwen3,
+but the qwen3 primary mediation point estimate (DiD +0.222 at
+n_flip=63) failed to replicate at n_flip=100 (DiD −0.017 [−0.175,
++0.139]). Detailed numbers and the residual non-verbalized refusal
+effects are in §5.3–§5.4. The inject prompt bundles eval-context
+signaling with comparison-to-deployment language; we treat this as
+a core interpretive limitation (§3.1.1).
 
 **Keywords:** evaluation awareness, reasoning models, chain-of-thought,
 safety evaluation, benchmark validity
@@ -92,16 +88,17 @@ failed to replicate; we discuss the interpretation in §5.3.
 The combination yields a finding sharper than either question's
 naive answer:
 
-> **Inject framing produces direction-asymmetric direct refusal shifts
-> on safety prompts in at least two reasoning models — qwen3 refuses
+> **Inject framing produces direction-asymmetric refusal shifts on
+> safety prompts in at least two reasoning models — qwen3 refuses
 > more under inject (paired Δ +0.217 [+0.098, +0.337] on the
 > replication sample), opus-4.7 refuses less (paired Δ −0.339 [−0.446,
 > −0.231]) — and both effects operate on the `stable_neg` stratum
-> where VEA verbalization did not flip. VEA verbalization is inflated
-> under inject framing but is not the channel through which inject
-> changes refusal behavior in any cell where we have meaningful
-> n_flip on a fresh sample. The verbal fingerprint visible to
-> CoT-reading audit and the behavioral signature visible to refusal
+> where strict-VEA verbalization did not flip. Strict-VEA
+> verbalization is inflated under inject framing but is not the
+> channel through which inject changes refusal behavior in any cell
+> where we have meaningful n_flip on a fresh sample. The verbal
+> fingerprint of "noticing the eval" visible to explicit VEA
+> monitoring and the behavioral signature visible to refusal
 > measurement are correlated phenomena, not causally linked at the
 > level our within-prompt design can test.**
 
@@ -125,6 +122,20 @@ benchmarking, or grading without being prompted to do so. This is
 distinct from sandbagging or strategic deception claims, which
 require the additional inference that the verbalization causes
 behavioral change.
+
+**How our design differs from Goodfire's, and why this matters for
+comparison.** Goodfire's setup centers on *spontaneous* verbalized
+eval-awareness (does the model say "this is an eval" without being
+told?) and on CoT-level sentence interventions (steering or
+intervening on individual reasoning sentences). Our setup uses an
+*explicit* inject system prompt that names the evaluation context
+directly. The two designs are complementary but not interchangeable:
+our inject framing is a stronger manipulation than Goodfire's
+naturally-occurring condition, so a finding of "no mediation under
+explicit inject" in our setup is *not* equivalent to "no mediation
+under spontaneous VEA" in Goodfire's setup, and vice versa. Readers
+should treat the comparison qualitatively rather than as a
+replication of Goodfire's specific experimental protocol.
 
 **Benchmark contamination and validity.** A separate literature on
 benchmark contamination (e.g. MMLU leakage into training corpora)
@@ -224,10 +235,10 @@ how you read the inject prompt:
 - The qwen3 +22pp refusal increase on safety (replication, §5.4) is
   consistent with the *eval-context* reading (model becomes more
   cautious when it believes its response will be scrutinized).
-- The opposite-signed direct effects on two different reasoning
-  models may reflect models weighting these two cues differently
-  rather than holding qualitatively different eval-awareness
-  mechanisms.
+- The opposite-signed strict-VEA-stable refusal effects on two
+  different reasoning models may reflect models weighting these two
+  cues differently rather than holding qualitatively different
+  eval-awareness mechanisms.
 
 Discriminating between these readings would require a factorial
 ablation of the inject prompt into its component clauses (eval-
@@ -473,8 +484,9 @@ The qwen3 effect is the largest in the lineup and **replicates across
 four independent runs**: smoke n=50 (+0.36 Wald CI [+0.18, +0.54]),
 trio n=200 safety-only (+0.475 paired CI [+0.390, +0.555]), mixed
 n=500 (+0.380 paired CI [+0.336, +0.424]), and the pre-registered
-disjoint safety replication at n=200 (inject VEA+ rate persists at
-~0.5 against a zero neutral baseline, see §5.3). The exact magnitude
+disjoint safety replication at n=200 under the **validated strict
+rubric** (inject strict-VEA+ rate ≈0.53, neutral strict-VEA+ rate
+≈0.04 — see §5.3 for the stratum breakdown). The exact magnitude
 varies with corpus composition; the qualitative result — VEA
 inflation under inject is real on qwen3 — is stable. Note that this
 is the *VEA-inflation* finding (§5.2); the separate qwen3 safety
@@ -602,11 +614,12 @@ pre-registered replication does not support that framing. The revised
 reading: VEA verbalization and refusal change are *both* outputs of
 the same forward pass under inject framing; one does not cause the
 other in the within-prompt mediation sense we tested. Inject does
-have a direct refusal effect on safety prompts in our lineup (see
+have a non-verbalized refusal effect on safety prompts in our lineup
+— visible in the strict-VEA-stable stratum (see
 §5.4), but it flows through a channel that is upstream of, or
 parallel to, the verbalization — not through it.
 
-### 5.4 Q4: Direct inject behavioral effects (the channel that survives the replication)
+### 5.4 Q4: Non-verbalized refusal effects (the strict-VEA-stable stratum that survives the replication)
 
 The mediation analysis in §5.3 is null after replication. But the
 **stable_neg stratum is not null** on the safety family in either of
@@ -657,10 +670,10 @@ underpowered the effect to zero; the pre-registered disjoint
 replication (n=92) reveals a clean +22pp refusal increase. opus-4.7
 on the same kind of safety prompts shows a −34pp refusal decrease.
 Both replication and opus CIs exclude zero; both effects operate
-**without VEA flipping**, so the mediation framing (effect routed
-through verbalized eval-awareness) does not apply. The same inject
-prompt produces opposite-signed direct refusal shifts in the two
-models.
+**without strict-VEA flipping**, so the mediation framing (effect
+routed through verbalized eval-awareness) does not apply. The same
+inject prompt produces opposite-signed strict-VEA-stable refusal
+shifts in the two models.
 
 **Why two opposite directions?** The inject prompt bundles two
 distinct manipulations that we did not factor apart in this study:
@@ -770,15 +783,19 @@ missing data; capture is solid for the open-reasoning routes.
    behavioral signature on refusal are correlated but the within-prompt
    design does not support a mediation interpretation.
 
-4. **Direction-asymmetric direct effects on safety refusal that
-   survive the replication.** The `stable_neg` stratum (prompts where
-   VEA stayed negative under both conditions) shows CI-excludes-zero
-   refusal shifts under inject in two reasoning models, in opposite
-   directions: qwen3-235B safety stable_neg paired Δ +0.217 [+0.098,
-   +0.337] at n=92 (replication), opus-4.7 safety stable_neg paired Δ
-   −0.339 [−0.446, −0.231] at n=65. Inject framing changes safety-
-   prompt refusal behavior on both models through a channel that does
-   not require VEA verbalization to flip.
+4. **Direction-asymmetric non-verbalized refusal effects on safety
+   that survive the replication.** The `stable_neg` stratum (prompts
+   where strict-VEA stayed negative under both conditions) shows
+   CI-excludes-zero refusal shifts under inject in two reasoning
+   models, in opposite directions: qwen3-235B safety stable_neg paired
+   Δ +0.217 [+0.098, +0.337] at n=92 (replication), opus-4.7 safety
+   stable_neg paired Δ −0.339 [−0.446, −0.231] at n=65. Inject
+   framing changes safety-prompt refusal behavior on both models
+   through a channel that does not require strict-VEA verbalization to
+   flip. We use "non-verbalized refusal effect" rather than "direct
+   effect" because `stable_neg` is a post-treatment stratum and the
+   "direct effect" language carries causal-mediation connotations the
+   design does not support.
 
 ### 7.2 What this means for alignment-eval research
 
@@ -807,9 +824,10 @@ disjoint-prompt replication of the qwen3 safety mediation effect was
 null (§5.3). We treat the primary +0.222 mediation point estimate as
 a false positive per the pre-registration decision rule. **VEA
 verbalization in CoT is *correlated* with the inject framing — its
-inflation under inject is well-replicated across three independent
-runs on qwen3 — but does *not* mediate the inject-to-refusal channel
-in any cell where we have meaningful n_flip on a fresh sample.**
+inflation under inject is well-replicated across four independent
+runs on qwen3 (including the pre-registered safety replication) — but
+does *not* mediate the inject-to-refusal channel in any cell where
+we have meaningful n_flip on a fresh sample.**
 
 **Direction asymmetry, not two mechanisms.** Earlier drafts framed
 qwen3 and opus-4.7 as exhibiting two qualitatively distinct
@@ -823,24 +841,28 @@ differ in *direction*:
 * opus-4.7 safety stable_neg paired Δ: **−0.339** [−0.446, −0.231]
   (n=65) — the model refuses less under inject.
 
-Both effects are CI-excludes-zero direct refusal shifts. Neither is
-mediated by VEA verbalization on the prompts where they manifest —
-both effects appear in the `stable_neg` stratum where verbalization
-did not flip. **For alignment-eval research, the practical implication
-is:** a CoT-based VEA detector (the form most current interpretability
-tooling resembles) would miss *both* of these behavioral signatures,
-because both operate at a layer upstream of or parallel to the
-verbalization. The behavioral effect of inject framing is real and
-asymmetric across models; the verbal fingerprint of "noticing the
-eval" is a separate, partially correlated phenomenon, not the
-channel through which the behavior flows.
+Both effects are CI-excludes-zero refusal shifts visible on prompts
+where strict-VEA stayed negative under both conditions. Strict-VEA
+flipping does not predict additional refusal change on top of these
+stratum-level effects. **For alignment-eval research, the practical
+implication is:** a VEA-style monitor — the form most current
+interpretability tooling for eval-awareness resembles — would miss
+*both* of these behavioral signatures, because both surface on
+prompts where the explicit verbal cue ("this is an eval") never
+appears in CoT. We do not claim the CoT is uninformative *in general*
+about these effects — only that the strict-VEA signal we measured
+does not track them. The behavioral effect of inject framing is real
+and asymmetric across models; the verbal fingerprint of "noticing the
+eval" is a separate, partially correlated phenomenon, not the channel
+through which the behavior flows.
 
 **The right interpretation, in one sentence:**
 
-> Inject framing produces direction-asymmetric direct shifts in safety
-> refusal on at least two reasoning models; VEA verbalization is
-> inflated under inject but is not the mediating channel for those
-> shifts; the verbal fingerprint visible to CoT-reading audit
+> Inject framing produces direction-asymmetric refusal shifts on
+> safety prompts in at least two reasoning models; strict-VEA
+> verbalization is inflated under inject but is not the mediating
+> channel for those shifts; the verbal fingerprint visible to
+> explicit VEA monitoring
 > mechanisms is not where the behavioral effect lives.
 
 ### 7.3 The methodological lesson from the validated strict rubric
@@ -1020,29 +1042,30 @@ single mediation cell that the primary analysis flagged. We find:
   (DiD −0.061, n_flip=10). VEA verbalization is correlated with
   inject framing but is not the channel through which inject changes
   refusal behavior in any cell where we tested it on a fresh sample.
-- **(d) Direct refusal effects on safety, direction-asymmetric.**
-  The `stable_neg` stratum (prompts where VEA stayed negative under
-  both conditions) shows CI-excludes-zero refusal shifts on safety
-  under inject in two models, in opposite directions: qwen3-235B
-  +0.217 [+0.098, +0.337] at n=92 (replication sample), opus-4.7
-  −0.339 [−0.446, −0.231] at n=65. Inject framing has a direct
-  refusal effect on safety prompts that operates **independently of
-  visible VEA verbalization**.
+- **(d) Non-verbalized refusal effects on safety, direction-
+  asymmetric.** The `stable_neg` stratum (prompts where strict-VEA
+  stayed negative under both conditions) shows CI-excludes-zero
+  refusal shifts on safety under inject in two models, in opposite
+  directions: qwen3-235B +0.217 [+0.098, +0.337] at n=92 (replication
+  sample), opus-4.7 −0.339 [−0.446, −0.231] at n=65. Inject framing
+  changes refusal behavior on safety prompts even where strict-VEA
+  verbalization did not flip — visible to refusal measurement, not
+  visible to explicit VEA monitoring.
 
 **The central finding** is that inject framing has direction-
-asymmetric direct effects on safety-prompt refusal in at least two
-reasoning models, and that these effects are *not* mediated by visible
-VEA verbalization. The mediation hypothesis — that the model
+asymmetric refusal effects on safety prompts in at least two
+reasoning models, and that these effects are *not* mediated by
+strict-VEA verbalization. The mediation hypothesis — that the model
 verbalizes "this is an eval" and that verbalization then shifts the
 refusal decision — does not survive pre-registered disjoint-prompt
-replication. The behavioral channel exists; the verbal fingerprint of
-"noticing the eval" is a separate, partially correlated phenomenon
-that current CoT-based interpretability tooling would track but that
-does not capture where the behavioral effect lives.
+replication. **The behavioral channel exists; the verbal fingerprint
+of "noticing the eval" is a separate, partially correlated phenomenon
+that current explicit-VEA monitoring tools would track but that does
+not capture where the behavioral effect lives.**
 
 This has practical implications for alignment-eval research: monitors
 that read CoT for explicit eval-awareness language would miss both
-models' direct refusal effects in our lineup. The pre-registration
+models' refusal effects in our lineup. The pre-registration
 discipline that disclosed the qwen3-safety non-replication is itself a
 methodological contribution — we recommend the same discipline be
 applied to other LLM-judge-driven exploratory findings before they
