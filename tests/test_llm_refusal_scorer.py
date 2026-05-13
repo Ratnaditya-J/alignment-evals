@@ -3191,8 +3191,14 @@ def test_anthropic_captures_thinking_blocks_when_enabled(monkeypatch):
     assert content == "I can answer that respectfully."
     # Thinking block is captured.
     assert "evaluation" in client.last_response.reasoning_trace
-    # Adaptive thinking shape — required for opus-4.7.
-    assert captured["payload"]["thinking"] == {"type": "adaptive"}
+    # Adaptive thinking shape — required for opus-4.7. The display field
+    # defaults to "summarized" so the thinking content is actually
+    # returned (opus-4.7's API default is "omitted", which would return
+    # an empty thinking block with only the opaque signature).
+    assert captured["payload"]["thinking"] == {
+        "type": "adaptive",
+        "display": "summarized",
+    }
     assert captured["payload"]["output_config"] == {"effort": "medium"}
 
 
@@ -5894,8 +5900,12 @@ def test_anthropic_with_thinking_wrapper_injects_thinking_budget(monkeypatch):
     )
 
     # opus-4.7 needs the adaptive shape. The wrapper-supplied budget=4096
-    # maps to effort=medium per the providers.py cutoff table.
-    assert captured["payload"]["thinking"] == {"type": "adaptive"}
+    # maps to effort=medium per the providers.py cutoff table. Display
+    # defaults to "summarized" so the thinking text is actually returned.
+    assert captured["payload"]["thinking"] == {
+        "type": "adaptive",
+        "display": "summarized",
+    }
     assert captured["payload"]["output_config"] == {"effort": "medium"}
     assert content == "(visible response)"
     # And the reasoning trace was captured from the `thinking` block.
@@ -5942,6 +5952,51 @@ def test_anthropic_thinking_effort_overrides_budget_mapping(monkeypatch):
     )
 
     assert captured["payload"]["output_config"] == {"effort": "high"}
+
+
+def test_anthropic_thinking_display_omitted_passes_through(monkeypatch):
+    """A caller can opt back into opus-4.7's default 'omitted' display
+    (no readable thinking text, only the signature) via thinking_display.
+    Useful when the caller wants faster TTFT and doesn't need to read CoT.
+    """
+    from scripts.run_goodfire_vea import _AnthropicWithThinking
+    from src.eval_awareness import GenerationConfig, TranscriptInput
+
+    captured = {}
+
+    class FakeResponse:
+        status_code = 200
+        headers = {"request-id": "rid-fake"}
+
+        def json(self):
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+    def fake_post(url, headers, payload, timeout_seconds, retry):
+        captured["payload"] = dict(payload)
+        return FakeResponse()
+
+    import src.eval_awareness.providers as providers_module
+
+    monkeypatch.setattr(providers_module, "_post_with_retries", fake_post)
+
+    wrapper = _AnthropicWithThinking(
+        name="anthropic:claude-opus-4-7",
+        base_url="https://api.anthropic.com/v1",
+        api_key="fake-key",
+        model="claude-opus-4-7",
+        thinking_budget=4096,
+        thinking_display="omitted",
+    )
+
+    wrapper.generate_with_config(
+        TranscriptInput(user_prompt="hi"),
+        GenerationConfig(temperature=1.0, max_tokens=256),
+    )
+
+    assert captured["payload"]["thinking"] == {
+        "type": "adaptive",
+        "display": "omitted",
+    }
 
 
 def test_anthropic_with_thinking_preserves_caller_supplied_budget(monkeypatch):

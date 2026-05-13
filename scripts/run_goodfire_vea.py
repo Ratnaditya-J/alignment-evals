@@ -228,11 +228,13 @@ class _AnthropicWithThinking(AnthropicClient):
         *args: Any,
         thinking_budget: int,
         thinking_effort: Optional[str] = None,
+        thinking_display: str = "summarized",
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self._thinking_budget = int(thinking_budget)
         self._thinking_effort = thinking_effort
+        self._thinking_display = thinking_display
 
     def generate_with_config(
         self, transcript: TranscriptInput, config: GenerationConfig
@@ -242,6 +244,8 @@ class _AnthropicWithThinking(AnthropicClient):
             extra.setdefault("thinking_budget", self._thinking_budget)
         if self._thinking_effort:
             extra.setdefault("thinking_effort", self._thinking_effort)
+        if self._thinking_display:
+            extra.setdefault("thinking_display", self._thinking_display)
         bumped = GenerationConfig(
             temperature=config.temperature,
             max_tokens=config.max_tokens,
@@ -927,12 +931,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     parser.add_argument(
         "--thinking-effort",
-        choices=("low", "medium", "high"),
+        choices=("low", "medium", "high", "xhigh", "max"),
         default=None,
         help=(
             "Anthropic extended-thinking effort (opus-4.7 adaptive API). "
             "Overrides the budget->effort mapping. Only used when "
-            "--include-opus is set."
+            "--include-opus is set. opus-4.7 supports max/xhigh/high/"
+            "medium/low; older models support high/medium/low."
+        ),
+    )
+    parser.add_argument(
+        "--thinking-display",
+        choices=("summarized", "omitted"),
+        default="summarized",
+        help=(
+            "Anthropic thinking display mode (opus-4.7 adaptive API). "
+            "'summarized' returns the summarized CoT text in the thinking "
+            "block; 'omitted' returns an empty thinking field with only "
+            "the signature (faster but no readable trace). Default "
+            "'summarized' is required for VEA classification. Note: "
+            "even 'summarized' is a model-produced summary of the full "
+            "CoT, not the verbatim trace."
         ),
     )
     parser.add_argument(
@@ -1053,6 +1072,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     model=args.anthropic_model,
                     thinking_budget=args.thinking_budget,
                     thinking_effort=args.thinking_effort,
+                    thinking_display=args.thinking_display,
                 )
             )
         LOGGER.info(
