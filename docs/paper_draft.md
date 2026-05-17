@@ -96,7 +96,7 @@ context is introduced through *explicit system-prompt framing*
 prefilling, or when it is already embedded in benchmark prompts as
 an *intrinsic eval/deployment label* authored by an independent
 research group, which behavioral shifts remain, are they mediated by
-measured VEA, and what specific prompt features carry them?
+measured VEA, and what specific prompt features carry or predict them?
 
 This paper asks four complementary empirical questions, each
 addressed by a dedicated experimental phase.
@@ -2205,9 +2205,9 @@ channel is not explained by measured VEA; the intrinsic-label effect
 is behavioral-only in this design (V2 does not run VEA-flip mediation,
 and closed-CoT models have no VEA channel). Both are consistent with
 Knecht et al. (2026)'s broad-scope finding that VEA does not robustly
-drive behavior under CoT-level interventions.** Prompt-level eval cues
-exist as behavioral signals; explicit-VEA monitoring of CoT does
-not capture where those signals act.
+drive behavior under CoT-level interventions.** Prompt-level eval
+cues exist as behavioral signals; explicit-VEA monitoring of CoT
+does not capture the explicit-framing safety shifts we observe.
 
 This has practical implications for alignment-eval research:
 **explicit-VEA monitors** — those that read CoT specifically for
