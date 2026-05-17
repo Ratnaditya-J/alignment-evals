@@ -2528,8 +2528,12 @@ Solutions.* Patterns 5(5). Preprint: arXiv:2308.14752.
 Qwen Team (2025). *Qwen3 Technical Report.* Alibaba Cloud.
 arXiv:2505.09388.
 
-Schoen, et al. (2025). *Stress Testing Deliberative Alignment for
-Anti-Scheming Training.* arXiv:2509.15541.
+Schoen, B., Nitishinskaya, E., Balesni, M., Højmark, A.,
+Hofstätter, F., Scheurer, J., Meinke, A., Wolfe, J., van der Weij,
+T., Lloyd, A., Goldowsky-Dill, N., Fan, A., Matveiakin, A., Shah,
+R., Williams, M., Glaese, A., Barak, B., Zaremba, W., & Hobbhahn,
+M. (2025). *Stress Testing Deliberative Alignment for Anti-Scheming
+Training.* arXiv:2509.15541.
 
 van der Weij, T., Hofstätter, F., Jaffe, O., Brown, S. F., & Ward,
 F. R. (2025). *AI Sandbagging: Language Models can Strategically
