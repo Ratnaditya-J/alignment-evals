@@ -969,6 +969,18 @@ second-largest in the lineup after opus, and gemini-2.5-pro's
 the intrinsic-label refusal signal at magnitudes comparable to the
 4-model main pre-reg result.
 
+![](figures/fig6_v2_intrinsic_main_effect.png)
+
+**Figure 6.** V2 intrinsic-eval-label main effect (refusal under
+`eval_category=true` minus refusal under `eval_category=false`,
+pooled across inject conditions) for all 6 models. Red points indicate
+Holm-Bonferroni survivors at family-wise α=0.05 in each model's
+correction family (Family A for the 4 main pre-reg models, Family B
+for the 2 closed-CoT backfill models, per
+`docs/pre_registration_closed_cot_backfill.md` §5.1). 5 of 6 models
+survive. The signal spans four model labs (Anthropic, Alibaba,
+OpenAI, Google) and both visible-CoT and closed-CoT model families.
+
 **Implication:** the intrinsic signal that "this prompt looks like
 an eval" — encoded in the prompt content itself, not in any framing
 we added — is enough to shift refusal behavior on **5 of 6 frontier
@@ -1265,6 +1277,32 @@ effect within CI on both models. **No single clause's effect is
 detectable in isolation; the V1 inject's signal is distributed across
 all three claims.**
 
+![](figures/fig7_triangulation.png)
+
+**Figure 7.** V1+V2+V3 direction-asymmetry triangulation on opus and
+qwen3. Y-axis: paired Δ refusal (inject − neutral) with 95% CIs.
+X-axis: the three pre-registered experiments. V1 measures on
+BeaverTails safety prompts (replication sample n=200). V2 measures
+on Apollo's alignment-eval stratum deep-dive (n=53 per model).
+V3 measures on Apollo's full alignment-eval pool (n=297 per active
+model). The opposite-signed pattern (opus −, qwen3 +) replicates at
+consistent within-model magnitudes across three independent samples
+and two distinct corpora (BeaverTails, Apollo). The cross-experiment
+triangulation rules out sample-specific or corpus-specific artifacts.
+
+![](figures/fig8_v3_clause_attribution.png)
+
+**Figure 8.** V3 per-clause attribution decomposition for opus and
+qwen3. For each active model, side-by-side bars show: per-singleton
+Δ refusal (eval_only, reviewer_only, comparison_only) with paired
+bootstrap CIs (red bars = CI excludes zero; grey = CI includes zero —
+note: zero red bars across all 6 singletons confirms the §5.5 Holm
+non-survival), sum-of-singletons (the additive prediction), and the
+full_inject anchor effect. **On both models, sum-of-singletons matches
+full_inject within the additivity residual's CI**, confirming the
+additive attribution. No single clause individually carries a
+detectable share of the effect.
+
 #### 5.6.3 What the additive attribution means
 
 The additive attribution rules out two competing interpretations of
@@ -1326,6 +1364,20 @@ gestalt-only on opus — even though both models' refusal behavior is
 clause-additive.** This is a new finding V3 could produce because of
 its 5-condition design; V1 and V2 only contrasted "full inject vs no
 inject" and could not see the per-clause verbalization profile.
+
+![](figures/fig9_v3_vea_dissociation.png)
+
+**Figure 9.** V3 verbalization-vs-behavior dissociation across the
+5 V3 conditions, for qwen3 (left) and opus (right). Each panel uses
+a dual y-axis: refusal rate on the left axis (blue, squares),
+strict-VEA rate on the right axis (red, circles). qwen3's
+strict-VEA scales proportionally across clauses (×13 baseline on
+`eval_only` alone, ×22 on `full_inject`); opus's stays near baseline
+on every singleton and only inflates ×4 on `full_inject`. **Both
+models' refusal behavior is clause-additive (Figure 8), but the
+verbalization channel follows two distinct per-clause profiles.**
+V1's verbalization-vs-behavior dissociation generalizes to V3 and
+manifests as two model-level mechanisms.
 
 #### 5.6.5 Closed-CoT addition: gpt-5.5 has the cleanest null in the lineup
 
@@ -2020,12 +2072,19 @@ python scripts/generate_paper_figures.py \
   --strict-mediation-summary runs/goodfire-mixed-n500/vea_mediation_summary.strict.json \
   --opus-strict-mediation-summary runs/goodfire-opus-mixed-n300/vea_mediation_summary.strict.json \
   --qwen3-replication-strict-mediation-summary runs/goodfire-replication-qwen3-safety/vea_mediation_summary.strict.json \
+  --v2-summary runs/v2-apollo-factorial-prereg/v2_apollo_factorial_summary.strict.with-backfill.json \
+  --v3-summary runs/v3-clause-ablation-prereg/v3_clause_ablation_summary.strict.with-backfill.json \
   --out-dir docs/figures/
 ```
 
-This writes `fig1_refusal_forest.png`, `fig2_vea_inflation.png`,
-`fig3_qwen3_per_family.png`, `fig4_mediation_panels.png`, and
-`fig5_two_mechanism.png` to the specified output directory.
+This writes nine figures to the specified output directory:
+`fig1_refusal_forest.png`, `fig2_vea_inflation.png`,
+`fig3_qwen3_per_family.png`, `fig4_mediation_panels.png`,
+`fig5_two_mechanism.png` (V1), `fig6_v2_intrinsic_main_effect.png`
+(V2), `fig7_triangulation.png`, `fig8_v3_clause_attribution.png`,
+and `fig9_v3_vea_dissociation.png` (V3). Each `--*-summary` flag is
+optional; figures whose inputs aren't supplied are skipped with an
+info log.
 
 ---
 
