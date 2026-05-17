@@ -162,10 +162,11 @@ on the alignment-eval subset using 5 conditions (neutral, the three
 V1 clauses as singletons, and the full V1 inject) on the same 6-model
 lineup. The V1+V2 direction asymmetry on opus and qwen3 recurs on
 V3's fresh sample at the same attenuated Apollo magnitude (opus
-−0.067, qwen3 +0.054, both CIs exclude zero). **Attribution on both active models is
-ADDITIVE**: sum-of-singletons matches full_inject within CI; no single
-clause's effect survives Holm. The other four models — including the
-two closed-CoT additions — are flat at clause and full resolution.
+−0.067, qwen3 +0.054, both CIs exclude zero).
+**Attribution on both active models is ADDITIVE**: sum-of-singletons
+matches full_inject within CI; no single clause's effect survives
+Holm. The other four models — including the two closed-CoT additions
+— are flat at clause and full resolution.
 
 The combination yields findings sharper than any single question's
 naive answer:
@@ -2179,7 +2180,8 @@ behavioral shifts remain, are they mediated by measured VEA, and
 what specific prompt features carry or predict them?
 
 Three pre-registered experiments — V1 (cross-protocol behavioral +
-Goodfire-style reasoning-trace on BeaverTails safety, 8 models), V2
+Goodfire-style reasoning-trace on mixed task families, plus
+BeaverTails safety replication, 8 models), V2
 (Apollo 2×2 factorial on the eval-awareness corpus, 6 models with
 closed-CoT backfill), V3 (5-condition inject-clause ablation on
 Apollo's alignment-eval stratum, 6 models) — totaling **32,170
