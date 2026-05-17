@@ -63,7 +63,7 @@ addressed by a dedicated experimental phase.
 **Q1 (the behavioral question, V1, §5.1):** Does explicit eval-framing
 in the system prompt change visible model behavior — specifically,
 refusal rate on safety prompts and accuracy on capability tasks — on
-frontier models?
+frontier and frontier-adjacent models?
 
 **Q2 (the mechanistic question, V1, §5.2–§5.4):** Does explicit
 eval-framing increase the rate of verbalized evaluation-awareness
@@ -73,9 +73,10 @@ effect?
 
 **Q5 (the generalization question, V2, §5.5):** Do the V1 effects
 generalize beyond the safety-only BeaverTails corpus, and does the
-behavior of frontier models also depend on the *intrinsic* eval-vs-
-deployment label of the prompt itself (as authored by an external
-research group), independent of any framing we add? *(Numbering
+behavior of frontier and frontier-adjacent models also depend on the
+*intrinsic* eval-vs-deployment label of the prompt itself (as
+authored by an external research group), independent of any framing
+we add? *(Numbering
 preserved as Q5 rather than Q3 because Q3/Q4 are subquestions inside
 V1's mechanistic analysis — see §5.3, §5.4.)*
 
@@ -109,9 +110,10 @@ broader prompt corpus and finds that the V1 inject effect dilutes to
 the main pre-reg plus a 2-model closed-CoT backfill of gpt-5.5 and
 gemini-2.5-pro on the same prompts), but directionally recovers
 V1's direction asymmetry on the alignment-relevant subset of
-Apollo's eval prompts at proportional magnitude. Apollo's intrinsic eval label is itself a
-strong refusal predictor (+7.5–13.0pp across models; 5 of 6 survive
-Holm-Bonferroni across two correction families).
+Apollo's eval prompts at proportional magnitude. Apollo's intrinsic
+eval label is itself a strong refusal predictor (+7.5–13.0pp across
+models; 5 of 6 survive Holm-Bonferroni across two correction
+families).
 
 V3 (the pre-registered inject-clause ablation in §5.6) addresses Q6
 on the alignment-eval subset using 5 conditions (neutral, the three
@@ -1477,7 +1479,7 @@ is not an artifact of the original V2 4-model lineup choice.
 | At least one of the three V1 inject clauses individually carries the V1 effect | **Not supported.** 0/18 singleton hypotheses survive Holm-Bonferroni. All singleton point estimates ≤0.04 in absolute value with CIs including zero. |
 | The V1 inject is synergistic: requires all three clauses together to produce the effect | **Not supported on either active model.** Additivity residual CIs include zero on opus and qwen3. The clauses are not super-additive. |
 | The V1 inject is distributed-additive on opus and qwen3 | **Supported.** Sum-of-singletons matches full_inject within CI on both active models. |
-| Closed-CoT frontier models react to extrinsic eval-framing in V3 | **Not supported.** gpt-5.5 full_inject Δ +0.000 [−0.060, +0.060]; gemini-2.5-pro full_inject Δ −0.010 [−0.050, +0.030]. Both null at clause and full resolution. |
+| Closed-CoT frontier/near-frontier models react to extrinsic eval-framing in V3 | **Not supported.** gpt-5.5 full_inject Δ +0.000 [−0.060, +0.060]; gemini-2.5-pro full_inject Δ −0.010 [−0.050, +0.030]. Both null at clause and full resolution. |
 | qwen3's strict-VEA verbalization scales with the number of eval-frame clauses present | **Supported descriptively.** Each singleton inflates qwen3 strict VEA ×3-×13 over neutral; full_inject ×22. |
 | opus verbalizes eval-awareness in response to individual clauses | **Not supported.** Opus strict-VEA stays at baseline (~0.03) on all three singletons and only inflates ×4 under combined full_inject. |
 | V1's verbalization-vs-behavior dissociation generalizes to V3's clause resolution | **Supported.** qwen3's ×22 strict-VEA inflation under full_inject is accompanied by a +5.4pp refusal shift; the verbalization and behavior signals scale independently. |
@@ -1786,7 +1788,7 @@ completely unresponsive to extrinsic eval-framing at any clause
 resolution.** Gemini-2.5-pro behaves similarly but with a borderline
 sub-additive pattern at the singleton level. Closed-CoT models
 confirm the inject effect is restricted to a specific subset of
-frontier models, not a universal eval-awareness phenomenon.
+the tested model lineup, not a universal eval-awareness phenomenon.
 
 **What V2 + V3 do not change about V1.** Neither experiment re-ran
 the within-prompt mediation analysis from V1's §5.3 (no per-prompt
