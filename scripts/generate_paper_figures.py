@@ -42,11 +42,11 @@ Produces the nine figures referenced in ``docs/paper_draft.md``:
   7. fig7_triangulation.png         — SOTA headline figure. For opus
      and qwen3, plots full_inject Δ refusal across V1 (BeaverTails),
      V2 (Apollo alignment-stratum deep-dive), and V3 (Apollo
-     alignment-eval full sample) with CIs. The direction asymmetry
-     (opus −, qwen3 +) replicates at consistent within-model
-     magnitudes across all three pre-registered experiments. V1+V2
-     numbers hardcoded from the pre-reg §10 entries; V3 numbers read
-     from the V3 summary.
+     alignment-eval full sample) with CIs. Sign-level triangulation:
+     the per-model sign (opus −, qwen3 +) preserves across all three
+     independent samples; magnitudes attenuate on Apollo relative to
+     BeaverTails. V1+V2 numbers hardcoded from the pre-reg §10
+     entries; V3 numbers read from the V3 summary.
 
   8. fig8_v3_clause_attribution.png — for opus and qwen3 (the two
      active V3 models), side-by-side bars of per-singleton Δrefusal,
@@ -657,10 +657,11 @@ def _render_triangulation(
     hardcoded from V2 pre-reg §10's alignment-stratum deep-dive; V3
     numbers are read from the V3 with-backfill summary.
 
-    Visual story: same asymmetric refusal-shift pattern (opus −, qwen3 +)
-    at consistent within-model magnitudes across three independent
-    pre-registered experiments. The triangulation rules out
-    sample-specific or corpus-specific artifacts.
+    Visual story: same per-model sign of refusal-shift (opus −,
+    qwen3 +) across three independent samples; magnitudes attenuate
+    on Apollo relative to BeaverTails. Sign-level triangulation
+    makes sample-specific or corpus-specific explanations of the
+    asymmetry less plausible.
     """
     import matplotlib.pyplot as plt
 
@@ -736,9 +737,9 @@ def _render_triangulation(
     ax.set_xticklabels(experiments)
     ax.set_ylabel("Δ refusal (inject − neutral, paired)")
     ax.set_title(
-        "V1+V2+V3 direction-asymmetry triangulation on opus and qwen3\n"
-        "Opposite-signed refusal shifts replicate across three pre-registered\n"
-        "experiments at consistent within-model magnitudes."
+        "Opposite-signed refusal shifts preserve sign across three\n"
+        "pre-registered samples on opus and qwen3 (sign-level\n"
+        "triangulation; magnitudes attenuate on Apollo — see caption)."
     )
     ax.legend(loc="best", frameon=True)
     ax.grid(axis="y", alpha=0.25)

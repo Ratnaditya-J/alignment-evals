@@ -1,6 +1,6 @@
 # Verbalized vs Behavioral Eval-Awareness in Frontier and Frontier-Adjacent Reasoning Models
 
-*Three pre-registered studies of explicit eval framing, intrinsic eval labels, and inject-clause attribution across frontier and frontier-adjacent reasoning models.*
+*Three experimental phases — exploratory V1 with a pre-registered safety mediation replication, plus pre-registered V2 and V3 — on explicit eval framing, intrinsic eval labels, and inject-clause attribution across frontier and frontier-adjacent reasoning models.*
 
 **Author:** Ratnaditya Jonnalagadda  
 **Date:** May 2026  
@@ -19,8 +19,11 @@ introduced through *explicit system-prompt framing* or already
 embedded in benchmark prompts as an *intrinsic eval label*, which
 behavioral shifts remain, are they mediated by measured VEA, and
 what specific prompt features carry or predict them? Across three
-pre-registered experiments totaling 32,170 rollouts on six frontier
-and frontier-adjacent reasoning models from four labs, we find:
+experimental phases totaling 32,170 rollouts — an 8-model V1 study
+(exploratory cross-protocol behavioral analysis plus a
+pre-registered qwen3 safety mediation replication) combined with a
+six-model V2/V3 lineup from four labs (both V2 and V3
+fully pre-registered) — we find:
 
 **Apollo's intrinsic eval label predicts +7.5 to +13.0 percentage
 points of additional refusal across the lineup; 5 of 6 models
@@ -247,15 +250,17 @@ first-discovery.
    clauses.
 3. **Triangulation of model-heterogeneous direction-asymmetric
    refusal shifts on safety/alignment prompts across three
-   pre-registered experiments (extends Burnat & Davidson 2026).**
+   independent samples (extends Burnat & Davidson 2026).**
    Burnat & Davidson (2026) report model-heterogeneous directionality
    under explicit eval / deployment / neutral framing. Our extension
    triangulates the same per-model sign (opus −, qwen3 +) across
-   three independent pre-registered samples and two distinct corpora:
-   BeaverTails safety (V1 strict-VEA-stable stratum, CI-excluding),
-   Apollo's alignment-eval stratum (V2 deep-dive, directionally
-   consistent; qwen3 CI includes zero at V2's n), and the V3
-   inject-clause-ablation sample (CI-excluding on both). Magnitudes
+   three independent samples and two distinct corpora: BeaverTails
+   safety (V1 strict-VEA-stable stratum from the pre-registered
+   safety mediation replication, CI-excluding), Apollo's
+   alignment-eval stratum (V2 pre-registered factorial deep-dive,
+   directionally consistent; qwen3 CI includes zero at V2's n), and
+   the V3 pre-registered inject-clause-ablation sample (CI-excluding
+   on both). Magnitudes
    are **sign-consistent but attenuate on Apollo relative to V1**
    (qwen3 strict-VEA-stable: +0.217 → V2 alignment-stratum +0.057 →
    V3 alignment-eval +0.054; opus strict-VEA-stable: −0.339 → V2
@@ -298,8 +303,13 @@ first-discovery.
    tension with the surrounding literature (Aranguri & Bloom 2026;
    Chaudhary 2026; Knecht et al. 2026).
 
-All three pre-registrations were filed and committed before
-execution. The pre-registration documents, run JSON outputs,
+Three pre-registration documents — V1's pre-registered qwen3 safety
+mediation replication, V2's Apollo 2×2 factorial, and V3's
+inject-clause ablation (plus a closed-CoT backfill supplement) —
+were filed and committed before execution. V1's broader
+cross-protocol behavioral analysis (§5.1) and Goodfire-style
+reasoning-trace analysis (§5.2) are exploratory; only V1's safety
+mediation replication (§5.3) is pre-registered. The pre-registration documents, run JSON outputs,
 analyzer scripts, and figure-generation code are released alongside
 this paper (see Appendix A).
 
@@ -1056,8 +1066,9 @@ component clauses** (eval-context only, reviewer-attribution only,
 comparison-to-deployment only, full inject, neutral). The V3 result
 on opus and qwen3 is consistent with a *distributed-additive*
 pattern: the singletons individually fail Holm-Bonferroni, but they
-sum within the additivity residual's CI to the full V1 inject effect
-on both models. The V1-era "compliance cue vs eval cue" dichotomy
+sum within the additivity residual's CI to the V3 `full_inject`
+anchor on both models (V3's attenuated Apollo magnitude, not V1's
+larger BeaverTails magnitude). The V1-era "compliance cue vs eval cue" dichotomy
 is therefore not resolved in favor of one reading; the V3 evidence
 is more consistent with all three cues each contributing some share
 of the effect (with per-clause magnitudes individually not
@@ -1589,7 +1600,8 @@ The remaining interpretation is **distributed-additive**: on opus and
 qwen3, each clause contributes some share of the effect in the
 V1-asymmetric direction (with the individual per-clause magnitudes
 not CI-resolvable at this n), and the three contributions sum within
-the additivity residual's CI to the full V1 effect. Removing any
+the additivity residual's CI to the V3 `full_inject` anchor (V3's
+attenuated Apollo magnitude, not V1's larger BeaverTails magnitude). Removing any
 single clause from V1's inject text would, under the additive
 interpretation, reduce the effect by some fraction rather than
 eliminate it, though V3 does not directly test this counterfactual
@@ -2182,11 +2194,12 @@ embedded in benchmark prompts as an *intrinsic eval label*, which
 behavioral shifts remain, are they mediated by measured VEA, and
 what specific prompt features carry or predict them?
 
-Three pre-registered experiments — V1 (8-model cross-protocol
-behavioral study, plus Goodfire-style reasoning-trace analyses on
-trace-visible models and a BeaverTails safety replication), V2
-(Apollo 2×2 factorial on the eval-awareness corpus, 6 models with
-closed-CoT backfill), V3 (5-condition inject-clause ablation on
+Three experimental phases — V1 (exploratory 8-model cross-protocol
+behavioral study, exploratory Goodfire-style reasoning-trace
+analyses on trace-visible models, plus a pre-registered BeaverTails
+safety mediation replication), V2 (pre-registered Apollo 2×2
+factorial on the eval-awareness corpus, 6 models with closed-CoT
+backfill), V3 (pre-registered 5-condition inject-clause ablation on
 Apollo's alignment-eval stratum, 6 models) — totaling **32,170
 rollouts** address this question. The primary novel findings are:
 
@@ -2209,7 +2222,8 @@ rollouts** address this question. The primary novel findings are:
   weight of eval-framing claims than with any specific propositional
   content carrying the effect alone.
 - **(c) Direction-asymmetric refusal effects on safety/alignment
-  prompts, triangulated across three pre-registered experiments.**
+  prompts, triangulated across V1's pre-registered safety
+  replication and the fully-pre-registered V2 and V3.**
   qwen3-235B refuses more under inject; opus-4.7 refuses less. The
   asymmetric pattern recurs on V1's BeaverTails (qwen3 +0.217
   [+0.098, +0.337]; opus −0.339 [−0.446, −0.231]; both CI-excluding),
