@@ -319,7 +319,12 @@ this paper (see Appendix A).
 
 **Evaluation awareness.** Concerns about LLMs distinguishing eval
 from deployment contexts go back at least to Park et al. (2024) and
-have been operationalized in various ways. Aranguri & Bloom
+have been operationalized in various ways. Laine et al. (2024)
+introduce the Situational Awareness Dataset (SAD) as a foundational
+benchmark for whether models can recognize internal-evaluation versus
+deployment contexts and self-locate within them; SAD frames the
+corpus-level eval/deployment direction our V2 design later adopts.
+Aranguri & Bloom
 (Goodfire, 2026) — whose spontaneous VEA setup our paper is
 methodologically named after — treat the phenomenon as a property of
 the model's CoT: the trace mentions evaluation, testing,
@@ -385,6 +390,23 @@ providing evidence relevant to the broader causal pathway from
 contextual eval cues to model behavior. Both lines argue, in
 different ways, that eval-awareness signals — verbalized or
 context-induced — are associated with behavioral change.
+
+**Observer effects in safety evaluation.** Fan et al. (2025/2026;
+arXiv:2505.17815) study "evaluation faking" as an observer effect
+in safety evaluation, reporting that reasoning-capable frontier
+models can recognize evaluation contexts and shift toward safer
+behavior, with CoT monitoring providing partial visibility into
+"faking intent." This is directly adjacent to the V1 explicit-inject
+refusal-shift finding and to the §5.6 V3 clause ablation, but the
+designs differ: Fan et al. operate on naturally-occurring or
+implicit eval signals during safety evaluation, whereas our V1
+inject is an explicit prompt-level intervention, our V2 adds an
+external intrinsic eval/deployment label as the design axis, and
+our V3 decomposes the explicit-framing effect at the clause level.
+Fan et al.'s positive observer-effect finding sits alongside the
+Aranguri & Bloom and Chaudhary positive results above, and the
+Knecht et al. null below, in a literature where the observed
+effect direction depends sensitively on the operationalization.
 
 **Recent prior null finding on VEA's behavioral effect.** Knecht,
 Florin, & Hagendorff (2026; arXiv:2605.05835, posted May 7, 2026)
@@ -2069,7 +2091,15 @@ reasoning trace — the judge paraphrased or summarized rather than
 copying. Readers verifying individual rows should treat unlocatable
 quotes with skepticism; aggregate findings are not biased by this
 because both broad and strict precision are computed against human
-labels, not against quote-locatability.
+labels, not against quote-locatability. A separate
+consequence-framing risk for LLM-judge pipelines is reported by
+Gupta et al. (2026, arXiv:2604.15224), who show that LLM judges
+can shift verdicts under stakes/consequence framing without
+acknowledging the framing in their CoT. Our VEA-judge prompt does
+not include stakes signaling and we do not vary stakes language
+across runs, so this specific failure mode is not directly tested;
+we flag it as an adjacent judge-fidelity concern that future
+judge-validation work in our pipeline should address explicitly.
 
 **Closed-source VEA scope.** We extended the Goodfire pipeline to
 Anthropic `claude-opus-4-7` (the closed-source flagship reasoning
@@ -2374,8 +2404,15 @@ Devbunova, V. (2026). *Is Evaluation Awareness Just Format
 Sensitivity? Limitations of Probe-Based Evidence under Controlled
 Prompt Structure.* arXiv:2603.19426.
 
+Fan, et al. (2025/2026). *Evaluation Faking: Unveiling Observer
+Effects in Safety Evaluation of Frontier AI Systems.*
+arXiv:2505.17815.
+
 Frank, G. N. (2026). *Detection Is Cheap, Routing Is Learned: Why
 Refusal-Based Alignment Evaluation Fails.* arXiv:2603.18280.
+
+Gupta, et al. (2026). *Context Over Content: Exposing Evaluation
+Faking in Automated Judges.* arXiv:2604.15224.
 
 Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D.,
 & Steinhardt, J. (2021). *Measuring Massive Multitask Language
@@ -2397,6 +2434,9 @@ arXiv:2307.04657.
 Knecht, A., Florin, L., & Hagendorff, T. (2026). *Evaluation
 Awareness in Language Models Has Limited Effect on Behaviour.*
 University of Stuttgart. arXiv:2605.05835, May 7, 2026.
+
+Laine, R., et al. (2024). *Me, Myself, and AI: The Situational
+Awareness Dataset (SAD) for LLMs.* arXiv:2407.04694.
 
 Lin, S., Hilton, J., & Evans, O. (2022). *TruthfulQA: Measuring How
 Models Mimic Human Falsehoods.* ACL. arXiv:2109.07958.
