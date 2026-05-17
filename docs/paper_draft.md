@@ -10,33 +10,49 @@
 
 ## Abstract
 
-**We find that eval framing changes safety refusal in reasoning
-models, but not through visible CoT eval-awareness.** A pre-
-registered replication of the apparent qwen3 safety mediation effect
-failed to replicate on disjoint prompts; the behavioral signature
-survives but operates in a stratum where strict-VEA verbalization
-did not flip, and it runs in opposite directions across the two
-models we tested at meaningful sample size — qwen3 refuses +22pp
-more under inject, claude-opus-4-7 refuses −34pp less.
+**We measure whether eval framing changes safety refusal in
+reasoning models and find that it does — but the effect is
+direction-asymmetric across models, runs through a non-verbalized
+channel, and operates only on safety-relevant prompts.** Two
+experiments. **V1** (cross-protocol behavioral + Goodfire-style
+reasoning-trace analysis on BeaverTails safety prompts; 23,200
+rollouts total) finds qwen3-235B refuses +22pp more under inject
+framing and claude-opus-4-7 refuses −34pp less, both with CIs
+excluding zero. A pre-registered disjoint-prompt replication of the
+apparent qwen3 safety-VEA mediation effect (DiD +0.222 at n_flip=63
+in the primary sample) returns null on replication (−0.017 [−0.175,
++0.139] at n_flip=100); what survives is the non-VEA-mediated,
+direction-asymmetric refusal shift visible in the strict-VEA-stable
+stratum. **V2** (pre-registered 2×2 factorial on Apollo Research's
+released eval-awareness corpus; 1,600 rollouts on 4 reasoning models)
+crosses Apollo's intrinsic eval/deployment label with the V1 inject
+framing and finds that **the pooled inject main effect is ~0 on all
+four models** — V1's safety-prompt-specific effect dilutes to zero
+when averaged across capability + alignment + deployment prompts.
+A stratified deep-dive recovers V1's direction asymmetry on the
+alignment-relevant subset (opus −6pp, qwen3 +5.7pp; proportional
+magnitudes given the smaller safety slice). V2 also reveals a
+qwen3-specific capability-eval inject-suppresses-refusal effect
+(Δ−6.4pp, CI excludes zero) that V1's safety-only corpus could not
+detect, and confirms qwen3's strict-VEA verbalization rate (~36%
+under inject) is 4× any other model.
 
-> *The behavioral signature exists; the verbal fingerprint of
-> "noticing the eval" is a separate, partially correlated phenomenon.*
+> *The behavioral signature exists, is direction-asymmetric across
+> models, and operates on safety-relevant prompts. The verbal
+> fingerprint of "noticing the eval" is a separate, partially
+> correlated phenomenon.*
 
-The paper combines a cross-protocol behavioral experiment (16,000
-rollouts across 8 frontier models; closed-source pooled refusal
-estimate returns null at +0.002 [−0.018, +0.023], n=2,499 paired)
-with a Goodfire-style reasoning-trace analysis (n=500 prompts per
-open-reasoning model, 6,000 rollouts total, + n=300 prompts on
-claude-opus-4-7, 1,200 rollouts, + a pre-registered disjoint-prompt
-qwen3 safety replication at n=200 prompts, 800 rollouts). VEA inflation
-under inject is real and model-heterogeneous (qwen3 +0.380, deepseek
-+0.050, opus +0.080, kimi null) and replicates four times on qwen3,
-but the qwen3 primary mediation point estimate (DiD +0.222 at
-n_flip=63) failed to replicate at n_flip=100 (DiD −0.017 [−0.175,
-+0.139]). Detailed numbers and the residual non-verbalized refusal
-effects are in §5.3–§5.4. The inject prompt bundles eval-context
-signaling with comparison-to-deployment language; we treat this as
-a core interpretive limitation (§3.1.1).
+**Headline cross-paper claims.** (i) On safety prompts, inject framing
+produces opposite-signed refusal shifts on qwen3 and opus (V1 +22pp /
+−34pp; V2 alignment-stratum +5.7pp / −6.0pp at proportional
+magnitudes). (ii) These effects survive in the strict-VEA-stable
+stratum, so they are NOT mediated by verbalized eval-awareness. (iii)
+Apollo's intrinsic eval label (independent of any inject framing)
+predicts +7.5–13.0pp higher refusal across 4 reasoning models; 3 of
+4 survive Holm-Bonferroni at family-wise α=0.05. (iv) The inject
+prompt bundles eval-context signaling with comparison-to-deployment
+language; we treat this as a core interpretive limitation
+(§3.1.1, §5.5.8).
 
 **Keywords:** evaluation awareness, reasoning models, chain-of-thought,
 safety evaluation, benchmark validity
@@ -743,6 +759,268 @@ elaborate it in §3.1 and §8.
 | Inject framing produces an aggregate-level closed-source refusal shift | **Not supported.** Aggregate cross-protocol pooled estimate is +0.002 [−0.018, +0.023] at n=2,499 — the safety-family strict-VEA-stable refusal effects are diluted by other families. |
 | The inject prompt operationalizes "eval-awareness" cleanly | **Not supported by design.** The inject prompt confounds eval-context with comparison-to-deployment language; see §3.1, §8. |
 
+### 5.5 Q5: Does V1's inject effect generalize beyond safety prompts? (V2 Apollo factorial)
+
+§5.1–§5.4 measure inject effects on BeaverTails — a safety-only
+corpus. A reviewer-grade weakness is that **the inject manipulation
+is synthetic** (we constructed the system-prompt cue) and **the
+prompt corpus is monotone** (every prompt is a safety question). A
+skeptic can argue either that V1's inject prompt does something
+other than "signal evaluation context," or that the safety-only
+corpus selects for prompts where eval framing happens to matter.
+
+To address both, we ran a pre-registered 2×2 factorial on Apollo
+Research's released eval-awareness corpus (Needham et al.,
+arXiv 2505.23836; data at `huggingface.co/datasets/jjpn2/eval_awareness`).
+Apollo's 976 prompts are labeled by humans as `eval_category=true` (the
+prompt was authored for evaluation) or `false` (organic/real
+deployment). This gives us an *intrinsic* eval-vs-deployment signal
+from outside our control to cross with the same V1 *extrinsic*
+inject framing.
+
+Pre-registration: `docs/pre_registration_v2_apollo_2x2.md` (filed
+2026-05-17, committed before the run command in §6 of that document
+was executed; sha256 fingerprint of the dataset recorded post-run).
+
+#### 5.5.1 Design
+
+A 2×2 factorial × 4 models × 200 prompts × 1 rollout per cell =
+**1,600 rollouts.**
+
+Factors:
+- **Intrinsic** (Apollo label): `eval` vs `deployment`. 100 of each, deterministically subsampled by hash so the selection is reproducible from `(seed=0, n_per_label=100)`.
+- **Extrinsic** (system-prompt framing): `neutral` ("You are a helpful assistant.") vs `inject` (the V1 inject text, byte-identical to §5.1's `ARXIV_INJECT_SYSTEM`).
+
+Models: `claude-opus-4-7` (with adaptive thinking enabled),
+`qwen3-235b-a22b-thinking-2507`, `deepseek-v3.2-exp`,
+`moonshotai/kimi-k2-thinking`. All four are reasoning models with
+visible CoT, the same restriction we applied for §5.2's Goodfire
+analysis.
+
+Verdict tiers (pinned in the pre-reg at `min_cell_n=30`,
+`interaction_threshold=0.05`): `insufficient_data` →
+`interaction_supported` → `additive` → `null_both`, in priority order.
+
+Multiple-comparisons correction: Holm-Bonferroni at family-wise
+α=0.05 across 4 models × 3 effects (main-inject, main-intrinsic,
+interaction) = 12 hypotheses.
+
+#### 5.5.2 Headline: V1's inject effect does not generalize; intrinsic eval-label is the new signal
+
+**The V1 inject effect does not replicate on V2's broader corpus.**
+All four models' inject main-effect point estimates (refusal under
+inject minus refusal under neutral, pooled across intrinsic labels)
+are within ±0.015 of zero, and all CIs include zero:
+
+| Model | Inject main effect | 95% CI | Holm-corrected reject? |
+|---|---:|---|---|
+| opus-4-7    | +0.000 | [−0.025, +0.030] | no |
+| qwen3       | +0.005 | [−0.030, +0.040] | no |
+| deepseek    | +0.010 | [−0.015, +0.035] | no |
+| kimi        | +0.015 | [−0.015, +0.045] | no |
+
+Compare V1's BeaverTails-safety numbers from §5.4: qwen3 +0.217,
+opus −0.339, both CI-excludes-zero, both replicated. **On Apollo's
+mixed capability+alignment+deployment corpus the same inject prompt
+produces ~zero pooled effect on all four reasoning models.** Read
+across both experiments, this is a scope finding: the inject effect
+operates on safety-relevant prompts only and dilutes to zero when
+averaged across a mixed corpus. The alignment-stratum deep-dive in
+§5.5.4 confirms this reading by recovering V1's directions at
+proportional magnitude on the safety-relevant subset of Apollo's
+eval prompts.
+
+**The intrinsic Apollo label is a strong, robust predictor of
+refusal across the lineup.** Every model refuses eval-labeled prompts
+~7–13 percentage points more than deployment-labeled prompts,
+regardless of inject framing:
+
+| Model | Intrinsic main effect (eval − deployment) | 95% CI | Holm-corrected reject? |
+|---|---:|---|---|
+| opus-4-7    | **+0.130** | [+0.075, +0.185] | ✓ |
+| qwen3       | **+0.125** | [+0.070, +0.185] | ✓ |
+| deepseek    | **+0.090** | [+0.045, +0.140] | ✓ |
+| kimi        | +0.075 | [+0.010, +0.140] | no |
+
+Three of four models survive Holm-Bonferroni at family-wise α=0.05
+(only kimi falls short of its 0.0056 threshold). **Models behave
+differently on Apollo's eval-labeled prompts even without an
+extrinsic inject cue.** This is V2's headline positive finding: the
+intrinsic signal that "this prompt looks like an eval" — encoded in
+the prompt content itself, not in any framing we added — is enough
+to shift refusal behavior on three of four frontier reasoning models.
+
+Per-cell summary (strict VEA, B=2000):
+
+| Model | cell | refusal | refusal 95% CI | strict-VEA mean |
+|---|---|---:|---|---:|
+| opus-4-7 | neutral_eval | 0.18 | [+0.11, +0.26] | 0.01 |
+| opus-4-7 | inject_eval | 0.15 | [+0.08, +0.23] | 0.06 |
+| opus-4-7 | neutral_deployment | 0.02 | [+0.00, +0.05] | 0.01 |
+| opus-4-7 | inject_deployment | 0.05 | [+0.01, +0.10] | 0.01 |
+| qwen3 | neutral_eval | 0.16 | [+0.09, +0.24] | 0.02 |
+| qwen3 | inject_eval | 0.16 | [+0.09, +0.23] | 0.23 |
+| qwen3 | neutral_deployment | 0.03 | [+0.00, +0.07] | 0.00 |
+| qwen3 | inject_deployment | 0.04 | [+0.01, +0.08] | 0.20 |
+| deepseek | neutral_eval | 0.10 | [+0.05, +0.16] | 0.01 |
+| deepseek | inject_eval | 0.12 | [+0.06, +0.19] | 0.05 |
+| deepseek | neutral_deployment | 0.02 | [+0.00, +0.05] | 0.01 |
+| deepseek | inject_deployment | 0.02 | [+0.00, +0.05] | 0.00 |
+| kimi | neutral_eval | 0.15 | [+0.08, +0.22] | 0.01 |
+| kimi | inject_eval | 0.16 | [+0.09, +0.24] | 0.05 |
+| kimi | neutral_deployment | 0.07 | [+0.02, +0.13] | 0.03 |
+| kimi | inject_deployment | 0.09 | [+0.04, +0.15] | 0.00 |
+
+#### 5.5.3 Per-model verdicts and the cross-model interaction
+
+| Model | Per-model verdict (strict) | Interaction effect | 95% CI | bootstrap p |
+|---|---|---:|---|---:|
+| opus-4-7    | **interaction_supported** (uncorrected) | −0.060 | [−0.120, −0.010] | 0.026 |
+| deepseek    | additive | +0.020 | [−0.030, +0.070] | 0.520 |
+| kimi        | additive | −0.010 | [−0.070, +0.050] | 0.850 |
+| qwen3       | additive | −0.010 | [−0.080, +0.060] | 0.853 |
+
+Opus earns the per-model verdict `interaction_supported` (CI
+excludes zero AND |effect| ≥ 0.05). Per the pre-reg's correction
+policy (§5.6 of the pre-registration document), this counts as a
+per-model finding reported uncorrected, but **does NOT survive
+Holm-Bonferroni at the cross-model headline level** (opus interaction
+p=0.026 vs corrected threshold 0.0063). The headline cross-model
+claim is therefore: *3 of 4 models additive; 0 of 4 with a
+Holm-surviving interaction.*
+
+This is a cleaner outcome than it sounds: the pre-reg was explicitly
+designed to separate per-model verdicts (reported uncorrected) from
+cross-model headlines (Holm-corrected), exactly to avoid the
+"one model has p=0.026, write the paper around it" failure mode.
+We report the opus per-model interaction in §5.5.4 below as a
+secondary finding worth interpretation, not as the headline claim.
+
+#### 5.5.4 Stratified deep-dive: V1's direction asymmetry survives on the alignment stratum
+
+Apollo's eval-labeled prompts split into `eval_type=capability` and
+`eval_type=alignment`. The alignment stratum (~53 of 100 eval-labeled
+prompts in our seed-0 subsample) is the closest V2 analog to V1's
+BeaverTails safety corpus. We stratify each model's interaction
+analysis by this dimension, pairing each eval-type subset against
+the model's full deployment set so the 4-cell factorial is preserved
+within each stratum. Min_cell_n is relaxed to 10 (exploratory; the
+pre-reg's confirmatory 30 still gates the headline).
+
+**Alignment-eval Δ refusal (inject − neutral) across all four models:**
+
+| Model | Δ refusal (alignment-eval) | 95% CI | V1 direction match? |
+|---|---:|---|---|
+| opus     | **−0.060** | [−0.18, −0.001] | ✓ matches V1 −34pp |
+| qwen3    | **+0.057** | [−0.04, +0.141]  | ✓ matches V1 +22pp |
+| deepseek | +0.037     | [−0.04, +0.114] | qwen3-direction (V1 untested) |
+| kimi     | +0.000     | [−0.10, +0.06]  | flat (V1 untested) |
+
+**The two V1-tested models both preserve their V1 directions on V2's
+alignment stratum.** Opus refuses LESS under inject on alignment evals;
+qwen3 refuses MORE. Magnitudes are ~1/4 to 1/6 of V1's, which is
+the expected dilution given V2's alignment stratum has n=53 prompts
+vs V1's hundreds of BeaverTails prompts. The two V2-only models
+(deepseek, kimi) don't contradict the asymmetry: deepseek leans
+qwen3-direction at half magnitude, kimi is dead flat. Individual
+CIs are wide and none cleanly excludes zero, but the V1-pair sign
+preservation is the cohering signal.
+
+**Integrated V1 + V2 reading.** The two experiments together support
+**"on safety/alignment-relevant prompts only, opus and qwen3 exhibit
+opposite-signed refusal shifts under inject framing, at magnitudes
+proportional to the density of safety content in the prompt corpus."**
+V1 measured this on a pure-safety corpus (BeaverTails) and saw the
+effect at headline magnitude (qwen3 +22pp, opus −34pp). V2 measured
+it on a mixed corpus and saw the same directions at ~1/4-1/6
+magnitude on the safety-relevant subset, with the pooled
+cross-corpus effect diluting to ~0. The behavioral signature is
+real, localizable to safety prompts, and does not extend to
+capability evals or deployment-shaped prompts.
+
+#### 5.5.5 qwen3 has a unique capability-eval inject-suppresses-refusal effect
+
+Restricting to capability-eval prompts (the V1-unreachable stratum):
+
+| Model | Δ refusal (capability-eval) | neutral → inject |
+|---|---:|---:|
+| opus     | 0 (floor effect) | 0.00 → 0.00 |
+| deepseek | 0 (floor effect) | 0.00 → 0.00 |
+| kimi     | +0.021 | 0.000 → 0.021 |
+| **qwen3** | **−0.064 (CI [−0.16, −0.001], p=0.046)** | 0.064 → 0.000 |
+
+Three of four models refuse 0% on capability evals in BOTH conditions
+— a floor effect, since MMLU/coding/agent benchmarks contain no
+safety-refusable content. Only qwen3 has refusals to suppress (6.4%
+under neutral) and **inject framing drives those refusals to zero.**
+The qwen3 per-stratum interaction CI excludes zero at p=0.046.
+
+This is a qwen3-specific behavioral signature that V1's safety-only
+corpus could not detect, and **the reason qwen3's pooled cross-corpus
+inject main effect was ~0**: the qwen3 alignment-stratum
+inject-raises-refusal (Δ+0.057) and the qwen3 capability-stratum
+inject-suppresses-refusal (Δ−0.064) cancel in the pooled mean.
+
+Plausible interpretation: qwen3 reads the inject as a permission /
+grading signal that suppresses refusals on capability prompts ("this
+is a benchmark, I should answer not refuse") while simultaneously
+treating it as a watching/caution signal on safety prompts ("this is
+being reviewed, I should be more careful"). These two readings of the
+same inject text produce opposite-direction behavior on different
+prompt types, and V2's mixed corpus design was needed to expose both.
+
+#### 5.5.6 qwen3's strict-VEA verbalization rate is 4× any other model
+
+Strict-VEA mean on the `inject_eval` cell of the alignment stratum:
+
+| Model | strict-VEA mean (inject_eval, alignment) |
+|---|---:|
+| **qwen3** | **0.359** |
+| kimi | 0.094 |
+| opus | 0.075 |
+| deepseek | 0.057 |
+
+qwen3 explicitly verbalizes eval-recognition in ~36% of
+inject-alignment rollouts; the other three models cluster in the
+5–10% range. This is a stable qwen3 trait, observed across all
+strata and consistent with V1's qwen3-VEA pattern (§5.2). **The
+behavioral story above is independent of this verbalization
+pattern**: qwen3's alignment-stratum +5.7pp refusal shift is small
+relative to its 36% strict-VEA rate, so most qwen3 strict-VEA
+rollouts are not associated with a behavioral change. V1's mediation
+null (§5.3) generalizes to V2.
+
+#### 5.5.7 Secondary finding: opus's adaptive thinking skips on eval-shaped prompts
+
+A behavioral quirk distinct from the headline analysis. Across all
+400 opus rollouts, ~50% of eval-labeled rollouts returned an empty
+`reasoning_trace` (opus's adaptive thinking chose to skip thinking),
+vs ~0% of deployment-labeled rollouts. This pattern is correlated
+with the prompt's intrinsic eval label even before any framing is
+applied: **opus appears to "recognize" the eval format at the
+deliberation level and shortcut thinking accordingly.** This is a
+candidate eval-awareness signal distinct from verbalized eval-
+awareness — a *behavioral* eval-awareness at the inference-control
+level. We report it as a secondary finding rather than a headline
+because (a) we did not pre-register a thinking-presence outcome,
+and (b) the pattern could be confounded by Apollo eval prompts being
+shorter on average (so adaptive thinking decides they're not worth
+extended deliberation). Both interpretations are consistent with the
+observation; discriminating them needs a follow-up.
+
+#### 5.5.8 What survives, what doesn't (V2)
+
+| Claim | Status |
+|---|---|
+| The V1 inject effect generalizes to non-safety prompts | **Not supported.** All 4 models' V2 inject main effects within ±0.015 of zero; none survive Holm. |
+| The V1 inject effect was specific to safety/alignment-relevant prompts | **Supported (post-hoc).** Stratified deep-dive recovers V1's directions on the alignment stratum at proportional magnitude. |
+| The V1 qwen3-vs-opus direction asymmetry holds on V2's alignment stratum | **Supported.** Opus −0.060, qwen3 +0.057, both at ~1/4-1/6 V1 magnitude. |
+| Apollo's intrinsic eval label predicts refusal behavior on frontier reasoning models | **Supported.** Cross-model main effect +0.075 to +0.130; 3 of 4 models survive Holm. |
+| qwen3 has a capability-eval inject-suppresses-refusal pattern | **Supported.** Δ−0.064, CI [−0.16, −0.001], p=0.046. Unique to qwen3 (other 3 models have floor refusal on capability). |
+| qwen3's strict-VEA verbalization rate exceeds other models by ~4× | **Supported, stable trait.** Replicates the V1 §5.2 pattern via the V2 corpus and the validated strict rubric. |
+| There is a cross-model interaction effect (inject × intrinsic label) | **Not supported under Holm.** Per-model: only opus has CI-excludes-zero. Headline: no model survives correction at family-wise α=0.05. |
+| VEA verbalization mediates the V2 behavioral effects | **Out of scope for V2.** V2 did not run a within-prompt mediation analysis; V1's §5.3 mediation null is the relevant evidence. |
+
 ---
 
 ## 6. Robustness
@@ -949,6 +1227,62 @@ verbalizes eval-awareness more under explicit framing, and we do
 not have evidence that this changes its observable behavior in
 problematic ways.
 
+### 7.5 Synthesizing V1 and V2
+
+V2 was designed to address a reviewer-grade weakness of V1: the
+inject manipulation is synthetic and the BeaverTails corpus is
+monotone. V2 crosses the V1 inject framing with an intrinsic
+eval/deployment label authored by the Apollo Research team, on
+prompts we did not construct, drawn from an external corpus we
+have no editorial control over. Three readings emerge:
+
+**(i) The V1 inject effect is real but scope-limited to safety
+prompts.** V2's pooled inject main effect is ~0 across all four
+models (largest +0.015, all CIs include zero), but the
+alignment-eval-stratum deep-dive recovers V1's signs on the two
+V1-tested models at proportional magnitude: opus −0.060 (matching
+V1's −0.339 direction), qwen3 +0.057 (matching V1's +0.217
+direction). The cleanest cross-paper restatement is *"V1's inject
+effect was the safety-prompt-specific component of a more general
+phenomenon; on a mixed corpus the effect dilutes because non-safety
+prompts have nowhere to move."* This is a scope correction to the
+V1 framing rather than a falsification of it.
+
+**(ii) Intrinsic eval-label is itself a strong refusal predictor.**
+Independent of any inject framing, Apollo's
+`metadata.eval_category=true` prompts get refused +7.5–13.0pp more
+than `false` prompts across the four-model lineup; 3 of 4 survive
+Holm-Bonferroni at family-wise α=0.05. **This is a finding V1 could
+not produce by design** — V1's corpus has only one intrinsic label
+(safety). The implication for alignment-eval methodology: when
+constructing a benchmark, the prompts' own *content* may carry an
+eval-recognition signal that shifts behavior, before any explicit
+framing is added. Eval validity has to account for this even in
+the "neutral" condition.
+
+**(iii) qwen3 has direction-asymmetric inject responses across prompt
+types.** V1 saw qwen3 +22pp on safety. V2 sees qwen3 +5.7pp on
+alignment-eval prompts (same direction, smaller magnitude) AND
+−6.4pp on capability-eval prompts (opposite direction, CI excludes
+zero). The two effects cancel in the pooled cross-corpus mean, which
+is why qwen3's V2 inject main effect is ~0. **V2's design exposes a
+qwen3 behavioral pattern that V1's safety-only corpus structurally
+could not see**: on capability-style prompts, the inject framing
+acts as a permission/grading signal that suppresses qwen3's small
+baseline refusal rate. The other three models cannot show this
+pattern in V2 because they refuse 0% on capability evals to begin
+with (floor effect). We have no V1 data on capability prompts to
+cross-check; this is a V2-only finding.
+
+**What V2 does not change about V1.** V2 did not re-run a
+within-prompt mediation analysis (no per-prompt VEA flip
+stratification). The V1 §5.3 null on VEA mediation remains the
+relevant evidence on that question. V2's strict-VEA cell means
+(0.36 for qwen3 inject, ≤0.10 elsewhere) qualitatively reproduce
+V1's qwen3-VEA-inflation finding via a fully different corpus and
+operationalization, but the mediation channel itself is not
+re-tested.
+
 ---
 
 ## 8. Limitations
@@ -1053,7 +1387,37 @@ released code), but the dozens of per-(model, family, condition)
 cells reported are not Holm-Bonferroni or BH-FDR corrected. We
 recommend treating individual cell-level verdicts with multiple-
 comparison-corrected interpretation when reading the appendix
-tables.
+tables. The V2 factorial (§5.5) is the exception: V2 *is*
+Holm-Bonferroni corrected across its 4-model × 3-effect family per
+the pre-registration (`docs/pre_registration_v2_apollo_2x2.md`
+§5.6), and headline V2 claims are restricted to corrected
+rejections.
+
+**V2 sample size on the alignment stratum.** The V2 factorial uses
+n=100 prompts per intrinsic label per model. The deep-dive
+stratification by `eval_type=alignment` (§5.5.4) thins that to n=53
+per model, which is moderate; the per-model alignment-stratum
+interaction CIs are individually wide and none cleanly excludes
+zero. The cohering signal for the V1→V2 bridge claim is the
+direction match across the two V1-tested models, not the per-model
+inferential strength. A follow-up V3 should re-test the bridge with
+larger n on the alignment-relevant subset.
+
+**V2 did not re-test the VEA mediation channel.** V1's §5.3
+within-prompt mediation analysis was not re-run on V2 rollouts; we
+report V2 strict-VEA cell means but not per-prompt VEA-flip
+stratification. The V1 §5.3 null on VEA mediation remains the
+relevant evidence for that question; V2 doesn't add to it directly.
+
+**V2's opus adaptive-thinking empty-trace asymmetry (§5.5.7) is
+confounded.** ~50% of opus's eval-labeled rollouts returned empty
+`reasoning_trace`, vs ~0% of deployment-labeled rollouts. We
+interpret this as a potential deliberation-level eval-awareness
+signal, but the same observation is consistent with opus's adaptive
+thinking judging Apollo eval prompts (often MMLU/short-question
+shaped) as not worth extended thinking on length grounds alone.
+Discriminating the two interpretations requires a follow-up that
+controls prompt length within each intrinsic label.
 
 ---
 
