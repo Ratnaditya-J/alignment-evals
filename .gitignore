@@ -120,3 +120,6 @@ coverage.xml
 # Documentation builds
 docs/_build/
 site/
+
+# Local agent-config files (not committed to repo)
+AGENTS.md
