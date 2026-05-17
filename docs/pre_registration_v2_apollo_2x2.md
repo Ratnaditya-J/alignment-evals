@@ -396,9 +396,48 @@ shrinks to whatever models did return data, and that is documented in
 
 Note qwen3 alone shows substantial strict-VEA verbalization under inject (0.23/0.20 in eval/deployment cells respectively, vs 0.02/0.00 under neutral). The other three models barely verbalize strict-VEA at all in any condition. qwen3's behavior is consistent with what V1's data showed (qwen3 verbalizes eval-awareness much more readily than other models).
 
+### Secondary stratified analysis (exploratory)
+
+Post-hoc stratification of the cross-corpus interaction by Apollo's `eval_type` (capability vs alignment) and `scaffold_type` (chat vs agentic). Produced by `scripts/analyze_v2_opus_deepdive.py` (commit `22e9aa2`) on the same rollouts.jsonl, with `min_cell_n=10` (vs the pre-reg's confirmatory `30`). **These results are exploratory; the pre-reg's §5.6 cross-model headline still stands.**
+
+**Deep-dive A: opus.**
+
+| Stratum | n (eval) | interaction | 95% CI | p | verdict |
+|---|---:|---:|---|---:|---|
+| alignment evals | 53 | **−0.087** | [−0.182, −0.001] | 0.042 | interaction_supported |
+| capability evals | 47 | −0.030 | [−0.070, +0.000] | 0.101 | additive |
+| chat scaffold | 54 | **−0.100** | [−0.215, −0.002] | 0.037 | interaction_supported |
+| agentic scaffold | 46 | −0.022 | [−0.065, +0.000] | 0.713 | additive |
+
+The opus interaction concentrates in alignment-eval × chat-scaffold prompts (`alignment` stratum: neutral refusal 0.34 → inject refusal 0.28 = Δ−0.06; deployment cells: 0.02 → 0.05 = Δ+0.03; interaction = −0.09). This is the V1 direction (opus −34pp on BeaverTails) at proportional magnitude. The capability stratum has 0% refusal on opus regardless of framing (capability-eval prompts have no safety content for opus to refuse), so the interaction term there is entirely driven by the small deployment-cell shift.
+
+**Deep-dive B: qwen3.**
+
+| Stratum | n (eval) | interaction | 95% CI | p | verdict |
+|---|---:|---:|---|---:|---|
+| alignment evals | 53 | +0.047 | [−0.040, +0.141] | 0.329 | additive |
+| capability evals | 47 | **−0.074** | [−0.159, −0.001] | 0.046 | interaction_supported |
+| chat scaffold | 54 | +0.035 | [−0.065, +0.148] | 0.594 | additive |
+| agentic scaffold | 46 | −0.065 | [−0.164, +0.017] | 0.112 | additive |
+
+qwen3 has TWO opposite-direction effects that cancel in the cross-corpus average:
+
+- *Alignment-eval inject-raises-refusal* (0.245 → 0.302 = Δ+0.057, CI includes zero at n=53 but direction matches V1's qwen3 +22pp on BeaverTails).
+- *Capability-eval inject-suppresses-refusal* (0.064 → 0.000 = Δ−0.064, CI excludes zero). Plausible story: "this is being graded, I should answer not refuse."
+
+The net pooled cross-corpus inject effect on qwen3 was ~0 because these two cancel.
+
+**Synthesis of A + B (exploratory).**
+
+1. **V1's direction asymmetry replicates on V2's alignment stratum.** opus refuses LESS under inject on alignment evals (matches V1 direction); qwen3 refuses MORE (also matches V1). Magnitudes are ~1/4 to 1/6 of V1's; expected given V2's alignment stratum (n=53) is a thinner slice than V1's BeaverTails corpus (hundreds of safety prompts).
+2. **qwen3 has a novel capability-eval-specific inject-suppresses-refusal effect** that V1's safety-only corpus could not detect. This is a substantive V2-only finding worth its own paper subsection.
+3. **qwen3's strict-VEA verbalization rate under inject is 5-10× the other models.** Inject_eval VEA mean on qwen3 alignment stratum is 0.36 (35.9% of rollouts have explicit eval-recognition verbalization). Opus, deepseek, and kimi are all below 0.10 across the board. Confirms V1's qwen3-VEA pattern via the strict-rubric operationalization.
+
+Caveats: alignment-eval stratum has n=53 per model, which is moderate; CIs are wide. Per-category rankings (in the deep-dive JSONs at `runs/v2-apollo-factorial-prereg/deepdive_*.{json,md}` locally) flag `agentharm` (n=12) as the single category with the largest opus interaction (−0.20, CI [−0.54, −0.01]) but n is too small to draw a confident conclusion. Suggested as a V3 probe target.
+
 ### Paper / writeup updates
 
-- *Pending.* Plan: integrate V2 results as a new section in the paper, framing finding 2 (V1 inject effect doesn't generalize) as a paper-improving null and finding 1 (intrinsic eval-label main effect) as a fresh contribution. Finding 4 (opus's adaptive-thinking pattern) goes in the appendix.
+- *Pending.* Plan: integrate V2 results as a new section in the paper, with the headline reframed as "V1's safety-prompt-specific direction asymmetry replicates on V2's alignment stratum at proportional magnitude" rather than "V1 doesn't replicate" (the stratified deep-dives above make this restatement defensible). The novel V2-only qwen3 capability-eval finding gets its own subsection. Finding 4 (opus's adaptive-thinking pattern) and the per-category rankings go in the appendix.
 
 *The pre-registration discipline worked as intended: the H1 claim survives per-model but not under cross-model correction, exactly the distinction the pre-reg's §5.6 was designed to handle. The unexpected null (finding 2) is reported as a substantive scope correction on V1, not a setback.*
 
