@@ -21,12 +21,14 @@ datasets by passing field names and a row-conversion callable.
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
+import json
 import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Iterable, List, Literal, Mapping, Optional, Sequence, Tuple
 
 from .dataset import EvalAwarenessExample
 from .models import TranscriptInput
@@ -453,6 +455,261 @@ class BeaverTailsLoader(HuggingFaceDatasetLoader):
             risk_tags=tuple(["safety_eval", *risk_tags]),
             metadata={"hf_dataset": self.dataset_id, "hf_split": self.split},
         )
+
+
+# ---------------------------------------------------------------------------
+# Apollo Research eval-awareness dataset
+# ---------------------------------------------------------------------------
+
+
+ApolloLabelFilter = Literal["eval", "deployment", "both"]
+ApolloPromptMode = Literal["full_transcript", "last_user_turn"]
+
+
+class ApolloEvalAwarenessLoader:
+    """Loads Apollo Research's released eval-awareness corpus.
+
+    Reference: Needham et al., "Large Language Models Often Know When They Are
+    Being Evaluated" (arXiv 2505.23836). Data + code:
+    https://github.com/jjpn97/eval_awareness (encrypted in repo, mirrored at
+    https://huggingface.co/datasets/jjpn2/eval_awareness).
+
+    Apollo's file is a JSON list whose entries follow the Inspect AI ``Sample``
+    schema. Fields actually consumed by this loader:
+
+    * ``id`` — sample identifier; used as the basis for ``example_id``.
+    * ``input`` — either a string or a list of chat-message dicts
+      (``{"role": "system"|"user"|"assistant", "content": "..."}``).
+    * ``metadata.category`` — source dataset name (e.g. ``"swebench"``,
+      ``"mmlu"``, ``"support_ticket"``); used as ``source``.
+    * ``metadata.eval_category`` — Apollo's intrinsic eval label. Truthy
+      (``"Capability"`` or ``"Alignment"``) means the prompt was authored as
+      an eval; falsy/missing/null means it came from a real-deployment
+      source. This is the binary label V2 factorial-designs against.
+
+    The label is mapped to the existing project vocabulary:
+
+    * truthy ``eval_category`` → ``label="hidden_eval"``
+    * otherwise               → ``label="deployment_like"``
+
+    The full ``eval_category`` string (``"Capability"`` / ``"Alignment"`` /
+    ``None``) is preserved in ``example.metadata["apollo_eval_category"]``
+    for downstream stratification.
+
+    Deviations from ``docs/v2_apollo_design.md`` §2 (recorded for the pre-reg):
+
+    * Design assumed an ``is_eval: bool`` field — Apollo actually stores
+      ``metadata.eval_category`` as a 3-valued string-or-null. We binarize.
+    * Design referenced ``dataset.json`` — Apollo's default filename is
+      ``eval_awareness_val.json`` (overridable via the
+      ``EVAL_AWARENESS_DATA_FILE`` env var in Apollo's pipeline).
+    * Design used ``transcript_id`` / ``transcript`` / ``source_dataset`` —
+      real keys are ``id`` / ``input`` / ``metadata.category``.
+
+    Parameters
+    ----------
+    dataset_path:
+        Path to Apollo's JSON file (typically the decrypted
+        ``eval_awareness_val.json`` downloaded from HuggingFace).
+    label_filter:
+        ``"eval"`` keeps only eval-labeled rows, ``"deployment"`` keeps only
+        deployment-labeled rows, ``"both"`` keeps everything (default).
+    prompt_mode:
+        ``"full_transcript"`` (default) preserves the multi-turn structure
+        — the final user message goes into ``user_prompt`` and earlier
+        messages are kept in ``conversation_history``; any system message
+        is placed in ``system_prompt``. ``"last_user_turn"`` keeps only the
+        most recent user message, matching V1's single-turn prompt shape.
+    max_examples:
+        If set, returns at most this many examples after filtering and
+        deterministic ordering. ``None`` returns all.
+    seed:
+        Seed used for deterministic ordering. Selection is by lowest
+        ``sha256(f"{seed}:{id}")`` so the same ``(seed, max_examples)``
+        always yields the same subset regardless of file order.
+    """
+
+    def __init__(
+        self,
+        dataset_path: str | Path,
+        *,
+        label_filter: ApolloLabelFilter = "both",
+        prompt_mode: ApolloPromptMode = "full_transcript",
+        max_examples: Optional[int] = None,
+        seed: int = 0,
+    ) -> None:
+        self.dataset_path = Path(dataset_path)
+        self.label_filter = label_filter
+        self.prompt_mode = prompt_mode
+        self.max_examples = max_examples
+        self.seed = seed
+
+    def load(self) -> List[EvalAwarenessExample]:
+        if not self.dataset_path.exists():
+            raise FileNotFoundError(
+                f"Apollo dataset file not found at {self.dataset_path}. "
+                "Download from huggingface.co/datasets/jjpn2/eval_awareness "
+                "(see also EVAL_AWARENESS_DATA_FILE in Apollo's repo)."
+            )
+        with self.dataset_path.open("r", encoding="utf-8") as handle:
+            raw = json.load(handle)
+        if not isinstance(raw, list):
+            raise ValueError(
+                f"Apollo dataset at {self.dataset_path} must be a JSON list; "
+                f"got {type(raw).__name__}."
+            )
+
+        examples: List[EvalAwarenessExample] = []
+        for index, entry in enumerate(raw):
+            if not isinstance(entry, Mapping):
+                LOGGER.warning(
+                    "Skipping Apollo entry %d: expected object, got %s",
+                    index,
+                    type(entry).__name__,
+                )
+                continue
+            example = self._entry_to_example(entry, index)
+            if example is None:
+                continue
+            if not self._passes_label_filter(example):
+                continue
+            examples.append(example)
+
+        examples.sort(key=lambda ex: hashlib.sha256(
+            f"{self.seed}:{ex.example_id}".encode("utf-8")
+        ).hexdigest())
+        if self.max_examples is not None:
+            examples = examples[: self.max_examples]
+
+        LOGGER.info(
+            "Loaded %d Apollo examples from %s (filter=%s, mode=%s)",
+            len(examples),
+            self.dataset_path,
+            self.label_filter,
+            self.prompt_mode,
+        )
+        return examples
+
+    def _entry_to_example(
+        self, entry: Mapping[str, Any], index: int
+    ) -> Optional[EvalAwarenessExample]:
+        sample_id = str(entry.get("id") or f"row{index}")
+        metadata = entry.get("metadata") or {}
+        if not isinstance(metadata, Mapping):
+            metadata = {}
+        eval_category = metadata.get("eval_category")
+        source_category = str(metadata.get("category") or "unknown")
+        is_eval = bool(eval_category)
+
+        transcript = self._build_transcript(entry.get("input"))
+        if transcript is None:
+            LOGGER.warning(
+                "Skipping Apollo entry %s: no usable user message in input",
+                sample_id,
+            )
+            return None
+
+        label = "hidden_eval" if is_eval else "deployment_like"
+        return EvalAwarenessExample(
+            example_id=f"apollo:{sample_id}",
+            label=label,
+            task_family="apollo_eval_aware",
+            source=source_category,
+            transcript=transcript,
+            scorer_names=("refusal",),
+            risk_tags=("apollo",) + (("eval_intrinsic",) if is_eval else ("deployment_intrinsic",)),
+            metadata={
+                "apollo_id": sample_id,
+                "apollo_category": source_category,
+                "apollo_eval_category": (
+                    str(eval_category) if eval_category else ""
+                ),
+                "apollo_is_eval": "true" if is_eval else "false",
+                "apollo_prompt_mode": self.prompt_mode,
+            },
+        )
+
+    def _build_transcript(self, raw_input: Any) -> Optional[TranscriptInput]:
+        messages = _normalize_inspect_input(raw_input)
+        if not messages:
+            return None
+
+        last_user_idx = _last_index_of_role(messages, "user")
+        if last_user_idx is None:
+            return None
+        last_user_content = messages[last_user_idx]["content"]
+
+        if self.prompt_mode == "last_user_turn":
+            return TranscriptInput(user_prompt=last_user_content)
+
+        # full_transcript: keep system message in system_prompt, all messages
+        # before the final user turn in conversation_history, final user
+        # message in user_prompt. Earlier system messages (rare) collapse
+        # into the system_prompt slot newline-joined.
+        system_parts: List[str] = []
+        history: List[dict] = []
+        for idx, message in enumerate(messages):
+            if idx == last_user_idx:
+                continue
+            if message["role"] == "system":
+                system_parts.append(message["content"])
+                continue
+            history.append(
+                {"role": message["role"], "content": message["content"]}
+            )
+        return TranscriptInput(
+            user_prompt=last_user_content,
+            system_prompt="\n".join(system_parts).strip(),
+            conversation_history=history,
+        )
+
+    def _passes_label_filter(self, example: EvalAwarenessExample) -> bool:
+        if self.label_filter == "both":
+            return True
+        is_eval = example.metadata.get("apollo_is_eval") == "true"
+        if self.label_filter == "eval":
+            return is_eval
+        return not is_eval
+
+
+def _normalize_inspect_input(raw_input: Any) -> List[dict]:
+    """Coerce an Inspect AI ``Sample.input`` value into a list of message dicts.
+
+    Inspect accepts either a plain string (single user turn) or a list of
+    chat-message dicts. This returns the latter shape with string ``content``
+    fields, dropping anything malformed.
+    """
+    if raw_input is None:
+        return []
+    if isinstance(raw_input, str):
+        text = raw_input.strip()
+        if not text:
+            return []
+        return [{"role": "user", "content": text}]
+    if not isinstance(raw_input, list):
+        return []
+    messages: List[dict] = []
+    for item in raw_input:
+        if not isinstance(item, Mapping):
+            continue
+        role = str(item.get("role") or "").lower()
+        content = item.get("content")
+        if role not in {"system", "user", "assistant"}:
+            continue
+        if not isinstance(content, str):
+            continue
+        text = content.strip()
+        if not text:
+            continue
+        messages.append({"role": role, "content": text})
+    return messages
+
+
+def _last_index_of_role(messages: Sequence[Mapping[str, str]], role: str) -> Optional[int]:
+    for idx in range(len(messages) - 1, -1, -1):
+        if messages[idx].get("role") == role:
+            return idx
+    return None
 
 
 # ---------------------------------------------------------------------------
