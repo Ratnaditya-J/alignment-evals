@@ -720,8 +720,14 @@ def _render_triangulation(
         points = [v1[model_key]["point"], v2[model_key]["point"], v3[model_key]["point"]]
         lows = [v1[model_key]["low"], v2[model_key]["low"], v3[model_key]["low"]]
         highs = [v1[model_key]["high"], v2[model_key]["high"], v3[model_key]["high"]]
-        err_low = [p - l for p, l in zip(points, lows)]
-        err_high = [h - p for h, p in zip(points, highs)]
+        # max(0.0, ...) is defensive: matplotlib's errorbar rejects negative
+        # yerr values, which can arise from floating-point drift when a CI
+        # bound coincides exactly with the point estimate (e.g. opus V2
+        # high=-0.001 vs point=-0.060 is fine, but bootstrap precision can
+        # invert by ~1e-9). Clamp to zero so we always plot the CI even when
+        # the asymmetric half is degenerate.
+        err_low = [max(0.0, p - l) for p, l in zip(points, lows)]
+        err_high = [max(0.0, h - p) for h, p in zip(points, highs)]
         ax.errorbar(
             x, points, yerr=[err_low, err_high],
             fmt=marker, color=color, ecolor=color,
