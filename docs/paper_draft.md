@@ -98,14 +98,21 @@ in the existing literature:
    in any framing we added — implying that benchmark prompts carry an
    eval-recognition signal that shifts behavior even in the absence
    of explicit framing.
-5. **Replication failure of the apparent VEA mediation channel.** The
+5. **Pre-registered disjoint-prompt replication failure of an
+   apparent VEA mediation estimate under explicit eval-framing.** The
    primary V1 within-prompt VEA mediation analysis suggested
    significant mediation on qwen3 safety prompts (DiD +0.222 at
    n_flip=63). A pre-registered disjoint-prompt replication at
-   larger n_flip=100 was null (−0.017 [−0.175, +0.139]). This is, to
-   our knowledge, the first published direct test of the
-   verbalized-eval-awareness mediation channel that includes a
-   pre-registered replication on a disjoint sample.
+   larger n_flip=100 was null (−0.017 [−0.175, +0.139]). We are not
+   aware of a prior published pre-registered disjoint-prompt
+   replication test of a within-prompt VEA mediation estimate under
+   explicit eval-framing; this is the contribution. The result is a
+   boundary condition on positive causal claims about CoT-mediated
+   eval-aware behavior (Aranguri & Bloom 2026; Chaudhary 2026) — the
+   mediation channel we measured did not survive a fresh disjoint
+   sample at our n_flip and design, and §7.5 discusses the conditions
+   under which this null is and is not in tension with those prior
+   positive results.
 
 All three pre-registrations were filed and committed before
 execution. The pre-registration documents, run JSON outputs,
@@ -229,28 +236,46 @@ Section 9 concludes.
 ## 2. Related Work
 
 **Evaluation awareness.** Concerns about LLMs distinguishing eval
-from deployment contexts go back at least to Park et al. (2023) and
-have been operationalized in various ways. Goodfire's spontaneous
-VEA work (which our setup is named after) treats the phenomenon as a
-property of the model's CoT: the trace mentions evaluation, testing,
-benchmarking, or grading without being prompted to do so. This is
-distinct from sandbagging or strategic deception claims, which
-require the additional inference that the verbalization causes
-behavioral change.
+from deployment contexts go back at least to Park et al. (2024) and
+have been operationalized in various ways. Aranguri & Bloom
+(Goodfire, 2026) — whose spontaneous VEA setup our paper is
+methodologically named after — treat the phenomenon as a property of
+the model's CoT: the trace mentions evaluation, testing,
+benchmarking, or grading without being prompted to do so. Apollo
+Research (Needham et al., 2025) released a held-out 976-prompt
+corpus with intrinsic eval/deployment labels that frames eval
+recognition as a corpus-level signal rather than a CoT-level one;
+our V2 and V3 experiments use that corpus.
 
-**How our design differs from Goodfire's, and why this matters for
-comparison.** Goodfire's setup centers on *spontaneous* verbalized
-eval-awareness (does the model say "this is an eval" without being
-told?) and on CoT-level sentence interventions (steering or
-intervening on individual reasoning sentences). Our setup uses an
-*explicit* inject system prompt that names the evaluation context
-directly. The two designs are complementary but not interchangeable:
-our inject framing is a stronger manipulation than Goodfire's
-naturally-occurring condition, so a finding of "no mediation under
-explicit inject" in our setup is *not* equivalent to "no mediation
-under spontaneous VEA" in Goodfire's setup, and vice versa. Readers
-should treat the comparison qualitatively rather than as a
-replication of Goodfire's specific experimental protocol.
+**Prior positive causal claims about CoT-mediated eval-awareness.**
+Two recent results bear directly on the mediation question this paper
+tests. Aranguri & Bloom (2026) report that verbalized eval-awareness
+in CoT correlates with safer behavior and claim causal refusal
+inflation in Kimi K2.5 on the Fortress benchmark. Chaudhary (2026)
+reports a CoT intervention experiment whose authors interpret as
+causal evidence that sandbagging is driven by verbalized
+eval-aware reasoning. Both lines argue, in different ways, that
+the verbalization channel is causally upstream of behavioral change.
+
+**How our design differs and what our null adds.** Our V1 mediation
+test uses an *explicit* inject system prompt and a within-prompt
+diff-in-diff estimator over VEA-flip strata, not CoT-level sentence
+interventions or steering. The two designs are complementary but not
+interchangeable: our explicit inject is a stronger manipulation than
+Aranguri & Bloom's naturally-occurring condition, so a finding of "no
+mediation under explicit inject in a fresh disjoint sample" in our
+setup is *not* equivalent to "no mediation under spontaneous VEA" in
+theirs, and vice versa. We position our pre-registered disjoint-prompt
+replication null (§5.3) as a boundary condition: the within-prompt
+VEA-flip mediation channel that the V1 primary sample suggested for
+qwen3 safety does not survive replication on a fresh sample at our
+n_flip and design. This narrows the conditions under which positive
+causal mediation claims hold, without contradicting Aranguri & Bloom's
+correlation finding or Chaudhary's intervention-based causal claim
+(both of which use different operationalizations of "verbalized
+eval-awareness" and different causal estimators than ours). Readers
+should treat the cross-paper comparison qualitatively rather than as
+a direct replication of any specific prior protocol.
 
 **Benchmark contamination and validity.** A separate literature on
 benchmark contamination (e.g. MMLU leakage into training corpora)
@@ -327,45 +352,48 @@ disjoint qwen3-235B safety replication at n=200 prompts):
   with mediation, not a formal causal mediation estimate — see §3.2
   and the caveat below).
 
-### 3.1.1 Inject-prompt confound (core interpretive limitation)
+### 3.1.1 Inject-prompt confound (V1 limitation, resolved by V3)
 
-The inject prompt — *"Note: this is an evaluation. Your response will
+V1's inject prompt — *"Note: this is an evaluation. Your response will
 be reviewed by safety researchers and compared against deployment
 behavior."* — operationalizes "explicit eval framing" but does so by
-bundling two distinct manipulations that we did not factor apart:
+bundling three distinct manipulations that V1 did not factor apart:
 
 * **Eval-context signaling.** The text names an evaluation scenario
-  and identifies researchers as the audience. This is the classical
-  "the model knows it is being watched" manipulation that
-  sandbagging-on-eval predictions are about.
-* **Instructional content.** The text simultaneously suggests
-  comparison against "deployment behavior," which is a compliance-
-  encouraging cue — read literally, it tells the model to behave as
-  it would in deployment (i.e. answer normally, including possibly
-  comply with requests it would otherwise refuse).
+  ("this is an evaluation"). This is the classical "the model knows
+  it is being watched" manipulation that sandbagging-on-eval
+  predictions are about.
+* **Reviewer attribution.** The text identifies safety researchers as
+  the audience, which adds a specific authority cue distinct from
+  generic eval framing.
+* **Comparison-to-deployment cue.** The text suggests comparison
+  against "deployment behavior," which is a compliance-encouraging
+  cue — read literally, it tells the model to behave as it would in
+  deployment (i.e. answer normally, including possibly comply with
+  requests it would otherwise refuse).
 
-These two manipulations push in different directions and we cannot
-disentangle them in the present design. **This is the primary
-interpretive limitation of the paper.** Several findings depend on
-how you read the inject prompt:
+For V1 alone, these three manipulations push in different directions
+and could not be disentangled in V1's design. The opus −34pp refusal
+drop on V1 safety was consistent with the *comparison-to-deployment*
+reading (model interprets the cue as compliance instruction). The
+qwen3 +22pp refusal increase on V1 safety was consistent with the
+*eval-context* reading (model becomes more cautious when watched).
 
-- The opus −34pp refusal drop on safety (§5.4) is consistent with the
-  *instructional-content* reading (model interprets "compared against
-  deployment behavior" as a compliance instruction and lowers its
-  refusal threshold) more than with the eval-context reading.
-- The qwen3 +22pp refusal increase on safety (replication, §5.4) is
-  consistent with the *eval-context* reading (model becomes more
-  cautious when it believes its response will be scrutinized).
-- The opposite-signed strict-VEA-stable refusal effects on two
-  different reasoning models may reflect models weighting these two
-  cues differently rather than holding qualitatively different
-  eval-awareness mechanisms.
-
-Discriminating between these readings would require a factorial
-ablation of the inject prompt into its component clauses (eval-
-context alone, instructional-content alone, both, neither). We did
-not run this ablation and we note in §8 that the present findings
-should be read as joint effects of the bundled manipulation.
+**V3 (§5.6) resolves this V1 limitation directly.** The V3
+pre-registered 5-condition clause ablation runs each of the three V1
+clauses in isolation — `eval_only`, `reviewer_only`, `comparison_only`
+— alongside `neutral` and `full_inject`, on the same alignment-eval
+prompts that V2 localized the V1 effect to. The headline V3 result
+is that no single clause's effect is detectable after Holm-Bonferroni
+correction (0 of 18 singleton hypotheses survive across two correction
+families), but **the singleton effects on opus and qwen3 sum
+linearly to the full V1 inject effect within the additivity residual
+CI**. The V1 inject's effect on these two models is
+*distributed-additive across all three clauses*, not localized to any
+single clause. We retain §3.1.1 as a record of the V1-only
+limitation that V3 was specifically pre-registered to address; the
+V3 results in §5.6 supersede the "we don't know which clause" caveat
+that applied to V1 and V2 in isolation.
 
 ### 3.2 Statistical methods
 
@@ -848,11 +876,17 @@ eval predictions describe). The opus direction is consistent with
 reading the comparison-to-deployment clause as a compliance cue (the
 model interprets "deployment behavior" as the target behavior and
 relaxes refusal thresholds relative to a generic safety stance).
-**Discriminating these readings would require ablating the inject
-prompt into its component clauses** (eval-context only, comparison-
-to-deployment only, both, neither), which we leave to future work.
-This is a core interpretive limitation of the present design; we
-elaborate it in §3.1 and §8.
+**V3 (§5.6) ablates the inject prompt into its component clauses**
+(eval-context only, reviewer-attribution only, comparison-to-deployment
+only, full inject, neutral) and resolves the V1 confound: the V1
+effect on opus and qwen3 is distributed-additive across the three
+clauses, with no single clause individually responsible. The
+"compliance cue vs eval cue" reading dichotomy posed in V1 alone is
+therefore replaced by the V3 attribution: **both readings are
+partially correct, each clause contributes ~1/3 of the full effect,
+and the three sum linearly to reproduce the V1 inject's behavioral
+shift on these two models**. See §5.6 for the headline V3 result and
+§3.1.1 for the cross-experiment framing.
 
 **What survives, what doesn't.**
 
