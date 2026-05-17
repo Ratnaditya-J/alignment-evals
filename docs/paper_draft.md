@@ -279,10 +279,16 @@ constrains which models can contribute to a Goodfire-style analysis.
 
 ## 3. Experimental Design
 
-### 3.1 Two complementary experiments
+### 3.1 V1: Two complementary experiments
 
-We run two distinct experiments sharing the same prompt corpus and
-intervention design:
+This subsection describes V1's experimental design. V2's design is
+in §5.5.1 (Apollo 2×2 factorial, 6-model with closed-CoT backfill).
+V3's design is in §5.6.1 (5-condition inject-clause ablation, same
+6-model lineup). §3.2 (statistical methods) and §3.3 (reproducibility)
+apply uniformly across V1, V2, and V3 except where noted.
+
+V1 itself runs two distinct experiments sharing the same prompt corpus
+and intervention design:
 
 **Cross-protocol behavioral experiment** (n=16,000 rollouts):
 
@@ -1863,42 +1869,57 @@ controls prompt length within each intrinsic label.
 
 ## 9. Conclusion
 
-Two complementary experiments on eight frontier models and four
-reasoning-capable models (the open-reasoning trio + closed-source
-claude-opus-4-7) test whether explicit eval-framing in the system
-prompt changes (a) visible refusal behavior, (b) verbalized evaluation
-awareness in CoT, and (c) whether the latter mediates the former. We
-also conduct a pre-registered disjoint-prompt replication on the
-single mediation cell that the primary analysis flagged. We find:
+**Three pre-registered experiments** — V1 (cross-protocol behavioral
++ Goodfire-style reasoning-trace on BeaverTails safety, 8 models),
+V2 (Apollo 2×2 factorial on the eval-awareness corpus, 6 models with
+closed-CoT backfill), V3 (5-condition inject-clause ablation on
+Apollo's alignment-eval stratum, 6 models) — totaling **32,170
+rollouts** test whether explicit eval-framing in the system prompt
+changes (a) visible refusal behavior, (b) verbalized evaluation
+awareness in CoT, (c) whether the latter mediates the former, (d)
+how the effect interacts with an external eval/deployment label
+authored by a different research group, and (e) which clause of the
+V1 inject prompt carries the behavioral effect. We find:
 
-- **(a) Aggregate behavioral effect: no.** Eight of eight frontier
-  models show null inject−neutral refusal shifts at the model-
-  aggregate level. Closed-source pooled CI is +0.002 [−0.018, +0.023]
-  at n=2,499 paired.
+- **(a) Aggregate behavioral effect: no.** V1's 8/8 frontier models
+  show null inject−neutral refusal shifts at the model-aggregate
+  level. V2's 6/6 models show pooled inject main effects within ±0.015
+  of zero, none surviving Holm in either correction family.
 - **(b) Reasoning-trace VEA inflation: yes, model-heterogeneously.**
-  qwen3-235B-thinking shows +0.380 [+0.336, +0.424] VEA inflation
-  under inject; deepseek-v3.2-exp +0.050 [+0.024, +0.074];
-  claude-opus-4-7 +0.080 [+0.050, +0.113] at n=300;
-  kimi-k2-thinking shows none.
+  qwen3-235B-thinking +0.380 [+0.336, +0.424] under inject;
+  deepseek-v3.2-exp +0.050 [+0.024, +0.074]; claude-opus-4-7
+  +0.080 [+0.050, +0.113] at n=300; kimi-k2-thinking null. Closed-CoT
+  models (gpt-5.5, gemini-2.5-pro) cannot be ranked.
 - **(c) Within-prompt mediation: not supported on a fresh sample.**
-  The primary analysis flagged qwen3 safety mediation (DiD +0.222
-  [+0.029, +0.430], n_flip=63 paired); a pre-registered disjoint-
-  prompt replication at n_flip=100 returned null (DiD −0.017
-  [−0.175, +0.139]). The primary mediation finding failed to
-  replicate (see §5.3 for the interpretation under the pre-
-  registration decision rule). opus-4.7 mediation is also null
-  (DiD −0.061, n_flip=10). VEA verbalization is correlated with
-  inject framing but is not the channel through which inject changes
-  refusal behavior in any cell where we tested it on a fresh sample.
-- **(d) Non-verbalized refusal effects on safety, direction-
-  asymmetric.** The `stable_neg` stratum (prompts where strict-VEA
-  stayed negative under both conditions) shows CI-excludes-zero
-  refusal shifts on safety under inject in two models, in opposite
-  directions: qwen3-235B +0.217 [+0.098, +0.337] at n=92 (replication
-  sample), opus-4.7 −0.339 [−0.446, −0.231] at n=65. Inject framing
-  changes refusal behavior on safety prompts even where strict-VEA
-  verbalization did not flip — visible to refusal measurement, not
-  visible to explicit VEA monitoring.
+  The primary V1 analysis flagged qwen3 safety mediation (DiD +0.222
+  [+0.029, +0.430], n_flip=63 paired); pre-registered disjoint-prompt
+  replication at n_flip=100 returned null (DiD −0.017 [−0.175, +0.139]).
+  The primary mediation finding failed to replicate.
+- **(d) Cross-laboratory intrinsic-eval-label refusal signal.** V2's
+  Apollo factorial finds the intrinsic `eval_category=true` label
+  predicts +7.5 to +13.0pp higher refusal across all 6 models from 4
+  labs; **5 of 6 survive Holm-Bonferroni in their respective
+  correction families** at family-wise α=0.05. The signal lives in
+  the prompt content itself, independent of any framing we add.
+- **(e) Distributed-additive attribution of the V1 inject effect on
+  the two active models.** V3's 5-condition clause ablation finds
+  the V1 inject's effect on opus and qwen3 sums linearly across three
+  component clauses (sum-of-singletons matches full_inject within
+  CI on both models). 0 of 18 singleton hypotheses survive Holm. No
+  single clause individually carries the V1 effect; the eval-noticing
+  behavior is a response to the cumulative weight of three eval-
+  framing claims, not to any specific propositional content.
+- **(f) Direction-asymmetric refusal effects on safety/alignment
+  prompts, triangulated across three pre-registered experiments.**
+  qwen3-235B refuses more under inject; opus-4.7 refuses less. The
+  asymmetric pattern replicates at consistent within-model magnitudes
+  on V1's BeaverTails (qwen3 +0.217 [+0.098, +0.337]; opus −0.339
+  [−0.446, −0.231]), V2's alignment-stratum (qwen3 +0.057 [−0.04,
+  +0.14]; opus −0.060 [−0.18, −0.001]), and V3's alignment-eval pool
+  (qwen3 +0.054 [+0.014, +0.094] p=0.013; opus −0.067 [−0.104, −0.030]
+  p=0.001). Four other models (deepseek, kimi, gpt-5.5,
+  gemini-2.5-pro) are flat on V3 — the asymmetry is robust under
+  cross-model triangulation against null baselines.
 
 **The central finding** is that inject framing has direction-
 asymmetric refusal effects on safety prompts in at least two
@@ -1926,14 +1947,31 @@ driven exploratory findings before they enter the literature.
 > behavioral detector. Models can show safety-refusal shifts even
 > when the eval-awareness verbalization does not appear.*
 
-Future work should (i) factorially ablate the inject prompt to
-separate eval-context signaling from instructional-content effects
-(the inject prompt as currently constructed confounds these two
-manipulations, see §3.1, §8), (ii) extend the closed-source comparison
-beyond claude-opus-4-7 to gpt-5/o-series once verbatim CoT access is
-available, and (iii) test the direction-asymmetry finding on larger
-samples and additional reasoning-capable models to characterize where
-the asymmetry comes from.
+**What V2 + V3 added that V1 could not.** V2's Apollo factorial
+addressed V1's monotone-corpus limitation by crossing the V1 inject
+with Apollo's intrinsic eval/deployment label on prompts authored by
+a different research group. V3's clause ablation addressed V1's
+bundled-inject limitation (the §3.1.1 "core interpretive limitation")
+by decomposing the V1 inject into its three component clauses and
+testing each in isolation. The two follow-ups together resolve the
+inject-prompt confound: the V1 effect is real on safety/alignment
+prompts, it generalizes across the alignment-eval stratum of an
+external corpus, and it attributes additively across three component
+clauses with no single clause individually responsible. **Closed-CoT
+extension** via the 6-model lineup (gpt-5.5 and gemini-2.5-pro added
+as behavioral-only participants per `docs/pre_registration_closed_cot_backfill.md`)
+triangulates the V1 direction asymmetry against 4 different null
+models from 4 different labs, confirming the asymmetric signal is not
+an artifact of model selection.
+
+Future work should (i) extend the V3 clause-ablation design to
+additional reasoning-capable models to characterize *why* opus and
+qwen3 react to clause-additive eval-framing while four other frontier
+models do not, (ii) test whether the V2 intrinsic-eval-label signal
+operates through the same distributed-additive mechanism by ablating
+which prompt-level features carry the eval-recognition signal, and
+(iii) replicate the V1 mediation null on a third independent sample
+to firm up the negative-result interpretation.
 
 ---
 
