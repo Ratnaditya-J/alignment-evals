@@ -674,10 +674,20 @@ thresholds on the diff-in-diff magnitude and its bootstrap CI.
 
 ### 3.3 Reproducibility
 
-All rollouts, classifications, summary JSONs, and analysis scripts are
-released alongside this report at the repository linked in the
-appendix. Each summary JSON records the seeds, judge model IDs, and
-prompt-template hashes used in its production.
+The analysis scripts, prompt templates, figure-generation code,
+summary JSON schema, judge prompts, pre-registration documents,
+and committed-figure PNGs/PDFs are all released in the project
+GitHub repository (Appendix A). Per-run rollout JSONLs and the
+derived summary JSONs they're computed from (the contents of
+`runs/`, gitignored because of size) are **not** committed to the
+GitHub repo; they are available on request from the corresponding
+author and the released scripts re-derive them from raw API calls
+under documented seeds, prompt-template hashes, and judge model
+identifiers (each summary JSON's manifest records these). The
+"Judge-only reproduction" path in Appendix A (~$10-$20 in
+OpenRouter API fees, ~30 minutes wall time) is the practical entry
+point for verifying classification numbers and mediation verdicts
+without rerunning the full rollout pipeline.
 
 The pre-registration discipline used here (filed-before-execution
 invariant) follows the broader psychology and replication-science
@@ -2248,7 +2258,7 @@ detect (cf. the explicit-VEA-monitor scope note in §7.3).
 **Closed-CoT model behavior in other recent evaluations.** Two
 independent lines of evidence indicate that closed-CoT models in
 our lineup show measurable eval-awareness under operationalizations
-different from ours: OpenAI's GPT-5.5 system card (2025) reports
+different from ours: OpenAI's GPT-5.5 system card (2026) reports
 Apollo found 22.1% moderate-or-higher verbalized
 alignment-eval-awareness on standard probes and 52% under a
 sandbagging-condition probe; Kirk et al. (2026, arXiv:2604.24618)
@@ -2582,7 +2592,7 @@ Needham, J., Edkins, G., Pimpale, G., Bartsch, H., & Hobbhahn, M.
 Evaluated.* Apollo Research. arXiv:2505.23836. Dataset:
 `huggingface.co/datasets/jjpn2/eval_awareness`.
 
-OpenAI (2025). *GPT-5.5 System Card.*
+OpenAI (2026). *GPT-5.5 System Card.*
 `https://deploymentsafety.openai.com/gpt-5-5/gpt-5-5.pdf`. Apollo
 Research third-party evaluation reports 22.1% moderate-or-higher
 verbalized alignment-eval-awareness on standard probes and 52%
@@ -2626,10 +2636,16 @@ discussed in §2 with full references in the list above.)
 
 ## Appendix A. Data and code availability
 
-All rollouts, classifications, summary JSONs, analysis scripts,
-prompt templates, and figure-generation code are released at the
-project repository. Each summary JSON records the seeds, judge model
-identifiers, and prompt-template hashes used in its production.
+The analysis scripts, prompt templates, figure-generation code,
+summary JSON schema, judge prompts, pre-registration documents,
+and committed-figure PNGs/PDFs are all released in the project
+GitHub repository. Per-run rollout JSONLs and the derived summary
+JSONs they're computed from (the `runs/` directory tree,
+gitignored because of cumulative size) are **not** in the GitHub
+repo; they are available on request from the corresponding
+author. Each summary JSON manifest records the seeds, judge model
+identifiers, and prompt-template hashes used in its production so
+that re-derivation from raw API calls is deterministic.
 
 Two reproduction costs are worth distinguishing:
 
