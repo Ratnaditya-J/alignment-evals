@@ -420,12 +420,9 @@ def _render_mediation_panels(
     _panel_did(axes[2], per_family_strict or [], "strict")
 
     fig.suptitle(
-        "qwen3 mediation analysis: primary sample surfaces a safety-family "
-        "DiD signal (panel c, strict rubric);\n"
-        "see Figure 5 for the disjoint-prompt replication (null) and §5.3 "
-        "for the headline interpretation.\n"
-        "Capability families are mechanically null on this analysis "
-        "(refusal floor at ~0).",
+        "qwen3 primary mediation signal (panel c, strict) — "
+        "replication null in Figure 5; see §5.3. "
+        "Capability families null by floor effect.",
         fontsize=11,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.92])

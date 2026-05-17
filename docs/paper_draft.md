@@ -644,24 +644,24 @@ explicitly mentioning evaluation. The open-reasoning models all
 have non-zero baseline VEA (deepseek 0.016, kimi 0.024, qwen3 0.070)
 — the inject framing inflates an already-non-zero rate. opus's
 cleaner causal signal comes at the cost of a substantially lower
-inflation magnitude (10x lower than qwen3).
+inflation magnitude (10× lower than qwen3).
+
+*Figure 2 below visualizes the per-model effect for the three
+open-reasoning models. The claude-opus-4-7 inflation (+0.080
+[+0.050, +0.113] at n=300, reported in the table above) is from a
+separate Goodfire extension run with its own summary file and is
+not bar-rendered in the figure to avoid mixing data from runs with
+different sample sizes and rollout dates; the opus number
+contributes to the cross-model summary in §7.5.*
 
 ![](figures/fig2_vea_inflation.png)
 
 **Figure 2.** Per-model inject−neutral VEA+ inflation Δ with
-95% paired-bootstrap CIs (B=200) on the **open-reasoning trio**
+95% paired-bootstrap CIs (B=200) on the three open-reasoning models
 (qwen3, deepseek, kimi). Bars colored by significance: red = CI
-excludes zero, grey = not significant. *Scope note: the
-claude-opus-4-7 VEA inflation reported in the table above
-(+0.080 [+0.050, +0.113] at n=300) is from a separate Goodfire
-extension run with its own summary file; it is not included as a
-bar in this figure to avoid mixing data from runs with different
-sample sizes and rollout dates. The opus number is reproduced in
-the §5.2 narrative and contributes to the cross-model summary in
-§7.5.* Reasoning-trace VEA inflation under explicit eval framing
-is real and model-heterogeneous on the trio shown: qwen3 shows a
-~4× rate increase; deepseek shows a small but CI-excludes-zero
-effect; kimi shows none.
+excludes zero, grey = not significant. qwen3 shows a ~4× rate
+increase; deepseek shows a small but CI-excludes-zero effect; kimi
+shows none.
 
 The qwen3 effect is the largest in the lineup and **replicates across
 four independent runs**: smoke n=50 (+0.36 Wald CI [+0.18, +0.54]),
