@@ -112,10 +112,11 @@ eval-framing increase the rate of verbalized evaluation-awareness
 independently predict behavioral change beyond the framing's direct
 effect?
 
-**Q5 (the generalization question, V2, §5.5):** Do the V1 effects
-generalize beyond the safety-only BeaverTails corpus, and does the
-behavior of frontier and frontier-adjacent models also depend on the
-*intrinsic* eval-vs-deployment label of the prompt itself (as
+**Q5 (the generalization question, V2, §5.5):** Do the V1
+safety-specific BeaverTails effects (§5.4) generalize beyond
+pure-safety prompts, and does the behavior of frontier and
+frontier-adjacent models also depend on the *intrinsic*
+eval-vs-deployment label of the prompt itself (as
 authored by an external research group), independent of any framing
 we add? *(Numbering
 preserved as Q5 rather than Q3 because Q3/Q4 are subquestions inside
@@ -1483,9 +1484,10 @@ BeaverTails-stratum size), on both active models:**
 | kimi                | +0.030 | [−0.050, +0.110] | 0.509 | null_at_full |
 | gemini-2.5-pro      | −0.010 | [−0.050, +0.030] | 0.810 | null_at_full |
 
-opus replicates the V1+V2 direction (−) at full V2-alignment-stratum
-magnitude; qwen3 replicates the V1+V2 direction (+) at full V2-
-alignment-stratum magnitude. The other four models are flat. The
+opus replicates the V1+V2 direction (−) at approximately the V2
+alignment-stratum magnitude; qwen3 replicates the V1+V2 direction
+(+) at approximately the V2 alignment-stratum magnitude. The other
+four models are flat. The
 cross-model direction comparison on `full_inject` is **asymmetric**
 (opus −, qwen3 +; all four others null), reproducing the V1 + V2
 finding under a fresh-sample, 5-condition design with two new
