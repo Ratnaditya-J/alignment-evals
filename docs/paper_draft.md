@@ -13,7 +13,7 @@
 Recent work (Knecht, Florin, & Hagendorff 2026) finds that
 CoT-level interventions on verbalized evaluation awareness (VEA) —
 injecting or removing eval-aware sentences mid-trace — have limited
-behavioral effect on frontier reasoning models. We test the
+behavioral effect on open-weight reasoning models. We test the
 complementary prompt-level question: when evaluation context is
 introduced through *explicit system-prompt framing* or already
 embedded in benchmark prompts as an *intrinsic eval label*, which
@@ -48,10 +48,13 @@ Knecht et al.'s broad-scope null on a different operationalization
 than CoT-level sentence prefilling). The surviving refusal shifts are
 not explained by the measured VEA channel.
 
-Together, these results suggest that prompt-level evaluation cues —
-extrinsic framing or intrinsic prompt content — drive measurable
-behavioral shifts on a specific subset of frontier models, and that
-explicit-VEA monitoring of CoT is insufficient to detect them.
+Together, these results indicate that **intrinsic eval-associated
+prompt content predicts higher refusal across 5 of 6 tested models**
+(broad cross-laboratory effect), while **explicit eval framing
+produces direction-asymmetric refusal shifts on a specific subset of
+models** (qwen3 +, opus −; null on four others) — two distinct
+prompt-level signals, neither captured by explicit-VEA monitoring of
+CoT.
 
 **Keywords:** evaluation awareness, reasoning models, chain-of-thought,
 safety evaluation, benchmark validity, pre-registration, intrinsic
@@ -212,8 +215,11 @@ first-discovery.
    prompt-content / format signal* (covering topic, format,
    safety-content density, surface-feature distribution, etc.; we
    cannot distinguish these from genuine eval-recognition with this
-   design — see §8 limitations and Devbunova 2026) that shifts
-   behavior even in the absence of explicit framing. This is the
+   design — see §8 limitations and Devbunova 2026) that **predicts
+   higher refusal even in the absence of explicit framing** (the
+   Apollo label is a corpus-level attribute, not a randomized
+   intervention; the V2 association is predictive, not causal in the
+   intervention sense). This is the
    only behavioral effect in our lineup that generalizes cleanly
    across visible-CoT and closed-CoT
    model families and the only one with an *intrinsic* (not
@@ -326,7 +332,7 @@ contextual eval cues to model behavior. Both lines argue, in
 different ways, that eval-awareness signals — verbalized or
 context-induced — are associated with behavioral change.
 
-**Concurrent null finding on VEA's behavioral effect.** Knecht,
+**Recent prior null finding on VEA's behavioral effect.** Knecht,
 Florin, & Hagendorff (2026; arXiv:2605.05835, posted May 7, 2026)
 provide the first large-scale causal test of whether VEA influences
 model behavior. They test 8 open-weight reasoning models across
@@ -1154,10 +1160,13 @@ signal — encoded in the prompt itself (covering topic, format,
 safety-content density, surface-feature distribution, etc.; we
 cannot distinguish these from genuine model-side eval-recognition
 in this design, see §8 + Devbunova 2026) and *not* in any framing
-we added — is enough to shift refusal behavior on **5 of 6 frontier
-and frontier-adjacent reasoning models from 4 different model labs.**
-This is V2's headline positive finding and it generalizes well
-beyond the original 4-model lineup.
+we added — is **associated with higher refusal on 5 of 6 frontier
+and frontier-adjacent reasoning models from 4 different model labs**
+(the Apollo label is a corpus-level attribute, not a randomized
+intervention; we therefore characterize the V2 result as predictive
+association rather than as causal in the intervention sense). This
+is V2's headline positive finding and it generalizes well beyond
+the original 4-model lineup.
 
 Per-cell summary (strict VEA, B=2000; closed-CoT models added with
 VEA=0.00 by design per the backfill pre-reg §4):
@@ -1858,11 +1867,13 @@ constructing a benchmark, the prompts' own *content or format*
 carries an eval-associated signal — covering topic, format,
 safety-content density, surface-feature distribution, etc.; we
 cannot distinguish these from genuine model-side eval-recognition
-in this design (see §8 + Devbunova 2026) — that shifts refusal
-behavior across 5 of 6 frontier and frontier-adjacent reasoning
-models from 4 different labs, before any explicit framing is added.
+in this design (see §8 + Devbunova 2026) — that **predicts higher
+refusal across 5 of 6 frontier and frontier-adjacent reasoning
+models from 4 different labs, before any explicit framing is added**
+(the V2 result is a corpus-level association on a non-randomized
+label; we do not claim causal intervention via the Apollo label).
 Eval validity has to account for this even in the "neutral"
-condition, regardless of whether the mechanism is internal
+condition, regardless of whether the underlying driver is internal
 eval-recognition or surface-feature responsiveness.
 
 **(iii) The V1 inject's effect on opus and qwen3 is distributed-
@@ -2174,13 +2185,17 @@ operationalization, were not independent discoveries:
   kimi-k2-thinking null. Closed-CoT models cannot be ranked.
 
 **The central finding** is that **benchmark-authored intrinsic eval
-labels and explicit eval framing both produce prompt-level
-behavioral shifts that are not captured by VEA monitoring**, and
-V3 localizes the explicit-framing version to *distributed-additive
-cue attribution across three clauses* rather than to any single
-clause's propositional content. The intrinsic-label effect
-generalizes across 5 of 6 models from 4 labs (V2); the explicit-
-framing effect is direction-asymmetric and lives in a specific
+labels predict higher refusal across 5 of 6 tested models from 4
+labs (V2; broad associative effect, not a randomized intervention),
+while explicit eval framing produces direction-asymmetric refusal
+shifts on a specific subset of models (V1 + V3; causal intervention
+via system-prompt manipulation); neither effect is captured by
+VEA monitoring of CoT.** V3 further localizes the explicit-framing
+effect to *distributed-additive cue attribution across three
+clauses* rather than to any single clause's propositional content.
+The intrinsic-label effect generalizes across 5 of 6 models from 4
+labs (V2); the explicit-framing effect is direction-asymmetric and
+lives in a specific
 subset of models (qwen3 +, opus −; null on four others). **The
 explicit-framing safety effects survive in the strict-VEA-stable
 stratum** (V1 §5.4), so the explicit-framing channel is not
@@ -2232,10 +2247,11 @@ Future work should (i) extend the V3 clause-ablation design to
 additional reasoning-capable models to characterize *why* opus and
 qwen3 react to clause-additive eval-framing while four other
 tested models do not, (ii) test whether the V2 intrinsic-eval-label
-signal operates through an analogous distributed-additive pattern by
-ablating which prompt-level features carry the eval-recognition
-signal, and (iii) replicate the V1 mediation null on a third
-independent sample to firm up the negative-result interpretation.
+association operates through an analogous distributed-additive
+pattern by ablating which prompt-level features carry the
+eval-associated prompt-content/format signal, and (iii) replicate
+the V1 mediation null on a third independent sample to firm up the
+negative-result interpretation.
 
 ---
 
