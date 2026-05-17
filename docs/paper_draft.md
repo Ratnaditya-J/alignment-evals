@@ -241,17 +241,26 @@ first-discovery.
    to the cumulative weight of eval-framing claims. No prior work
    we are aware of ablates the inject prompt into its component
    clauses.
-3. **Direction-asymmetric refusal shifts on safety/alignment prompts,
-   triangulated across three pre-registered experiments (V1+V2+V3).**
-   The same opposite-signed pattern (opus −, qwen3 +) recurs on
-   BeaverTails safety prompts (V1, CI-excluding), Apollo's
-   alignment-eval stratum (V2 deep-dive, directionally consistent;
-   qwen3 CI includes zero at V2's n), and the V3 inject-clause-
-   ablation sample (CI-excluding on both), at consistent within-model
-   magnitudes (qwen3: +0.217 / +0.057 / +0.054; opus: −0.339 /
-   −0.060 / −0.067). Triangulation against four null models
-   (deepseek, kimi, gpt-5.5, gemini-2.5-pro) makes a model-selection
-   artifact less plausible.
+3. **Triangulation of model-heterogeneous direction-asymmetric
+   refusal shifts on safety/alignment prompts across three
+   pre-registered experiments (extends Burnat & Davidson 2026).**
+   Burnat & Davidson (2026) report model-heterogeneous directionality
+   under explicit eval / deployment / neutral framing. Our extension
+   triangulates the same per-model sign (opus −, qwen3 +) across
+   three independent pre-registered samples and two distinct corpora:
+   BeaverTails safety (V1 strict-VEA-stable stratum, CI-excluding),
+   Apollo's alignment-eval stratum (V2 deep-dive, directionally
+   consistent; qwen3 CI includes zero at V2's n), and the V3
+   inject-clause-ablation sample (CI-excluding on both). Magnitudes
+   are **sign-consistent but attenuate on Apollo relative to V1**
+   (qwen3 strict-VEA-stable: +0.217 → V2 alignment-stratum +0.057 →
+   V3 alignment-eval +0.054; opus strict-VEA-stable: −0.339 → V2
+   −0.060 → V3 −0.067). The V1 estimands are V1 strict-VEA-stable
+   stratum-level paired Δs (qwen3 n=92 replication; opus n=65); V2
+   and V3 estimands are all-rollout inject−neutral paired Δs on the
+   Apollo alignment-eval slice. Triangulation against four null
+   models (deepseek, kimi, gpt-5.5, gemini-2.5-pro) makes a
+   model-selection artifact less plausible.
 4. **Clause-resolution verbalization-vs-behavior dissociation
    extending Knecht et al.'s broad-scope null.** Knecht et al. (2026)
    establish that VEA verbalization has limited behavioral effect
@@ -310,6 +319,30 @@ eval-vs-real-world prompts and measure resulting changes in CoT,
 refusal, and compliance on GPT-OSS-20B — methodologically adjacent
 to our V2 design point of using a corpus-level eval/deployment
 contrast as the design axis rather than a CoT-level intervention.
+
+**Prompt-framing direction-asymmetry as prior work.** Burnat &
+Davidson (2026, arXiv:2605.06327) directly study eval / deployment /
+neutral framing effects on refusal and report **model-heterogeneous
+directionality** — different models shift in opposite directions
+under the same explicit eval framing. This overlaps directly with
+the V1+V2+V3 qwen3 +/opus − pattern we report under explicit
+inject framing in §5.4, §5.5.4, and §5.6. Our specific contribution
+on this thread is therefore not first-discovery of model-heterogeneous
+directionality under explicit framing, but rather (a) triangulation
+of the same per-model sign across three pre-registered samples and
+two distinct corpora (BeaverTails + Apollo), (b) addition of an
+intrinsic-eval-label design axis (V2) that Burnat & Davidson do not
+test, and (c) addition of a 5-condition clause ablation (V3) that
+decomposes the explicit-framing effect into per-clause contributions.
+
+**Probing-side and scaling-side adjacent work.** Two additional
+adjacent results inform the broader eval-awareness literature
+without directly overlapping our prompt-level behavioral design:
+Probe-Rewrite-Evaluate (arXiv:2509.00591) uses prompt-rewriting as
+a method to quantify eval-awareness, and Evaluation Awareness Scales
+Predictably (arXiv:2509.13333) examines representation-side
+eval-awareness scaling across model size. Neither tests the
+prompt-level explicit-framing or intrinsic-label design axes we use.
 
 **Mechanism-level work and the format-sensitivity confound.**
 Representation-level approaches probe and steer eval-awareness
@@ -1039,10 +1072,14 @@ framing.
 
 ### 5.5 Q5: Does V1's inject effect generalize beyond safety prompts? (V2 Apollo factorial)
 
-§5.1–§5.4 measure inject effects on BeaverTails — a safety-only
-corpus. A reviewer-grade weakness is that **the inject manipulation
-is synthetic** (we constructed the system-prompt cue) and **the
-prompt corpus is monotone** (every prompt is a safety question). A
+The strongest replicated V1 behavioral effects (§5.4) are
+safety-specific BeaverTails effects in the strict-VEA-stable
+stratum; the broader V1 cross-protocol mixed-corpus analysis
+(MMLU + GSM8K + BeaverTails + TruthfulQA, §5.1) is aggregate-null
+across 8/8 tested models. A reviewer-grade weakness is that **the
+V1 inject manipulation is synthetic** (we constructed the
+system-prompt cue) and **the V1 safety-effect-bearing corpus slice
+is monotone** (every BeaverTails prompt is a safety question). A
 skeptic can argue either that V1's inject prompt does something
 other than "signal evaluation context," or that the safety-only
 corpus selects for prompts where eval framing happens to matter.
@@ -1478,20 +1515,30 @@ effect is detectable in isolation.
 ![](figures/fig7_triangulation.png)
 
 **Figure 7.** V1+V2+V3 cross-experiment triangulation of
-direction-asymmetric refusal shifts on opus and qwen3. Y-axis: paired
-Δ refusal (inject − neutral) with 95% CIs. X-axis: the three
-pre-registered experiments. V1 measures on BeaverTails safety prompts
-(replication sample n=200). V2 measures on Apollo's alignment-eval
-stratum deep-dive (n=53 per model). V3 measures on Apollo's full
-alignment-eval pool (n=297 per active model). The opposite-signed
-pattern (opus −, qwen3 +) replicates at consistent within-model
-magnitudes across three independent samples and two distinct corpora
-(BeaverTails, Apollo). Lines connect same-model estimates across
-independent samples to aid visual tracking of sign preservation
-per model; they do not denote a temporal trajectory or repeated
-measurement of the same prompts. The cross-experiment same-model
-sign preservation makes sample-specific or corpus-specific
-explanations of the asymmetry less plausible.
+**model-heterogeneous direction-asymmetric** refusal shifts on opus
+and qwen3 (related to Burnat & Davidson 2026). Y-axis: paired Δ
+refusal (inject − neutral) with 95% CIs. X-axis: the three
+pre-registered experiments. **The three estimands are not identical
+and the comparison is sign-level, not magnitude-level.** V1 plots
+the **strict-VEA-stable stratum** paired Δ on the BeaverTails
+safety task (V1 §5.4; qwen3 n=92 from the pre-registered disjoint
+replication, opus n=65 from the n=300 extension); this is the
+non-verbalized-channel estimand specific to V1's mediation-test
+design. V2 plots the **all-rollout** alignment-eval stratum deep-dive
+paired Δ (n=53 per model); V3 plots the **all-rollout** Apollo
+alignment-eval full sample paired Δ (n=297 per active model). The
+sign pattern (opus −, qwen3 +) is preserved across all three
+samples and two distinct corpora; **magnitudes attenuate on Apollo
+relative to BeaverTails** rather than being "consistent." Lines
+connect same-model estimates across independent samples to aid
+visual tracking of sign preservation per model; they do not denote
+a temporal trajectory, repeated measurement of the same prompts,
+or magnitude comparison across estimands of different scope. The
+cross-experiment same-model sign preservation makes
+sample-specific or corpus-specific explanations of the asymmetry
+less plausible; the magnitude attenuation on Apollo is consistent
+with V2's §5.5 finding that the explicit-framing effect dilutes
+when the corpus broadens beyond pure-safety prompts.
 
 ![](figures/fig8_v3_clause_attribution.png)
 
@@ -2093,8 +2140,12 @@ per model, which is moderate; the per-model alignment-stratum
 interaction CIs are individually wide and none cleanly excludes
 zero. The cohering signal for the V1→V2 bridge claim is the
 direction match across the two V1-tested models, not the per-model
-inferential strength. A follow-up V3 should re-test the bridge with
-larger n on the alignment-relevant subset.
+inferential strength. V3 (§5.6) re-tests this bridge at larger n
+on Apollo alignment prompts and finds both directions at
+CI-excluding strength; the V2 alignment-stratum analysis itself
+remains exploratory, but the V3 result on the same kind of corpus
+slice confirms the direction match the V2 stratification first
+suggested.
 
 **V2 did not re-test the VEA mediation channel.** V1's §5.3
 within-prompt mediation analysis was not re-run on V2 rollouts; we
@@ -2267,6 +2318,13 @@ Aranguri, S., & Bloom, J. (2026). *Verbalized Eval Awareness Inflates
 Measured Safety.* Goodfire Research. May 4, 2026.
 https://www.goodfire.ai/research/verbalized-eval-awareness-inflates-measured-safety
 
+Burnat, & Davidson (2026). *Evaluation / Deployment / Neutral
+Framing Effects on Frontier Model Refusal.* arXiv:2605.06327.
+**[verify exact title and full author list at submission time;
+reviewer-supplied citation as the directly-adjacent prior work on
+model-heterogeneous directionality under explicit framing — see
+§2 Related Work and §1.1 Contribution #3.]**
+
 Chaudhary, M. (2026). *In-Context Environments Induce
 Evaluation-Awareness in Language Models.* arXiv:2603.03824.
 
@@ -2323,8 +2381,19 @@ Park, P. S., Goldstein, S., O'Gara, A., Chen, M., & Hendrycks, D.
 (2024). *AI Deception: A Survey of Examples, Risks, and Potential
 Solutions.* Patterns 5(5). Preprint: arXiv:2308.14752.
 
+*Probe-Rewrite-Evaluate.* (2025). arXiv:2509.00591. **[verify exact
+title and full author list at submission time; reviewer-supplied
+citation as adjacent prior work on prompt-rewriting methodology
+for quantifying eval-awareness — see §2 Related Work.]**
+
 Qwen Team (2025). *Qwen3 Technical Report.* Alibaba Cloud.
 arXiv:2505.09388.
+
+*Evaluation Awareness Scales Predictably.* (2025). arXiv:2509.13333.
+**[verify exact title and full author list at submission time;
+reviewer-supplied citation as adjacent prior work on
+representation-side eval-awareness scaling across model size — see
+§2 Related Work.]**
 
 (Vendor model cards and exact API model identifiers used in this
 paper are listed in Appendix C for reproducibility; we do not cite
