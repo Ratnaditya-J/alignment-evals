@@ -358,12 +358,14 @@ intrinsic-eval-label design axis (V2) that Burnat & Davidson do not
 test, and (c) addition of a 5-condition clause ablation (V3) that
 decomposes the explicit-framing effect into per-clause contributions.
 
-**Linear steering of test-awareness and model-dependent compliance.**
-Abdelnabi & Salem (2025; arXiv:2505.14617) identify a linear
-test-awareness direction in reasoning-model activations and use it
-to steer awareness up and down, reporting that the resulting
-compliance shifts are model-dependent in sign and magnitude. This
-work is directly adjacent on two fronts: (i) the model-heterogeneous
+**Hawthorne effect: evaluating and steering test-awareness, with
+model-dependent compliance.** Abdelnabi & Salem (2025; *The
+Hawthorne Effect in Reasoning Models: Evaluating and Steering Test
+Awareness*, arXiv:2505.14617) identify a linear test-awareness
+direction in reasoning-model activations and use it to steer
+awareness up and down, reporting that the resulting compliance
+shifts are model-dependent in sign and magnitude. This work is
+directly adjacent on two fronts: (i) the model-heterogeneous
 directionality theme overlapping our opus −/qwen3 + pattern (§5.4,
 §5.5.4, §5.6) and Burnat & Davidson's findings above, and (ii) the
 white-box steering operationalization complementing the prompt-level
@@ -387,13 +389,19 @@ Representation-level approaches probe and steer eval-awareness
 inside model activations rather than at the prompt or CoT level
 (Nguyen et al., 2025); steering studies have also constructed
 explicit eval-aware "model organisms" to study the phenomenon
-under controlled training conditions (Hua et al., 2025).
-A related thread, important for interpreting intrinsic-label
-results like our V2 finding, is the observation that apparent
-eval-awareness evidence in benchmark contexts can collapse into
-format-sensitivity artifacts when the analyzed signal correlates
-with surface features of how eval-prompts are written (Devbunova,
-2026). We carry this confound into our V2/V3 framing: we report the
+under controlled training conditions (Hua et al., 2025). Adjacent
+mechanistic work by Li et al. (2026; arXiv:2605.08942) decomposes
+LLM "functional metacognition" into multiple decodable / steerable
+states — evaluation-awareness among them — and shows that steering
+these states modulates verbosity, accuracy, and safety-related
+responses; this places eval-awareness within a broader steerable
+metacognitive landscape rather than treating it as an isolated
+property. A related thread, important for interpreting
+intrinsic-label results like our V2 finding, is the observation
+that apparent eval-awareness evidence in benchmark contexts can
+collapse into format-sensitivity artifacts when the analyzed
+signal correlates with surface features of how eval-prompts are
+written (Devbunova, 2026). We carry this confound into our V2/V3 framing: we report the
 intrinsic-eval-label refusal effect as an *eval-associated
 prompt-content/format signal*, not as evidence that models
 internally recognize "this is an eval" in the way the
@@ -415,7 +423,7 @@ collectively argues that eval-awareness signals are associated with
 behavioral change in multiple operationalizations, with sign and
 magnitude depending sensitively on which operationalization is used.
 
-**Observer effects in safety evaluation.** Fan et al. (2025/2026;
+**Observer effects in safety evaluation.** Fan et al. (2025;
 arXiv:2505.17815) study "evaluation faking" as an observer effect
 in safety evaluation, reporting that reasoning-capable frontier
 models can recognize evaluation contexts and shift toward safer
@@ -2418,9 +2426,11 @@ negative-result interpretation.
 
 ## References
 
-Abdelnabi, S., & Salem, A. (2025). *Linear Control of Test
-Awareness Reveals Differential Compliance in Reasoning Models.*
-arXiv:2505.14617.
+Abdelnabi, S., & Salem, A. (2025). *The Hawthorne Effect in
+Reasoning Models: Evaluating and Steering Test Awareness.*
+arXiv:2505.14617. [Revised Oct. 28, 2025; supersedes the earlier
+preprint title 'Linear Control of Test Awareness Reveals
+Differential Compliance in Reasoning Models'.]
 
 Ahmed, N., Zaman, M. I., Saleem, G., & Hassan, A. (2025). *Do
 LLMs Know They Are Being Tested?
@@ -2492,6 +2502,10 @@ Laine, R., Chughtai, B., Betley, J., Hariharan, K., Scheurer, J.,
 Balesni, M., Hobbhahn, M., Meinke, A., & Evans, O. (2024). *Me,
 Myself, and AI: The Situational Awareness Dataset (SAD) for LLMs.*
 arXiv:2407.04694.
+
+Li, Bai, Liu, Zhang, & Zeng (2026). *Decomposing and Steering
+Functional Metacognition in Large Language Models.*
+arXiv:2605.08942.
 
 Lin, S., Hilton, J., & Evans, O. (2022). *TruthfulQA: Measuring How
 Models Mimic Human Falsehoods.* ACL. arXiv:2109.07958.
