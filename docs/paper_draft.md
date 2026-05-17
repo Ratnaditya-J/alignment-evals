@@ -182,8 +182,9 @@ naive answer:
 > V2 alignment-stratum Δ −0.060 [−0.18, −0.001]; V3 alignment
 > full_inject Δ −0.067 [−0.104, −0.030]). The effects are
 > distributed-additive across three V1 inject clauses — no single
-> clause's effect is detectable in isolation, but the three sum to the
-> full V1 effect on both active models. V1's effects operate on the
+> clause's effect is detectable in isolation, but the three sum to
+> the `full_inject` anchor (V3's attenuated Apollo magnitude, not
+> V1's larger BeaverTails magnitude) on both active models. V1's effects operate on the
 > `stable_neg` stratum where strict-VEA verbalization did not flip; V2
 > shows they dilute to zero when averaged across non-safety prompts;
 > V3 finds no detectable single-clause attribution. The verbal
