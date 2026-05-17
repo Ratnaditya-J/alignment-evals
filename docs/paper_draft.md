@@ -1,6 +1,6 @@
-# When Models Notice Evals: Verbalized Awareness Fails to Mediate Safety Behavior
+# Verbalized vs Behavioral Eval-Awareness in Frontier Reasoning Models
 
-*A pre-registered non-replication of the apparent verbalized-eval-awareness mediation channel, and what survives.*
+*Two pre-registered studies: a non-replication of the apparent verbalized-eval-awareness mediation channel, and a factorial test of an intrinsic eval-label signal against the same extrinsic inject framing.*
 
 **Author:** Ratnaditya Jonnalagadda  
 **Date:** May 2026  
