@@ -19,6 +19,10 @@ def _entry(
     eval_category=None,
     category="support_ticket",
     input_messages=None,
+    eval_type=None,
+    safety_category=None,
+    subcategory=None,
+    scaffold=None,
 ) -> dict:
     if input_messages is None:
         input_messages = [{"role": "user", "content": f"prompt for {sample_id}"}]
@@ -28,6 +32,10 @@ def _entry(
         "metadata": {
             "category": category,
             "eval_category": eval_category,
+            "eval_type": eval_type,
+            "safety_category": safety_category,
+            "subcategory": subcategory,
+            "scaffold": scaffold,
             "tools": [],
         },
     }
@@ -154,8 +162,21 @@ def test_metadata_preserves_apollo_fields_and_label(tmp_path):
     path = _write_dataset(
         tmp_path / "apollo.json",
         [
-            _entry("eval-row", eval_category="Alignment", category="strong_reject"),
-            _entry("deploy-row", eval_category=None, category="support_ticket"),
+            _entry(
+                "eval-row",
+                eval_category=True,
+                category="strong_reject",
+                eval_type="alignment",
+                safety_category="harm",
+                subcategory="bias",
+                scaffold={"tool_calls": True},
+            ),
+            _entry(
+                "deploy-row",
+                eval_category=False,
+                category="support_ticket",
+                scaffold=None,
+            ),
         ],
     )
     by_id = {
@@ -163,16 +184,47 @@ def test_metadata_preserves_apollo_fields_and_label(tmp_path):
         for ex in ApolloEvalAwarenessLoader(path).load()
     }
     eval_ex = by_id["eval-row"]
-    assert eval_ex.metadata["apollo_eval_category"] == "Alignment"
     assert eval_ex.metadata["apollo_is_eval"] == "true"
     assert eval_ex.metadata["apollo_category"] == "strong_reject"
+    assert eval_ex.metadata["apollo_eval_type"] == "alignment"
+    assert eval_ex.metadata["apollo_safety_category"] == "harm"
+    assert eval_ex.metadata["apollo_subcategory"] == "bias"
+    assert eval_ex.metadata["apollo_scaffold_type"] == "agentic"
     assert eval_ex.source == "strong_reject"
     assert "eval_intrinsic" in eval_ex.risk_tags
 
     deploy_ex = by_id["deploy-row"]
-    assert deploy_ex.metadata["apollo_eval_category"] == ""
     assert deploy_ex.metadata["apollo_is_eval"] == "false"
+    assert deploy_ex.metadata["apollo_eval_type"] == ""
+    assert deploy_ex.metadata["apollo_safety_category"] == ""
+    assert deploy_ex.metadata["apollo_subcategory"] == ""
+    assert deploy_ex.metadata["apollo_scaffold_type"] == "chat"
     assert "deployment_intrinsic" in deploy_ex.risk_tags
+
+
+def test_bool_eval_category_matches_real_apollo_schema(tmp_path):
+    """Real Apollo dataset uses bool eval_category, not the 3-valued string
+    I originally inferred from constants.py. Verify the loader binarizes both
+    bool and string truthiness identically."""
+    path = _write_dataset(
+        tmp_path / "apollo.json",
+        [
+            _entry("bool-true", eval_category=True),
+            _entry("bool-false", eval_category=False),
+            _entry("str-truthy", eval_category="Capability"),  # legacy string-typed
+            _entry("none", eval_category=None),
+        ],
+    )
+    by_id = {
+        ex.metadata["apollo_id"]: ex.metadata["apollo_is_eval"]
+        for ex in ApolloEvalAwarenessLoader(path).load()
+    }
+    assert by_id == {
+        "bool-true": "true",
+        "bool-false": "false",
+        "str-truthy": "true",
+        "none": "false",
+    }
 
 
 def test_entries_with_no_user_message_are_skipped(tmp_path):

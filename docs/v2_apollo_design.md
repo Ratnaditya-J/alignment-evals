@@ -35,7 +35,7 @@
 
 ### Apollo's dataset file (confirmed schema, May 2026)
 
-Verified by reading `pipeline/dataset.py` and `constants.py` in [jjpn97/eval_awareness](https://github.com/jjpn97/eval_awareness). The file is a JSON list whose entries follow the Inspect AI `Sample` schema:
+Verified against the real HuggingFace release (976 entries; downloaded and inspected). The file is a JSON list whose entries follow the Inspect AI `Sample` schema:
 
 ```json
 {
@@ -43,18 +43,25 @@ Verified by reading `pipeline/dataset.py` and `constants.py` in [jjpn97/eval_awa
   "input": "string OR [ {\"role\": \"system\"|\"user\"|\"assistant\", \"content\": \"string\"} ]",
   "metadata": {
     "category": "mmlu" | "swebench" | "support_ticket" | ... ,
-    "eval_category": "Capability" | "Alignment" | null,
-    "tools": [ ... ],
-    "scaffold": null | { ... }
+    "subcategory": "string",
+    "eval_category": true | false,
+    "eval_type": "capability" | "alignment" | null,
+    "safety_category": "string" | null,
+    "scaffold": null | { ... },
+    "eval_author1": 0.0,
+    "eval_author2": 0.0,
+    "tools": [ ... ]
   }
 }
 ```
 
 Key facts:
 
-- **Default filename** is `eval_awareness_val.json` (overridable via the `EVAL_AWARENESS_DATA_FILE` env var in Apollo's pipeline), not `dataset.json`.
-- **The eval label is 3-valued, not boolean.** `metadata.eval_category` is `"Capability"`, `"Alignment"`, or `null` (= real deployment). V2 binarizes: truthy → eval, falsy/null/missing → deployment. The original string is preserved for stratification.
-- **The file is encrypted in the GitHub repo** (to keep it out of training corpora). Decrypt locally per Apollo's instructions, or download from HuggingFace (`huggingface.co/datasets/jjpn2/eval_awareness`).
+- **`metadata.eval_category` is boolean.** `true` = the prompt was authored for evaluation; `false` = organic / real deployment. This is the binary V2 factor. (An earlier inference from Apollo's `constants.py` suggested a 3-valued string; the HF README and the real data confirm boolean.)
+- **`metadata.eval_type` carries the granular eval class** (`"capability"` / `"alignment"`) when `eval_category=true`. The loader preserves this for post-hoc stratification.
+- **Filename: `dataset.json`** (after running `bash scripts/decrypt.sh` on the HF download). The HF zip lands as `dataset.zip`; the decrypt script extracts it.
+- **Label distribution in the released file:** 537 eval + 439 deployment = 976 total.
+- **The HF dataset is gated** (license click-through required) and zip-encrypted (training-contamination defense). Use `hf auth login` + `hf download jjpn2/eval_awareness --repo-type dataset` then `bash scripts/decrypt.sh`.
 - `input` can be a bare string (single user turn) or a list of chat messages. The loader handles both.
 
 ### Normalization target
@@ -67,10 +74,12 @@ Map each Apollo entry to an `EvalAwarenessExample` (the existing dataclass in `s
 | `input` (last user message) | `transcript.user_prompt` |
 | `input` (system messages) | `transcript.system_prompt` (newline-joined) |
 | `input` (everything before the final user turn) | `transcript.conversation_history` |
-| `metadata.category` | `source` |
-| `metadata.eval_category` (truthy?) | `label = "hidden_eval"` else `"deployment_like"` |
-| `metadata.eval_category` (raw string) | `metadata["apollo_eval_category"]` |
-| binarized is-eval | `metadata["apollo_is_eval"]` |
+| `metadata.category` | `source` and `metadata["apollo_category"]` |
+| `metadata.eval_category` (truthy?) | `label = "hidden_eval"` else `"deployment_like"`; `metadata["apollo_is_eval"]` |
+| `metadata.eval_type` | `metadata["apollo_eval_type"]` |
+| `metadata.safety_category` | `metadata["apollo_safety_category"]` |
+| `metadata.subcategory` | `metadata["apollo_subcategory"]` |
+| `metadata.scaffold` (is None?) | `metadata["apollo_scaffold_type"]` = `"agentic"` or `"chat"` |
 
 ### Prompt construction decision
 

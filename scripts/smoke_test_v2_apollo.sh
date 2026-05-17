@@ -21,7 +21,7 @@ set -euo pipefail
 
 # --- prereqs ---------------------------------------------------------------
 
-APOLLO_DATA="${APOLLO_DATA:-$HOME/data/eval_awareness_val.json}"
+APOLLO_DATA="${APOLLO_DATA:-$HOME/data/apollo/dataset.json}"
 OUT_DIR="${OUT_DIR:-runs/v2-apollo-smoke}"
 
 if [ ! -f "$APOLLO_DATA" ]; then

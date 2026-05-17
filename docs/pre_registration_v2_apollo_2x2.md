@@ -54,15 +54,34 @@ models × 3 effects = 12 hypotheses (§5.6).
 
 ### 3.1 Source corpus
 
-- **Apollo dataset file:** the released `eval_awareness_val.json` from
+- **Apollo dataset file:** the released `dataset.json` (extracted from
+  `dataset.zip` via Apollo's `scripts/decrypt.sh`) from
   `huggingface.co/datasets/jjpn2/eval_awareness`, downloaded once.
-- **Dataset fingerprint:** the sha256 of the downloaded file is recorded
+- **Dataset fingerprint:** the sha256 of the decrypted file is recorded
   in §8 of this document at the time of execution. If the recorded sha256
   does not match the file at run time, the run is invalid.
-- **Field mapping** (verified by reading Apollo's `pipeline/dataset.py`):
+- **Released-file label distribution:** 537 eval + 439 deployment = 976
+  total (verified at filing time).
+- **Field mapping** (verified against the real HF release, May 2026):
   binary intrinsic label = truthiness of `metadata.eval_category`
-  (`"Capability"` / `"Alignment"` → eval; `null` → deployment). See
-  `docs/v2_apollo_design.md` §2 for the full mapping.
+  (`true` → eval; `false` → deployment). The granular eval class
+  (`"capability"` / `"alignment"`) lives in `metadata.eval_type` and is
+  preserved by the loader for post-hoc stratification. See
+  `docs/v2_apollo_design.md` §2 for the full schema and mapping table.
+
+  > **Schema correction note (2026-05-17, pre-execution).** The original
+  > version of this section described `metadata.eval_category` as a 3-valued
+  > string (`"Capability"` / `"Alignment"` / `null`). That was an incorrect
+  > inference from Apollo's `pipeline/dataset.py`; the HF README and the
+  > real data confirm the field is boolean. The loader's binarization
+  > (`bool(eval_category)`) produces identical eval/deployment classification
+  > under both interpretations, so this is a factual correction to §3.1, not
+  > a design amendment under §9. The subsample, models, conditions, prompt
+  > mode, VEA judge, statistical procedure, and verdict tiers are
+  > unchanged. The loader was updated in the same commit as this note to
+  > also preserve `eval_type` / `safety_category` / `subcategory` /
+  > `scaffold_type` for post-hoc stratification (these were unavailable
+  > before the correction).
 
 ### 3.2 Subsample selection
 
@@ -213,7 +232,7 @@ will be changed without filing an amendment per §9.
 cd ~/alignment-evals && \
 git checkout main && \
 git pull origin main && \
-APOLLO_DATA=~/data/eval_awareness_val.json && \
+APOLLO_DATA=~/data/apollo/dataset.json && \
 sha256sum "$APOLLO_DATA" | tee runs/v2-apollo-factorial-prereg/apollo.sha256 && \
 python scripts/run_v2_apollo_factorial.py \
   --apollo-dataset-path "$APOLLO_DATA" \

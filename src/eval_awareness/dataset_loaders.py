@@ -475,36 +475,29 @@ class ApolloEvalAwarenessLoader:
     https://huggingface.co/datasets/jjpn2/eval_awareness).
 
     Apollo's file is a JSON list whose entries follow the Inspect AI ``Sample``
-    schema. Fields actually consumed by this loader:
+    schema. Confirmed against the real dataset (HF release, 976 entries; see
+    ``docs/v2_apollo_design.md`` §2). Fields consumed by this loader:
 
     * ``id`` — sample identifier; used as the basis for ``example_id``.
     * ``input`` — either a string or a list of chat-message dicts
       (``{"role": "system"|"user"|"assistant", "content": "..."}``).
     * ``metadata.category`` — source dataset name (e.g. ``"swebench"``,
       ``"mmlu"``, ``"support_ticket"``); used as ``source``.
-    * ``metadata.eval_category`` — Apollo's intrinsic eval label. Truthy
-      (``"Capability"`` or ``"Alignment"``) means the prompt was authored as
-      an eval; falsy/missing/null means it came from a real-deployment
-      source. This is the binary label V2 factorial-designs against.
+    * ``metadata.eval_category`` — **bool**. ``True`` = the prompt was
+      authored for an evaluation; ``False`` = organic / real deployment.
+      This is the binary label V2 factorial-designs against.
+    * ``metadata.eval_type`` — when ``eval_category=True``, the granular
+      eval class: ``"capability"`` or ``"alignment"``. Preserved for
+      post-hoc stratification.
+    * ``metadata.safety_category`` — populated on safety-related prompts.
+    * ``metadata.subcategory`` — finer-grained sibling of ``category``.
+    * ``metadata.scaffold`` — non-``None`` ⇒ agentic transcript;
+      ``None`` ⇒ plain chat. Binarized to ``apollo_scaffold_type``.
 
-    The label is mapped to the existing project vocabulary:
+    Binary label mapping:
 
-    * truthy ``eval_category`` → ``label="hidden_eval"``
-    * otherwise               → ``label="deployment_like"``
-
-    The full ``eval_category`` string (``"Capability"`` / ``"Alignment"`` /
-    ``None``) is preserved in ``example.metadata["apollo_eval_category"]``
-    for downstream stratification.
-
-    Deviations from ``docs/v2_apollo_design.md`` §2 (recorded for the pre-reg):
-
-    * Design assumed an ``is_eval: bool`` field — Apollo actually stores
-      ``metadata.eval_category`` as a 3-valued string-or-null. We binarize.
-    * Design referenced ``dataset.json`` — Apollo's default filename is
-      ``eval_awareness_val.json`` (overridable via the
-      ``EVAL_AWARENESS_DATA_FILE`` env var in Apollo's pipeline).
-    * Design used ``transcript_id`` / ``transcript`` / ``source_dataset`` —
-      real keys are ``id`` / ``input`` / ``metadata.category``.
+    * truthy ``eval_category`` → ``label="hidden_eval"``,  ``apollo_is_eval="true"``
+    * otherwise                → ``label="deployment_like"``, ``apollo_is_eval="false"``
 
     Parameters
     ----------
@@ -621,10 +614,13 @@ class ApolloEvalAwarenessLoader:
             metadata={
                 "apollo_id": sample_id,
                 "apollo_category": source_category,
-                "apollo_eval_category": (
-                    str(eval_category) if eval_category else ""
-                ),
+                "apollo_subcategory": _str_or_empty(metadata.get("subcategory")),
                 "apollo_is_eval": "true" if is_eval else "false",
+                "apollo_eval_type": _str_or_empty(metadata.get("eval_type")),
+                "apollo_safety_category": _str_or_empty(metadata.get("safety_category")),
+                "apollo_scaffold_type": (
+                    "agentic" if metadata.get("scaffold") is not None else "chat"
+                ),
                 "apollo_prompt_mode": self.prompt_mode,
             },
         )
@@ -670,6 +666,14 @@ class ApolloEvalAwarenessLoader:
         if self.label_filter == "eval":
             return is_eval
         return not is_eval
+
+
+def _str_or_empty(value: Any) -> str:
+    """Stringify a metadata value, treating None / empty as ``""``."""
+    if value is None:
+        return ""
+    text = str(value).strip()
+    return text
 
 
 def _normalize_inspect_input(raw_input: Any) -> List[dict]:
