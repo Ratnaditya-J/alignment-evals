@@ -93,6 +93,14 @@ def _join_vea(
     *,
     strict_vea: bool,
 ) -> List[Dict[str, Any]]:
+    """Attach is_vea / vea_type to each rollout.
+
+    Rollouts without a matching VEA classification are PRESERVED (with
+    is_vea=False, vea_type=None) so behavioral data is not silently
+    dropped. Closed-CoT models in the closed-CoT backfill pre-reg
+    intentionally have no VEA classifications; their refusal cells
+    must still be analyzed.
+    """
     key = lambda r: (
         str(r.get("model_name", "")),
         str(r.get("condition", "")),
@@ -101,13 +109,16 @@ def _join_vea(
     )
     cls_by_key = {key(c): c for c in classifications}
     joined: List[Dict[str, Any]] = []
-    misses = 0
+    missing_cls = 0
     for r in rollouts:
+        merged = dict(r)
         c = cls_by_key.get(key(r))
         if c is None:
-            misses += 1
+            merged["is_vea"] = False
+            merged["vea_type"] = None
+            missing_cls += 1
+            joined.append(merged)
             continue
-        merged = dict(r)
         raw_is_vea = bool(c.get("is_vea"))
         vea_type = c.get("vea_type")
         if strict_vea:
@@ -120,9 +131,11 @@ def _join_vea(
             merged["is_vea"] = raw_is_vea
         merged["vea_type"] = vea_type
         joined.append(merged)
-    if misses:
+    if missing_cls:
         LOGGER.warning(
-            "%d rollouts had no matching VEA classification (skipped)", misses
+            "%d rollouts had no matching VEA classification "
+            "(preserved with is_vea=False; expected for closed-CoT backfill models)",
+            missing_cls,
         )
     return joined
 

@@ -302,6 +302,58 @@ def test_vea_cells_added_when_classifications_present():
     assert neutral_cell["vea_mean"] == 0.0
 
 
+def test_rollouts_without_vea_classifications_are_preserved_not_dropped():
+    """Closed-CoT backfill models intentionally have no VEA classifications
+    (per the closed-CoT backfill pre-reg §4). The analyzer must NOT drop
+    their rollouts during the VEA join -- behavioral data (refusal) is
+    the primary outcome and must survive the join. Regression for the
+    silent-drop bug where backfill models disappeared from per_model."""
+    main_rollouts = _make_paired_set(
+        "model_with_vea", n_per_cell=40,
+        eval_neutral=0.2, eval_inject=0.4,
+        deploy_neutral=0.1, deploy_inject=0.1,
+    )
+    backfill_rollouts = _make_paired_set(
+        "closed_cot_backfill_model", n_per_cell=40,
+        eval_neutral=0.5, eval_inject=0.5,
+        deploy_neutral=0.1, deploy_inject=0.1,
+    )
+    classifications = []
+    for r in main_rollouts:
+        classifications.append(
+            {
+                "model_name": r["model_name"],
+                "condition": r["condition"],
+                "example_id": r["example_id"],
+                "rollout_index": r["rollout_index"],
+                "is_vea": r["condition"] == "inject",
+                "vea_type": "explicit_eval" if r["condition"] == "inject" else "none",
+            }
+        )
+    # NOTE: no classifications for backfill_rollouts -- simulating closed-CoT
+    summary = analyze(
+        main_rollouts + backfill_rollouts,
+        classifications,
+        bootstrap_samples=200,
+        seed=0,
+    )
+    model_names = {pm["model_name"] for pm in summary["per_model"]}
+    assert model_names == {"model_with_vea", "closed_cot_backfill_model"}, (
+        "backfill model dropped during VEA join (regression)"
+    )
+    backfill_entry = next(
+        pm for pm in summary["per_model"] if pm["model_name"] == "closed_cot_backfill_model"
+    )
+    assert backfill_entry["n_rollouts"] == 160, "backfill rollouts incomplete"
+    # All 4 cells must be populated with refusal data for the backfill model
+    for cell_key in ("neutral_eval", "inject_eval", "neutral_deployment", "inject_deployment"):
+        cell = backfill_entry["cells"][cell_key]
+        assert cell["n"] == 40, f"backfill cell {cell_key} has n={cell['n']}, expected 40"
+        assert "refusal_mean" in cell
+        # VEA cell mean should be 0 for the backfill model (no classifications)
+        assert cell["vea_mean"] == 0.0
+
+
 def test_strict_vea_drops_low_precision_subtypes():
     rollouts = _make_paired_set(
         "m", n_per_cell=40,

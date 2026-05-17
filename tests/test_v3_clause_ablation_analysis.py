@@ -607,6 +607,72 @@ def test_vea_join_strict_filter_collapses_non_strict_subtypes():
     assert broad_neutral["vea_mean"] == 1.0
 
 
+def test_rollouts_without_vea_classifications_are_preserved_not_dropped():
+    """Closed-CoT backfill models intentionally have no VEA classifications
+    (per the closed-CoT backfill pre-reg §4). The analyzer must NOT drop
+    their rollouts during the VEA join -- behavioral data (refusal +
+    attribution) is the primary outcome and must survive the join.
+    Regression for the silent-drop bug where backfill models disappeared
+    from per_model."""
+    main_rollouts = _make_rollouts(
+        "model_with_vea",
+        n=15,
+        condition_to_refusal={
+            "neutral": 0.0,
+            "eval_only": 0.3,
+            "reviewer_only": 0.3,
+            "comparison_only": 0.3,
+            "full_inject": 0.9,
+        },
+    )
+    backfill_rollouts = _make_rollouts(
+        "closed_cot_backfill_model",
+        n=15,
+        condition_to_refusal={
+            "neutral": 0.5,
+            "eval_only": 0.5,
+            "reviewer_only": 0.5,
+            "comparison_only": 0.5,
+            "full_inject": 0.5,
+        },
+    )
+    classifications = []
+    for r in main_rollouts:
+        classifications.append(
+            {
+                "model_name": r["model_name"],
+                "condition": r["condition"],
+                "example_id": r["example_id"],
+                "rollout_index": 0,
+                "is_vea": False,
+                "vea_type": None,
+            }
+        )
+    # NOTE: no classifications for backfill_rollouts -- simulating closed-CoT
+    summary = analyze(
+        main_rollouts + backfill_rollouts,
+        classifications,
+        bootstrap_samples=200,
+        seed=0,
+        min_cell_n=10,
+    )
+    model_names = {pm["model_name"] for pm in summary["per_model"]}
+    assert model_names == {"model_with_vea", "closed_cot_backfill_model"}, (
+        "backfill model dropped during VEA join (regression)"
+    )
+    backfill_entry = next(
+        pm for pm in summary["per_model"]
+        if pm["model_name"] == "closed_cot_backfill_model"
+    )
+    # Attribution still produced for backfill model (refusal data preserved)
+    assert backfill_entry["attribution"] == "null_at_full"  # constant 0.5 across cells
+    # All 5 cells populated with refusal data
+    for cond in ("neutral", "eval_only", "reviewer_only", "comparison_only", "full_inject"):
+        cell = backfill_entry["cells"][cond]
+        assert cell["n"] == 15, f"backfill cell {cond} has n={cell['n']}, expected 15"
+        assert cell["vea_mean"] == 0.0  # no VEA data for backfill
+
+
 def test_bootstrap_mean_ci_single_value_collapses():
     ci = _bootstrap_mean_ci([0.7], rng=random.Random(0), iterations=200)
     assert ci == {"low": 0.7, "high": 0.7, "mean": 0.7}
