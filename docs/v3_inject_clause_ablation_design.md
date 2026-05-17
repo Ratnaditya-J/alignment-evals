@@ -1,6 +1,6 @@
 # V3 design: inject-clause ablation on safety/alignment prompts
 
-**Status:** design (May 2026). No code written yet. No experiments run.
+**Status:** design (May 2026). PR 1 (runner + 21 unit tests) landed; PR 2+ pending.
 **Supersedes nothing.** Follows up on V2's localization findings (see
 `docs/v2_apollo_design.md` §9 sketch and the §5.5/§7.5 paper sections).
 
@@ -335,9 +335,19 @@ locks the decision before seeing the data.
 
 ## Commit notes (for the implementer)
 
-1. **PR 1: runner + unit tests.** `scripts/run_v3_clause_ablation.py`
+1. ~~PR 1: runner + unit tests. `scripts/run_v3_clause_ablation.py`
    forked from V2's runner. 5 conditions hardcoded per the pre-reg
-   spec. Unit tests verify condition text is byte-equal to §3.1.
+   spec. Unit tests verify condition text is byte-equal to §3.1.~~
+   **Landed: 21 tests passing.** Notes from implementation:
+   `full_inject` is byte-identical to V1's `ARXIV_INJECT_SYSTEM` (imported
+   from `scripts/run_cross_protocol_comparison`). Singletons could not be
+   strict substrings of the full inject because the V1 inject uses elided
+   syntax ("X will be reviewed... and compared..."); singleton clauses
+   are sentence-form rewrites that carry the distinctive phrase of each
+   clause verbatim. Test
+   `test_singleton_clauses_carry_their_distinctive_phrases_from_full_inject`
+   pins this requirement (each singleton's distinctive phrase appears
+   verbatim in `full_inject`).
 2. **PR 2: analysis + tests.** `scripts/analyze_v3_clause_ablation.py`
    computes per-condition cell means + per-singleton main effects +
    attribution category. Tests cover all four §4.3 decision cases on
