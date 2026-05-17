@@ -1,8 +1,8 @@
 # V3 design: inject-clause ablation on safety/alignment prompts
 
 **Status:** design (May 2026). PR 1 (runner + 21 tests), PR 2 (analyzer
-+ 28 tests), and PR 3 (smoke shell script) landed; PR 4 (pre-reg) + PR
-5 (run) pending.
++ 28 tests), PR 3 (smoke shell script), and PR 4 (pre-registration)
+landed; PR 5 (execute) pending.
 **Supersedes nothing.** Follows up on V2's localization findings (see
 `docs/v2_apollo_design.md` §9 sketch and the §5.5/§7.5 paper sections).
 
@@ -384,8 +384,20 @@ locks the decision before seeing the data.
    rows (full_inject excluded), cross-model rows = 4 (3 singletons
    + anchor), per-model reasoning_trace nonzero (the V2 thinking-empty
    trip-wire carried forward).
-4. **PR 4: pre-registration document.** Committed to `main` before
-   any V3 experiment runs.
+4. ~~PR 4: pre-registration document. Committed to `main` before
+   any V3 experiment runs.~~ **Landed:**
+   `docs/pre_registration_v3_clause_ablation.md`. H1-H5 cover the 5
+   non-fallback attribution categories (single-clause / additive /
+   synergistic / null-at-full / unclassified). Sample design: active
+   lineup (qwen3 + opus) at "all available alignment-eval prompts" via
+   `--n-prompts 9999`; baselines (deepseek + kimi) at N=100 to confirm
+   V2's null finding holds under clause decomposition without
+   inflating cost. Two-command structure: separate runner invocations
+   per lineup (active vs baselines), merge rollouts.jsonl, then judge
+   + analyze. Holm-Bonferroni across 4 models × 3 singletons = 12
+   hypotheses; `full_inject` excluded as V1-replication anchor per
+   §4.4. Estimated cost: $45-65, wall time 25-40 min. §8 (recorded
+   at execution) and §10 (results) intentionally empty until PR 5.
 5. **PR 5: results.** runs/ outputs (gitignored locally), pre-reg
    §10 fill-in, paper §5.6 with the V3 findings.
 
