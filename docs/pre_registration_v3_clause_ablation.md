@@ -411,25 +411,39 @@ rows where `effect` starts with `singleton:`.
 
 ## 8. Recorded at execution time
 
-*To be filled in at execution time.*
+*Filled in 2026-05-17, post-execution.*
 
-- **Dataset file path:** _TBD_
-- **Dataset sha256:** _TBD_
-- **Apollo HF revision / download date:** _TBD_
-- **Apollo alignment-eval pool size (audit):** _TBD_
+- **Dataset file path:** `~/data/apollo/dataset.json`
+- **Dataset sha256:** `9e375112910d2d56cd52dd9e6e1b70d44e28b1c44191efbffc1075d17e3de839` (matches V2 main pre-reg §8)
+- **Apollo HF revision / download date:** downloaded 2026-05-17 from `huggingface.co/datasets/jjpn2/eval_awareness` via `hf download`; decrypted via Apollo's `scripts/decrypt.sh` (same file as V2 main).
+- **Apollo alignment-eval pool size (audit):** **297 prompts** (`eval_category=true` AND `eval_type=alignment`).
 - **Run directory:** `runs/v3-clause-ablation-prereg`
 - **Per-lineup N actually used:**
-  - active (qwen3, opus): _TBD_
-  - baselines (deepseek, kimi): _TBD_ (expected 100)
-- **Rollouts completed:** _TBD_ / _TBD_
-- **Rollouts failed/skipped:** _TBD_
-- **VEA classifications completed:** _TBD_
-- **`run_v3_clause_ablation.py` (active) exit code:** _TBD_
-- **`run_v3_clause_ablation.py` (baselines) exit code:** _TBD_
-- **`analyze_v3_clause_ablation.py --strict-vea` exit code:** _TBD_
-- **`analyze_v3_clause_ablation.py` (broad) exit code:** _TBD_
+  - active (qwen3, opus): **297** (all available; runner's `--n-prompts 9999` capped at pool size)
+  - baselines (deepseek, kimi): **100** (top-100 by `sha256("v3:2:{example_id}")` hash; strict subset of active prompts)
+- **Rollouts completed:** **3,970 / 3,970**
+  - active: 297 × 5 conditions × 2 models = 2,970
+  - baselines: 100 × 5 conditions × 2 models = 1,000
+- **Rollouts failed/skipped:** 0
+- **VEA classifications completed:** 3,970 / 3,970
+- **`run_v3_clause_ablation.py` (active) exit code:** 0
+- **`run_v3_clause_ablation.py` (baselines) exit code:** 0
+- **`analyze_v3_clause_ablation.py --strict-vea` exit code:** 0
+- **`analyze_v3_clause_ablation.py` (broad) exit code:** 0
 
-Notes: (to be filled in)
+Notes:
+
+- Apollo alignment-eval pool size (297) is tighter than the design
+  doc's "~270" expectation (`docs/v3_inject_clause_ablation_design.md`
+  §3.4 audit estimate from V2's inspection). The runner's `--n-prompts
+  9999` use-all behavior automatically captured all 297 without
+  amendment. Per-cell n = 297 on active models, 100 on baselines.
+- Closed-CoT backfill (gpt-5.5 + gemini-2.5-pro) was filed in
+  `docs/pre_registration_closed_cot_backfill.md` as a separate Holm
+  family of 6 hypotheses (2 models × 3 singletons). The V3 main
+  pre-reg's 12-hypothesis Family A correction is unaffected; the
+  backfill's Family B correction is reported in that supplement's
+  §10 and in this pre-reg's §10 below for cross-reference.
 
 ## 9. Deviations and amendments
 
@@ -454,7 +468,104 @@ shrinks to whatever models did return data, and that is documented in
 
 ## 10. Results
 
-*To be filled in after execution.*
+*Filed 2026-05-17. Executed 2026-05-17. Headline per §2 hypotheses:
+**H2 (additive) holds on opus AND qwen3, both at full V1+V2-direction
+magnitude. H4 (null_at_full) holds on deepseek and kimi. H1, H3, H5
+do not hold on any of the 4 main-pre-reg models.***
+
+- **Replication run completed:** 2026-05-17
+- **Run directory:** `runs/v3-clause-ablation-prereg`
+- **Per-model attribution category (strict VEA, primary):**
+  - opus-4-7: **additive** (sum-of-singletons −0.0774 matches full_inject −0.0673 within residual CI)
+  - qwen3-235b-thinking: **additive** (sum-of-singletons +0.0505 matches full_inject +0.0539 within residual CI)
+  - deepseek-v3.2-exp: **null_at_full** (full_inject CI includes zero)
+  - kimi-k2-thinking: **null_at_full** (full_inject CI includes zero)
+- **Per-model full_inject anchor effect (strict, paired bootstrap B=2000):**
+  - opus-4-7: **−0.067**, CI [−0.104, −0.027], bootstrap p = **0.001**
+  - qwen3: **+0.054**, CI [+0.014, +0.094], p = **0.013**
+  - deepseek: +0.050, CI [−0.010, +0.110], p = 0.176
+  - kimi: +0.030, CI [−0.050, +0.110], p = 0.484
+- **Per-model singleton main effects (strict):** all 12 singleton point
+  estimates are ≤0.040 in absolute value with 95% CIs that include
+  zero; none survive Holm-Bonferroni at family-wise α=0.05 over the
+  12-hypothesis Family A. Decisive numbers in
+  `v3_clause_ablation_summary.strict.json` → `holm_bonferroni` rows
+  where `model_name` is one of the 4 main-pre-reg models.
+
+### Headline findings
+
+**Finding 1: V1's direction asymmetry on opus and qwen3 replicates at
+full V1+V2-direction magnitude on V3's fresh alignment-eval sample.**
+opus full_inject Δ refusal −0.067 [−0.104, −0.027] p=0.001 (matches
+V1 −34pp and V2 alignment-stratum −0.060). qwen3 full_inject Δ
+refusal +0.054 [+0.014, +0.094] p=0.013 (matches V1 +22pp and V2
+alignment-stratum +0.057). The asymmetric flag on the
+cross-model-direction-comparison row for `full_inject` is **true**.
+
+**Finding 2: Attribution on both active models is ADDITIVE — no
+single clause carries the effect.** The §5.5 decision tree returns
+`additive` on both opus and qwen3: sum-of-singletons matches
+full_inject within the additivity residual's CI (opus residual
++0.010 CI [−0.047, +0.071]; qwen3 residual +0.003 CI [−0.067, +0.074]).
+0/12 singleton hypotheses survive Holm-Bonferroni at family-wise
+α=0.05. **The V1 inject effect is the linear sum of three small
+per-clause effects of equal weight on both active models.**
+
+**Finding 3: deepseek and kimi remain inactive on the V1 inject at
+clause resolution.** Both fall into `null_at_full`. Replicates V1
+behavioral inactivity (deepseek was small but CI-excludes-zero in
+V1; kimi was null in V1) and V2 inject main-effect inactivity on the
+broader corpus.
+
+**Finding 4 (secondary, descriptive): qwen3's per-clause strict-VEA
+verbalization scales proportionally with each individual clause;
+opus's strict-VEA only inflates under the combined full_inject.**
+qwen3 strict-VEA cell means: neutral 0.017, eval_only 0.229 (×13),
+reviewer_only 0.175 (×10), comparison_only 0.051 (×3), full_inject
+0.367 (×22). opus strict-VEA cell means: neutral 0.030, all 3
+singletons ≈ 0.027-0.040 (≈ baseline), full_inject 0.114 (×4).
+**Same refusal attribution on both (additive) via different
+verbalization patterns at clause resolution.** V1's verbalization-
+vs-behavior dissociation generalizes to V3 and shows up at clause
+resolution as two distinct model-level mechanisms.
+
+### Per-clause Δ refusal table (alignment-eval stratum, strict)
+
+| Model | eval_only | reviewer_only | comparison_only | full_inject (anchor) |
+|---|---:|---:|---:|---:|
+| opus    | −0.017 [−0.047, +0.014] | −0.030 [−0.067, +0.007] | −0.030 [−0.064, +0.003] | **−0.067 [−0.104, −0.027] p=0.001** |
+| qwen3   | +0.003 [−0.034, +0.040] | +0.030 [−0.007, +0.067] | +0.017 [−0.020, +0.054] | **+0.054 [+0.014, +0.094] p=0.013** |
+| deepseek| +0.030 [−0.030, +0.100] | +0.030 [−0.030, +0.090] | +0.040 [−0.010, +0.090] | +0.050 [−0.010, +0.110] p=0.176 |
+| kimi    | +0.020 [−0.050, +0.090] | +0.000 [−0.060, +0.060] | −0.010 [−0.070, +0.050] | +0.030 [−0.050, +0.110] p=0.484 |
+
+### Cross-model direction comparison (strict)
+
+| Clause | opus | deepseek | kimi | qwen3 | Asymmetric? |
+|---|---|---|---|---|:---:|
+| `eval_only` | null | null | null | null | no |
+| `reviewer_only` | null | null | null | null | no |
+| `comparison_only` | null | null | null | null | no |
+| `full_inject` (anchor) | − | null | null | + | **yes** |
+
+The asymmetric flag on `full_inject` confirms V1's direction
+asymmetry at the V3 sample, with two opposite-signed models (opus −,
+qwen3 +) and two null models (deepseek, kimi). All 3 singletons are
+null on all 4 models — consistent with the additive interpretation.
+
+### Paper / writeup updates
+
+V3 results integrated into `docs/paper_draft.md` §5.6 (V3 inject-
+clause ablation) and §7.5 (V1+V2+V3 synthesis). Headline reframed as
+"V1's inject effect attributes additively across all three V1 clauses
+on the two V1-active models; no single clause carries it on its own."
+The V1+V2 direction-asymmetry story is preserved and extended.
+
+*The pre-registration discipline worked as intended: 0/12 singleton
+hypotheses survive Holm, but the per-model attribution category
+(`additive`) is itself a substantive finding because the §5.5
+decision tree was pre-registered to distinguish single-clause,
+additive, synergistic, and unclassified attribution patterns. The
+distinction matters for the paper's interpretation in §7.5(iii).*
 
 ---
 

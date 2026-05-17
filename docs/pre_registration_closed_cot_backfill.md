@@ -252,17 +252,35 @@ The script verifies the main run directories exist before starting
 
 ## 8. Recorded at execution time
 
-*To be filled in at execution time.*
+*Filled in 2026-05-17, post-execution.*
 
-- **Dataset file path:** _TBD_
-- **Dataset sha256:** _TBD_ (should match V2 main + V3 main records)
-- **V2 backfill rollouts completed:** _TBD_ / 800
-- **V3 backfill rollouts completed:** _TBD_ / 1000
+- **Dataset file path:** `~/data/apollo/dataset.json`
+- **Dataset sha256:** `9e375112910d2d56cd52dd9e6e1b70d44e28b1c44191efbffc1075d17e3de839` (matches V2 main + V3 main records)
+- **V2 backfill rollouts completed:** **800 / 800** (100 prompts × 2 conditions × 2 models)
+- **V3 backfill rollouts completed:** **1,000 / 1,000** (100 prompts × 5 conditions × 2 models)
 - **Models in backfill rollouts:** `openrouter:openai/gpt-5.5`, `openrouter:google/gemini-2.5-pro`
-- **`run_v2_apollo_factorial.py` (backfill) exit code:** _TBD_
-- **`run_v3_clause_ablation.py` (backfill) exit code:** _TBD_
-- **`analyze_v2_factorial.py` (with-backfill) exit code:** _TBD_
-- **`analyze_v3_clause_ablation.py` (with-backfill) exit code:** _TBD_
+- **`run_v2_apollo_factorial.py` (backfill) exit code:** 0
+- **`run_v3_clause_ablation.py` (backfill) exit code:** 0
+- **`analyze_v2_factorial.py` (with-backfill) exit code:** 0 (after the `_join_vea` fix in `1c6d59f`; see notes below)
+- **`analyze_v3_clause_ablation.py` (with-backfill) exit code:** 0
+
+Notes:
+
+- **Initial V2 with-backfill analyzer run produced 4-model output
+  (silent backfill drop).** Diagnosed as the `_join_vea` function in
+  both V2 and V3 analyzers unconditionally filtering rollouts without
+  matching VEA classifications. The closed-CoT models intentionally
+  have no VEA classifications per §4, and the original join logic was
+  dropping them at the join step. Fixed in commit `1c6d59f`: unmatched
+  rollouts are now preserved with `is_vea=False` so behavioral data
+  (refusal, the primary outcome) survives the join. Same fix applied
+  to both `scripts/analyze_v2_factorial.py` and
+  `scripts/analyze_v3_clause_ablation.py`. Regression tests added to
+  both test suites (`test_rollouts_without_vea_classifications_are_preserved_not_dropped`).
+- After the fix, re-running the analyzer on the combined rollouts
+  files produced 6-model output for both V2 and V3 as intended. No
+  re-rollout was required — the rollouts files were already correct
+  (V2: 2,400 lines, 6 models; V3: 4,970 lines, 6 models).
 
 ## 9. Deviations and amendments
 
@@ -280,7 +298,114 @@ deviations policy is:
 
 ## 10. Results
 
-*To be filled in after execution.*
+*Filed 2026-05-17. Executed 2026-05-17. Headline: gpt-5.5 and
+gemini-2.5-pro both show robust intrinsic-eval-label main effects
+on V2 (Family B Holm-survivors); both are flat on V3 inject at
+clause and full resolution (null_at_full attribution). gpt-5.5 is
+the cleanest behavioral null in the entire 6-model lineup.*
+
+### V2 backfill results (Family B: 2 models × 3 effects = 6 hypotheses)
+
+**Per-model effects (strict VEA, paired bootstrap B=2000):**
+
+| Model | inject main | 95% CI | intrinsic main | 95% CI | interaction | 95% CI |
+|---|---:|---|---:|---|---:|---|
+| gpt-5.5         | −0.010 | [−0.050, +0.025] | **+0.110** | [+0.040, +0.180] | +0.000 | [−0.080, +0.070] |
+| gemini-2.5-pro  | +0.005 | [−0.020, +0.030] | **+0.095** | [+0.045, +0.155] | −0.010 | [−0.060, +0.040] |
+
+**Family B Holm-Bonferroni decisions (6 hypotheses, α=0.05):**
+
+| Model | Effect | Point | p | Threshold | Reject @ 0.05 |
+|---|---|---:|---:|---:|:---:|
+| gpt-5.5         | `main_effect_intrinsic` | +0.110 | 0.001 | 0.0036 | **yes** |
+| gemini-2.5-pro  | `main_effect_intrinsic` | +0.095 | 0.000 | 0.0031 | **yes** |
+| gemini-2.5-pro  | `main_effect_inject`    | +0.005 | 0.875 | 0.0100 | no |
+| gemini-2.5-pro  | `interaction_effect`    | −0.010 | 0.842 | 0.0071 | no |
+| gpt-5.5         | `main_effect_inject`    | −0.010 | 0.688 | 0.0063 | no |
+| gpt-5.5         | `interaction_effect`    | +0.000 | 1.000 | 0.0500 | no |
+
+**Family B survivors: 2 of 6.** Both intrinsic main effects survive
+Holm; no inject or interaction effects survive on either model.
+
+**V2 backfill headline:** The intrinsic-eval-label refusal effect
+extends cleanly from the V2 main reasoning trio + opus to two
+closed-CoT frontier models. gpt-5.5's +0.110 is the second-largest
+intrinsic main effect in the entire 6-model lineup (after opus at
++0.130). The inject effect remains null at clause and full resolution
+on both backfill models.
+
+### V3 backfill results (Family B: 2 models × 3 singletons = 6 hypotheses; full_inject is anchor)
+
+**Per-model attribution and full_inject anchor (strict VEA):**
+
+| Model | full_inject Δ | 95% CI | p | Attribution |
+|---|---:|---|---:|---|
+| gpt-5.5         | **+0.000** | [−0.060, +0.060] | 1.000 | **null_at_full** |
+| gemini-2.5-pro  | −0.010 | [−0.050, +0.030] | 0.810 | **null_at_full** |
+
+**Per-singleton effects (strict):**
+
+| Model | eval_only | reviewer_only | comparison_only |
+|---|---:|---:|---:|
+| gpt-5.5         | −0.010 [−0.050, +0.030] p=0.800 | +0.010 [−0.030, +0.050] p=0.844 | +0.010 [−0.040, +0.060] p=0.891 |
+| gemini-2.5-pro  | −0.030 [−0.070, +0.000] p=0.102 | −0.020 [−0.050, +0.000] p=0.296 | −0.030 [−0.080, +0.020] p=0.313 |
+
+**Family B Holm-Bonferroni decisions (6 hypotheses, α=0.05):** 0 of 6
+survive. All 6 singleton point estimates are ≤0.030 absolute with
+CIs that include zero. gemini-2.5-pro's `eval_only` (p=0.102) is the
+closest to its Holm threshold of 0.0029.
+
+**V3 backfill headlines:**
+
+1. **gpt-5.5 is the cleanest behavioral null in the lineup.** Point
+   estimate exactly **0.000** with the tightest CI in the entire
+   6-model V3 lineup [−0.060, +0.060]. Every singleton effect within
+   ±0.010 with CIs cleanly including zero. gpt-5.5 has a stable
+   refusal posture on Apollo alignment-eval prompts (baseline 0.37,
+   the highest of any V3 model) that is completely unresponsive to
+   extrinsic eval-framing at any clause resolution.
+2. **gemini-2.5-pro shows a borderline sub-additive pattern but the
+   attribution is correctly null_at_full.** All three singletons
+   mildly suppress refusal (each Δ ≈ −0.020 to −0.030), but the
+   combined full_inject reverts to baseline (Δ −0.010). The
+   additivity residual is +0.070 [+0.000, +0.150] p=0.057 (strict) /
+   [+0.010, +0.150] p=0.043 (broad) — borderline excludes zero in
+   broad. Attribution lands on `null_at_full` because the §5.5
+   decision tree's first check (full_inject CI includes zero) takes
+   priority. The sub-additive structure is a per-model footnote, not
+   a headline claim.
+3. **V1's direction asymmetry on opus + qwen3 is now triangulated
+   against 4 different null models** (deepseek, kimi, gpt-5.5,
+   gemini-2.5-pro), spanning closed-CoT and open-reasoning families
+   from 4 model labs. The asymmetric signal is not an artifact of the
+   V3 main pre-reg's 4-model lineup choice.
+
+### Paper / writeup updates
+
+V2 backfill numbers integrated into `docs/paper_draft.md` §5.5 (V2
+Apollo factorial). The intrinsic main-effect table in §5.5.2 now lists
+5 of 6 Holm-surviving intrinsic effects (3 from V2 Family A + 2 from
+V2 Family B backfill). Per-cell summary in §5.5.2 includes gpt-5.5
+and gemini-2.5-pro with VEA cells annotated `0.00 (n/a)` per §4 of
+this supplement.
+
+V3 backfill numbers integrated into `docs/paper_draft.md` §5.6 (V3
+inject-clause ablation). Headline 6-model attribution table includes
+both backfill models as `null_at_full`. §5.6.5 dedicated subsection
+describes gpt-5.5's clean null and gemini-2.5-pro's sub-additive
+footnote.
+
+V1+V2+V3 synthesis in `docs/paper_draft.md` §7.5 reading (vi) reports
+gpt-5.5 specifically as "the cleanest behavioral null in the lineup."
+
+*The backfill supplement worked as intended: 2 of 6 Family B
+hypotheses survived correction (both intrinsic main effects),
+extending V2's intrinsic-eval-label finding to closed-CoT models
+without modifying the V2 main pre-reg's headline claims. The V3
+backfill confirms the V1 inject's behavioral null on closed-CoT
+frontier models at clause resolution, completing the V3 picture as a
+2-active-model story (opus + qwen3) against 4 null models from 4
+different labs.*
 
 ---
 

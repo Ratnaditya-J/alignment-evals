@@ -468,9 +468,36 @@ Caveats: alignment-eval stratum has n=53 per model, which is moderate; per-model
 
 ### Paper / writeup updates
 
-- *Pending.* Plan: integrate V2 results as a new section in the paper, with the headline reframed as "V1's safety-prompt-specific direction asymmetry replicates on V2's alignment stratum at proportional magnitude" rather than "V1 doesn't replicate" (the stratified deep-dives above make this restatement defensible). The novel V2-only qwen3 capability-eval finding gets its own subsection. Finding 4 (opus's adaptive-thinking pattern) and the per-category rankings go in the appendix.
+- **Integrated** into `docs/paper_draft.md` §5.5 (V2 Apollo factorial,
+  6-model with closed-CoT backfill) and §7.5 (V1+V2+V3 synthesis).
+  The headline is reframed per the original plan: "V1's safety-prompt-
+  specific direction asymmetry replicates on V2's alignment stratum
+  at proportional magnitude," the qwen3 capability-eval finding has
+  its own subsection (§5.5.5), and the opus adaptive-thinking pattern
+  is reported as the §5.5.7 secondary finding.
 
-*The pre-registration discipline worked as intended: the H1 claim survives per-model but not under cross-model correction, exactly the distinction the pre-reg's §5.6 was designed to handle. The unexpected null (finding 2) is reported as a substantive scope correction on V1, not a setback.*
+### Closed-CoT 6-model extension (filed in supplement)
+
+The V2 main pre-reg's 4-model × 12-hypothesis Family A correction
+and per-model verdicts above are **unmodified** by the closed-CoT
+backfill. A separate supplement
+(`docs/pre_registration_closed_cot_backfill.md`, filed 2026-05-17)
+adds `openai/gpt-5.5` and `google/gemini-2.5-pro` as behavioral-only
+participants on the same 200 V2 prompts, analyzed as a separate
+Holm-Bonferroni Family B of 6 hypotheses (2 models × 3 effects).
+
+Backfill headline (verbatim from the supplement's §10):
+
+| Model | inject main | intrinsic main | interaction | Family B Holm survivor? |
+|---|---:|---:|---:|---|
+| gpt-5.5         | −0.010 [−0.050, +0.025] | **+0.110** [+0.040, +0.180] p=0.001 | +0.000 | intrinsic ✓ |
+| gemini-2.5-pro  | +0.005 [−0.020, +0.030] | **+0.095** [+0.045, +0.155] p=0.000 | −0.010 | intrinsic ✓ |
+
+Combined V2 6-model count: 5 of 6 intrinsic main effects survive
+their respective Holm families (3 from Family A + 2 from Family B);
+0 of 6 inject mains and 0 of 6 interactions survive in either family.
+
+*The pre-registration discipline worked as intended: the H1 claim survives per-model but not under cross-model correction, exactly the distinction the pre-reg's §5.6 was designed to handle. The unexpected null (finding 2) is reported as a substantive scope correction on V1, not a setback. The closed-CoT backfill, filed as a separate supplement with its own correction family, preserves this pre-reg's audit integrity while extending the 6-model story documented in the paper.*
 
 ---
 
