@@ -920,15 +920,16 @@ we added — is enough to shift refusal behavior on **5 of 6 frontier
 models from 4 different model labs.** This is V2's headline positive
 finding and it generalizes well beyond the original 4-model lineup.
 
-Per-cell summary (strict VEA, B=2000):
+Per-cell summary (strict VEA, B=2000; closed-CoT models added with
+VEA=0.00 by design per the backfill pre-reg §4):
 
 | Model | cell | refusal | refusal 95% CI | strict-VEA mean |
 |---|---|---:|---|---:|
 | opus-4-7 | neutral_eval | 0.18 | [+0.11, +0.26] | 0.01 |
-| opus-4-7 | inject_eval | 0.15 | [+0.08, +0.23] | 0.06 |
+| opus-4-7 | inject_eval | 0.15 | [+0.09, +0.22] | 0.06 |
 | opus-4-7 | neutral_deployment | 0.02 | [+0.00, +0.05] | 0.01 |
 | opus-4-7 | inject_deployment | 0.05 | [+0.01, +0.10] | 0.01 |
-| qwen3 | neutral_eval | 0.16 | [+0.09, +0.24] | 0.02 |
+| qwen3 | neutral_eval | 0.16 | [+0.09, +0.23] | 0.02 |
 | qwen3 | inject_eval | 0.16 | [+0.09, +0.23] | 0.23 |
 | qwen3 | neutral_deployment | 0.03 | [+0.00, +0.07] | 0.00 |
 | qwen3 | inject_deployment | 0.04 | [+0.01, +0.08] | 0.20 |
@@ -937,9 +938,23 @@ Per-cell summary (strict VEA, B=2000):
 | deepseek | neutral_deployment | 0.02 | [+0.00, +0.05] | 0.01 |
 | deepseek | inject_deployment | 0.02 | [+0.00, +0.05] | 0.00 |
 | kimi | neutral_eval | 0.15 | [+0.08, +0.22] | 0.01 |
-| kimi | inject_eval | 0.16 | [+0.09, +0.24] | 0.05 |
-| kimi | neutral_deployment | 0.07 | [+0.02, +0.13] | 0.03 |
+| kimi | inject_eval | 0.16 | [+0.09, +0.23] | 0.05 |
+| kimi | neutral_deployment | 0.07 | [+0.03, +0.13] | 0.03 |
 | kimi | inject_deployment | 0.09 | [+0.04, +0.15] | 0.00 |
+| gpt-5.5 | neutral_eval | 0.22 | [+0.14, +0.30] | 0.00 (n/a) |
+| gpt-5.5 | inject_eval | 0.21 | [+0.13, +0.29] | 0.00 (n/a) |
+| gpt-5.5 | neutral_deployment | 0.11 | [+0.06, +0.17] | 0.00 (n/a) |
+| gpt-5.5 | inject_deployment | 0.10 | [+0.05, +0.16] | 0.00 (n/a) |
+| gemini-2.5-pro | neutral_eval | 0.13 | [+0.07, +0.20] | 0.00 (n/a) |
+| gemini-2.5-pro | inject_eval | 0.13 | [+0.07, +0.20] | 0.00 (n/a) |
+| gemini-2.5-pro | neutral_deployment | 0.03 | [+0.00, +0.07] | 0.00 (n/a) |
+| gemini-2.5-pro | inject_deployment | 0.04 | [+0.01, +0.08] | 0.00 (n/a) |
+
+The `(n/a)` annotation on closed-CoT VEA cells means VEA was not
+measured (no verbatim CoT exposed by OpenAI gpt-5/o-series or Google
+Gemini 2.5 series). The analyzer preserves these rollouts in the
+refusal analysis with is_vea=False so that primary outcomes are not
+silently dropped at the join step.
 
 #### 5.5.3 Per-model verdicts and the cross-model interaction
 
