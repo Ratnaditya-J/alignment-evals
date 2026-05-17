@@ -73,7 +73,7 @@ mechanistic foothold: the model sometimes writes an explicit
 "this looks like a test" hypothesis in its reasoning trace, before
 producing the visible response.
 
-Concurrent work by Knecht, Florin, & Hagendorff (2026) provides the
+Recent prior work by Knecht, Florin, & Hagendorff (2026) provides the
 first large-scale causal test of whether VEA in CoT actually drives
 behavior. Using CoT-level sentence prefilling to inject or remove
 eval-aware sentences mid-trace across 8 open-weight reasoning models
@@ -199,19 +199,23 @@ The primary novel contributions are V2's cross-laboratory
 intrinsic-eval-label finding and V3's clause-level inject
 decomposition. Our V1 mediation-null result is reported as
 independent convergent evidence with Knecht et al. (2026)'s
-concurrent CoT-level null on a different operationalization, not as
+recent prior CoT-level null on a different operationalization, not as
 first-discovery.
 
-1. **Cross-laboratory intrinsic-eval-label refusal signal (V2 —
+1. **Cross-laboratory intrinsic-eval-label refusal prediction (V2 —
    primary novel finding).** Apollo's `metadata.eval_category=true`
    label predicts +7.5 to +13.0pp higher refusal across all six
    tested models from four different labs; 5 of 6 survive
    Holm-Bonferroni in their respective correction families. The
-   signal is encoded in the prompt content itself, not in any
-   framing we added — implying that benchmark prompts carry an
-   eval-recognition signal that shifts behavior even in the absence
-   of explicit framing. This is the only behavioral effect in our
-   lineup that generalizes cleanly across visible-CoT and closed-CoT
+   label predicts refusal even with no extrinsic framing added —
+   implying that benchmark prompts carry an *eval-associated
+   prompt-content / format signal* (covering topic, format,
+   safety-content density, surface-feature distribution, etc.; we
+   cannot distinguish these from genuine eval-recognition with this
+   design — see §8 limitations and Devbunova 2026) that shifts
+   behavior even in the absence of explicit framing. This is the
+   only behavioral effect in our lineup that generalizes cleanly
+   across visible-CoT and closed-CoT
    model families and the only one with an *intrinsic* (not
    author-constructed) cue, addressing a methodological gap that
    Knecht et al.'s CoT-intervention design does not cover.
@@ -294,6 +298,23 @@ corpus with intrinsic eval/deployment labels that frames eval
 recognition as a corpus-level signal rather than a CoT-level one;
 our V2 and V3 experiments use that corpus.
 
+**Mechanism-level work and the format-sensitivity confound.**
+Representation-level approaches probe and steer eval-awareness
+inside model activations rather than at the prompt or CoT level
+(Nguyen et al., 2025); steering studies have also constructed
+explicit eval-aware "model organisms" to study the phenomenon
+under controlled training conditions (Hua et al., 2025/2026).
+A related thread, important for interpreting intrinsic-label
+results like our V2 finding, is the observation that apparent
+eval-awareness evidence in benchmark contexts can collapse into
+format-sensitivity artifacts when the analyzed signal correlates
+with surface features of how eval-prompts are written (Devbunova,
+2026). We carry this confound into our V2/V3 framing: we report the
+intrinsic-eval-label refusal effect as an *eval-associated
+prompt-content/format signal*, not as evidence that models
+internally recognize "this is an eval" in the way the
+mentalistically-loaded version of the claim would require (§8).
+
 **Prior positive results on eval-awareness and CoT.** Two recent
 results bear directly on the questions this paper tests. Aranguri &
 Bloom (2026) report that verbalized eval-awareness in CoT correlates
@@ -321,8 +342,8 @@ verbalization in CoT does not robustly translate into behavioral
 change — is consistent with the V1 mediation-null result we report
 in §5.3 on a different operationalization (system-prompt-level
 explicit inject rather than CoT-level prefilling). Our paper is
-**concurrent and complementary** rather than independent: the
-broad-scope null was first reported by Knecht et al.; our
+**complementary** rather than independent: the broad-scope null was
+first reported by Knecht et al.; our
 contribution on this question is methodological (a pre-registered
 disjoint-prompt replication of an apparent positive mediation
 finding in our own primary sample) rather than first-discovery of
@@ -933,8 +954,8 @@ disjoint and the replication is safety-only — but the replication's
 larger n=92 produces a CI-excludes-zero estimate where the primary's
 n=62 underpowered did not.
 
-**The mechanism is direction-asymmetric and non-mediated, not
-verbalized-and-mediated.** Both qwen3 (under the larger replication
+**The behavioral effect is direction-asymmetric and non-mediated,
+not verbalized-and-mediated.** Both qwen3 (under the larger replication
 sample) and opus exhibit CI-excludes-zero stable_neg refusal shifts
 under inject — *VEA stayed negative throughout, yet refusal moved.*
 Inject framing therefore shifts safety-prompt refusal behavior even
@@ -1827,11 +1848,16 @@ deepseek, qwen3 in Family A; gpt-5.5, gemini-2.5-pro in Family B;
 only kimi falls short). **This is V2's most robust positive finding
 and the only effect that generalizes cleanly across closed-CoT
 families.** The implication for alignment-eval methodology: when
-constructing a benchmark, the prompts' own *content* carries an
-eval-recognition signal that shifts behavior across 5 of 6 frontier
-and frontier-adjacent reasoning models from 4 different labs, before
-any explicit framing is added.
-Eval validity has to account for this even in the "neutral" condition.
+constructing a benchmark, the prompts' own *content or format*
+carries an eval-associated signal — covering topic, format,
+safety-content density, surface-feature distribution, etc.; we
+cannot distinguish these from genuine model-side eval-recognition
+in this design (see §8 + Devbunova 2026) — that shifts refusal
+behavior across 5 of 6 frontier and frontier-adjacent reasoning
+models from 4 different labs, before any explicit framing is added.
+Eval validity has to account for this even in the "neutral"
+condition, regardless of whether the mechanism is internal
+eval-recognition or surface-feature responsiveness.
 
 **(iii) The V1 inject's effect on opus and qwen3 is distributed-
 additive across three clauses, not localized to any single clause.**
@@ -1910,6 +1936,25 @@ mediation channel itself is not re-tested.
 ---
 
 ## 8. Limitations
+
+**Intrinsic-eval-label / format-sensitivity confound (V2).** The V2
+finding that Apollo's `eval_category=true` label predicts +7.5 to
++13.0pp higher refusal across 5 of 6 models cannot, by the design
+we ran, distinguish three competing readings: (i) models internally
+recognize "this prompt is an evaluation" and adjust refusal
+accordingly (genuine eval-recognition), (ii) the eval-labeled
+prompts have systematically different topic / domain / surface
+features (style, length, format markers, safety-content density)
+that drive refusal independent of any "eval recognition" inside the
+model, or (iii) some combination. Devbunova (2026) argues that
+apparent eval-awareness evidence in benchmark contexts can collapse
+into format-sensitivity artifacts under (ii). We report the V2
+intrinsic-label effect as an *eval-associated
+prompt-content/format signal* rather than as evidence for genuine
+internal eval-recognition; discriminating (i) vs (ii) would require
+a follow-up that pairs the Apollo eval/deployment prompts on
+matched topic + format + safety-density, or runs a representation-
+level probe along the lines of Nguyen et al. (2025).
 
 **Judge validity.** The VEA judge is an LLM (`google/gemini-2.5-flash-lite`).
 We validate it against 166 human-labeled rollouts (§4.4): broad-mode
@@ -2047,7 +2092,7 @@ controls prompt length within each intrinsic label.
 
 ## 9. Conclusion
 
-Concurrent work by Knecht, Florin, & Hagendorff (2026) establishes
+Recent prior work by Knecht, Florin, & Hagendorff (2026) establishes
 that CoT-level VEA interventions have limited behavioral effect on
 8 open-weight reasoning models across 4 benchmarks. Our paper tests
 the complementary **prompt-level** question: when evaluation context
@@ -2094,8 +2139,8 @@ rollouts** address this question. The primary novel findings are:
   against null baselines makes a model-selection artifact a less
   plausible explanation.
 
-We additionally report results that are convergent with concurrent
-prior work but, for completeness in this paper's specific
+We additionally report results that are convergent with recent prior
+work but, for completeness in this paper's specific
 operationalization, were not independent discoveries:
 
 - **(d) V1 mediation null on a fresh disjoint sample (convergent
@@ -2103,7 +2148,7 @@ operationalization, were not independent discoveries:
   qwen3 safety mediation signal (DiD +0.222 [+0.029, +0.430],
   n_flip=63 paired); pre-registered disjoint-prompt replication at
   n_flip=100 returned null (DiD −0.017 [−0.175, +0.139]). Knecht
-  et al. (2026) had concurrently established a broad-scope null on
+  et al. (2026) had previously established a broad-scope null on
   CoT-level VEA interventions. Our replication contributes the
   pre-registered disjoint-prompt discipline on a different
   operationalization (system-prompt-level explicit inject), not
@@ -2122,16 +2167,21 @@ operationalization, were not independent discoveries:
   +0.074]; claude-opus-4-7 +0.080 [+0.050, +0.113] at n=300;
   kimi-k2-thinking null. Closed-CoT models cannot be ranked.
 
-**The central finding** is that inject framing has direction-
-asymmetric refusal effects on safety prompts in at least two
-reasoning models, and that these effects are *not* mediated by
-strict-VEA verbalization. The mediation hypothesis — that the model
-verbalizes "this is an eval" and that verbalization then shifts the
-refusal decision — does not survive pre-registered disjoint-prompt
-replication. **The behavioral signature exists; the verbal fingerprint
-of "noticing the eval" is a separate, partially correlated phenomenon
-that current explicit-VEA monitoring tools would track but that does
-not capture where the behavioral effect lives.**
+**The central finding** is that **benchmark-authored intrinsic eval
+labels and explicit eval framing both produce prompt-level
+behavioral shifts that are not captured by VEA monitoring**, and
+V3 localizes the explicit-framing version to *distributed-additive
+cue attribution across three clauses* rather than to any single
+clause's propositional content. The intrinsic-label effect
+generalizes across 5 of 6 models from 4 labs (V2); the explicit-
+framing effect is direction-asymmetric and lives in a specific
+subset of models (qwen3 +, opus −; null on four others). Both
+effects survive in the strict-VEA-stable stratum, so neither is
+explained by the measured VEA channel — consistent with Knecht et
+al. (2026)'s broad-scope finding that VEA does not robustly drive
+behavior under CoT-level interventions. **Prompt-level eval cues
+exist as behavioral signals; explicit-VEA monitoring of CoT does
+not capture where those signals act.**
 
 This has practical implications for alignment-eval research:
 **explicit-VEA monitors** — those that read CoT specifically for
@@ -2181,12 +2231,19 @@ independent sample to firm up the negative-result interpretation.
 
 ## References
 
-Aranguri, S., & Bloom, A. (2026). *Verbalized Eval Awareness Inflates
+Aranguri, S., & Bloom, J. (2026). *Verbalized Eval Awareness Inflates
 Measured Safety.* Goodfire Research. May 4, 2026.
 https://www.goodfire.ai/research/verbalized-eval-awareness-inflates-measured-safety
 
 Chaudhary, M. (2026). *In-Context Environments Induce
 Evaluation-Awareness in Language Models.* arXiv:2603.03824.
+
+Devbunova, A. (2026). *Format Sensitivity and Evaluation-Awareness
+Conflation in Large Language Models.* arXiv:2603.19426. **[verify
+exact title and author list at submission time; this paper argues
+that apparent eval-awareness evidence can collapse into
+format-sensitivity artifacts, and is the relevant disclaimer for
+this paper's V2 intrinsic-eval-label finding — see §8.]**
 
 Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L.,
 Plappert, M., Tworek, J., Hilton, J., Nakano, R., Hesse, C., &
@@ -2204,6 +2261,12 @@ Representations. arXiv:2009.03300.
 Holm, S. (1979). A simple sequentially rejective multiple test
 procedure. *Scandinavian Journal of Statistics,* 6(2), 65-70.
 
+Hua, et al. (2025/2026). *Steering Eval-Aware Model Organisms.*
+arXiv:2510.20487. **[verify full author list and exact title at
+submission time; this paper is a steering / model-organism study
+of explicit eval-awareness; relevant to §2 Related Work and §8
+limitations as a closely related design point.]**
+
 Ji, J., Liu, M., Dai, J., Pan, X., Zhang, C., Zhang, C., Bian, C.,
 Sun, R., Wang, Y., & Yang, Y. (2023). *BeaverTails: Towards Improved
 Safety Alignment of LLM via a Human-Preference Dataset.* NeurIPS.
@@ -2215,6 +2278,12 @@ University of Stuttgart. arXiv:2605.05835, May 7, 2026.
 
 Lin, S., Hilton, J., & Evans, O. (2022). *TruthfulQA: Measuring How
 Models Mimic Human Falsehoods.* ACL. arXiv:2109.07958.
+
+Nguyen, et al. (2025). *Probing and Steering Evaluation Awareness in
+Language Models.* arXiv:2507.01786. **[verify full author list and
+exact title at submission time; this paper is a probing/steering
+methodology directly relevant to §2 Related Work as a
+representation-level alternative to our behavioral approach.]**
 
 Needham, J., Edkins, G., Pimpale, G., Bartsch, H., & Hobbhahn, M.
 (2025). *Large Language Models Often Know When They Are Being
