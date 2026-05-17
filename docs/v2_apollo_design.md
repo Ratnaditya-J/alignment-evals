@@ -1,6 +1,6 @@
 # V2 detailed design: Apollo dataset integration
 
-**Status:** design (May 2026). PR 1 (data layer, `d76502c`) + PR 2 (runner) landed; PR 3+ pending.
+**Status:** design (May 2026). PR 1 (data layer, `d76502c`) + PR 2 (runner, `337a2d4`) + PR 3 (analysis) landed; PR 4 (pre-reg) + PR 5 (results) pending.
 **Supersedes:** `docs/v2_apollo_integration_plan.md` (the planning sketch).
 
 ---
@@ -270,13 +270,26 @@ The pre-reg document is committed to `main` on `alignment-evals`. The commit tim
 - `test_concurrent_runner_produces_same_rollouts_as_serial`
 - `test_load_apollo_examples_returns_correct_label_counts`
 
-### Analysis tests (`tests/test_v2_factorial_analysis.py`)
+### Analysis tests (`tests/test_v2_factorial_analysis.py`) — **landed, 16 passing**
 
-- `test_interaction_effect_zero_on_uncorrelated_data` — synthetic data where inject has no effect → interaction CI includes zero.
-- `test_interaction_effect_nonzero_on_designed_data` — synthetic data where inject only moves behavior on `eval` cells → interaction CI excludes zero.
-- `test_holm_bonferroni_correction_applied` — verify multi-effect p-values get the correction.
+- `test_interaction_effect_zero_when_inject_has_no_effect`
+- `test_interaction_effect_excludes_zero_when_inject_moves_only_eval`
+- `test_cell_means_match_simple_average`
+- `test_main_effect_inject_is_paired_delta`
+- `test_verdict_insufficient_data_when_cell_below_min_n`
+- `test_verdict_null_both_when_no_effect_anywhere`
+- `test_verdict_interaction_supported_when_designed`
+- `test_per_model_breakdown_separates_models`
+- `test_holm_bonferroni_correction_applied`
+- `test_pooled_aggregate_present_and_uses_pooled_label`
+- `test_vea_strictness_label_reflects_inputs`
+- `test_vea_cells_added_when_classifications_present`
+- `test_strict_vea_drops_low_precision_subtypes`
+- `test_cli_writes_summary_and_report_files`
+- `test_analyze_handles_empty_rollouts_gracefully`
+- `test_default_bootstrap_samples_is_two_thousand`
 
-Target: ~15 new tests on top of the existing 275.
+Actual totals as of PR 3: 12 (loader) + 10 (runner) + 16 (analysis) = 38 new tests, all passing. Full suite at 288 passing.
 
 ---
 
@@ -316,8 +329,8 @@ These should be resolved during the smoke-test phase, before locking the pre-reg
 ### Calendar timeline (estimated effort, not duration)
 
 - **Day 1** ✅ *done (commit `d76502c`)*: schema confirmed, `ApolloEvalAwarenessLoader` built, 12 unit tests passing. Smoke test on real dataset still pending (requires downloading the decrypted file from HF).
-- **Day 2** ✅ *done (this PR)*: `run_v2_apollo_factorial.py` runner built with `run_factorial()` library entry-point + CLI, 10 integration tests passing using `ScriptedModelClient`. End-to-end smoke against a real model still pending.
-- **Day 3**: build `analyze_v2_factorial.py` + analysis tests. Draft pre-registration doc.
+- **Day 2** ✅ *done (commit `337a2d4`)*: `run_v2_apollo_factorial.py` runner built with `run_factorial()` library entry-point + CLI, 10 integration tests passing using `ScriptedModelClient`. End-to-end smoke against a real model still pending.
+- **Day 3** ✅ *done (this PR)*: `analyze_v2_factorial.py` built — paired-bootstrap cell means, main effects, interaction effect, verdict tiers (`insufficient_data` / `null_both` / `additive` / `interaction_supported`), Holm-Bonferroni across (model × effect), and a markdown report. 16 analysis tests passing.
 - **Day 4**: file pre-reg (commit + push), run main experiment, generate report.
 - **Day 5**: write up findings, update paper §X with V2 results.
 
@@ -388,7 +401,7 @@ This needs separate infrastructure (calibration analysis pipeline). Likely V5 or
 
 1. ~~PR 1: data layer (`ApolloEvalAwarenessLoader` + unit tests). No experiment runs yet.~~ **Landed: commit `d76502c`.**
 2. ~~PR 2: runner (`run_v2_apollo_factorial.py` + integration tests). Smoke test only.~~ **Landed (this PR).**
-3. PR 3: analysis (`analyze_v2_factorial.py` + analysis tests).
+3. ~~PR 3: analysis (`analyze_v2_factorial.py` + analysis tests).~~ **Landed (this PR).**
 4. PR 4: pre-registration document. Committed to `main` before any experiment runs.
 5. PR 5: results — runs/, summary JSON, report markdown, paper-section update.
 
