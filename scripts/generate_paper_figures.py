@@ -632,7 +632,7 @@ def _render_v2_intrinsic_main_effect(
     ax.set_yticklabels(labels)
     ax.set_xlabel("Δ refusal (eval − deployment)")
     ax.set_title(
-        "V2 Apollo intrinsic-eval-label main effect across 6 frontier models\n"
+        "V2 Apollo intrinsic-eval-label main effect across 6 tested models\n"
         "(red = survives Holm-Bonferroni in its correction family; grey = does not)"
     )
     ax.grid(axis="x", alpha=0.25)
