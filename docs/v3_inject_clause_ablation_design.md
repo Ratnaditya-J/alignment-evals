@@ -1,7 +1,8 @@
 # V3 design: inject-clause ablation on safety/alignment prompts
 
-**Status:** design (May 2026). PR 1 (runner + 21 tests) and PR 2
-(analyzer + 28 tests) landed; PR 3+ pending.
+**Status:** design (May 2026). PR 1 (runner + 21 tests), PR 2 (analyzer
++ 28 tests), and PR 3 (smoke shell script) landed; PR 4 (pre-reg) + PR
+5 (run) pending.
 **Supersedes nothing.** Follows up on V2's localization findings (see
 `docs/v2_apollo_design.md` §9 sketch and the §5.5/§7.5 paper sections).
 
@@ -371,9 +372,18 @@ locks the decision before seeing the data.
    the V1-style asymmetry per clause (one model `+`, another `-`). The
    `full_inject` effect is reported but excluded from Holm-Bonferroni
    per §4.4 (V1-replication anchor, not a hypothesis under correction).
-3. **PR 3: smoke test script.** `scripts/smoke_test_v3.sh` mirrors
-   the V2 pattern (`SMOKE_MODE=qwen|opus` + 10-prompt smoke). $2,
-   5 min, validates pipeline before the main run.
+3. ~~PR 3: smoke test script.~~ **Landed:**
+   `scripts/smoke_test_v3_clause_ablation.sh` mirrors V2's pattern with
+   four `SMOKE_MODE` options (`qwen` / `opus` / `both` / `baselines`).
+   Default `N_PROMPTS=5` × 5 conditions × 1 model = 25 rollouts (~$0.50).
+   `SMOKE_MODE=baselines` exercises the optional deepseek + kimi
+   --include-baselines plumbing (4 models × 5 × 5 = 100 rollouts).
+   Embedded Python assertions verify: rollout count, 5-condition
+   coverage, alignment-only labels, per-cell sizing, attribution
+   category is reachable + valid, Holm has exactly `#models × 3`
+   rows (full_inject excluded), cross-model rows = 4 (3 singletons
+   + anchor), per-model reasoning_trace nonzero (the V2 thinking-empty
+   trip-wire carried forward).
 4. **PR 4: pre-registration document.** Committed to `main` before
    any V3 experiment runs.
 5. **PR 5: results.** runs/ outputs (gitignored locally), pre-reg
