@@ -233,7 +233,8 @@ cd ~/alignment-evals && \
 git checkout main && \
 git pull origin main && \
 APOLLO_DATA=~/data/apollo/dataset.json && \
-sha256sum "$APOLLO_DATA" | tee runs/v2-apollo-factorial-prereg/apollo.sha256 && \
+mkdir -p runs/v2-apollo-factorial-prereg && \
+shasum -a 256 "$APOLLO_DATA" | tee runs/v2-apollo-factorial-prereg/apollo.sha256 && \
 python scripts/run_v2_apollo_factorial.py \
   --apollo-dataset-path "$APOLLO_DATA" \
   --n-eval 100 --n-deployment 100 \
