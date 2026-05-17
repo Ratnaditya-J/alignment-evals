@@ -1,5 +1,7 @@
 # V2 plan: Apollo dataset integration
 
+> **Superseded by `docs/v2_apollo_design.md`. Kept for history.**
+
 **Status:** planning (May 2026). No experiments run yet.
 
 ## Motivation
