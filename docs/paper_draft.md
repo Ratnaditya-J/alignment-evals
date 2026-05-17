@@ -1149,8 +1149,11 @@ for the 2 closed-CoT backfill models, per
 survive. The signal spans four model labs (Anthropic, Alibaba,
 OpenAI, Google) and both visible-CoT and closed-CoT model families.
 
-**Implication:** the intrinsic signal that "this prompt looks like
-an eval" — encoded in the prompt content itself, not in any framing
+**Implication:** the intrinsic eval-associated prompt-content/format
+signal — encoded in the prompt itself (covering topic, format,
+safety-content density, surface-feature distribution, etc.; we
+cannot distinguish these from genuine model-side eval-recognition
+in this design, see §8 + Devbunova 2026) and *not* in any framing
 we added — is enough to shift refusal behavior on **5 of 6 frontier
 and frontier-adjacent reasoning models from 4 different model labs.**
 This is V2's headline positive finding and it generalizes well
@@ -1314,8 +1317,11 @@ strata and consistent with V1's qwen3-VEA pattern (§5.2). **The
 behavioral story above is independent of this verbalization
 pattern**: qwen3's alignment-stratum +5.7pp refusal shift is small
 relative to its 36% strict-VEA rate, so most qwen3 strict-VEA
-rollouts are not associated with a behavioral change. V1's mediation
-null (§5.3) generalizes to V2.
+rollouts are not associated with a behavioral change. This is
+qualitatively consistent with the V1 mediation null (§5.3) and with
+Knecht et al. (2026)'s broad-scope null, but V2 does not retest
+mediation: we report V2 strict-VEA cell means but do not run a
+per-prompt VEA-flip diff-in-diff on V2 rollouts.
 
 #### 5.5.7 Secondary finding: opus's adaptive thinking skips on eval-shaped prompts
 
@@ -1836,7 +1842,7 @@ and flat (CI includes zero) on the four other models including both
 closed-CoT additions**. The three experiments agree: V1's BeaverTails
 result was the safety-prompt-specific signature of a behavioral
 pattern that operates only on safety/alignment-relevant prompts, only
-on certain frontier models, and only at small absolute magnitude on
+on certain tested models, and only at small absolute magnitude on
 the broader (non-BeaverTails) corpus.
 
 **(ii) Intrinsic eval-label is a robust refusal predictor across
@@ -2175,11 +2181,15 @@ cue attribution across three clauses* rather than to any single
 clause's propositional content. The intrinsic-label effect
 generalizes across 5 of 6 models from 4 labs (V2); the explicit-
 framing effect is direction-asymmetric and lives in a specific
-subset of models (qwen3 +, opus −; null on four others). Both
-effects survive in the strict-VEA-stable stratum, so neither is
-explained by the measured VEA channel — consistent with Knecht et
-al. (2026)'s broad-scope finding that VEA does not robustly drive
-behavior under CoT-level interventions. **Prompt-level eval cues
+subset of models (qwen3 +, opus −; null on four others). **The
+explicit-framing safety effects survive in the strict-VEA-stable
+stratum** (V1 §5.4), so the explicit-framing channel is not
+explained by measured VEA; **the intrinsic-label effect is
+behavioral-only in this design** (V2 does not VEA-flip-stratify,
+and closed-CoT models have no VEA channel to measure). Both
+results are consistent with Knecht et al. (2026)'s broad-scope
+finding that VEA does not robustly drive behavior under CoT-level
+interventions. **Prompt-level eval cues
 exist as behavioral signals; explicit-VEA monitoring of CoT does
 not capture where those signals act.**
 
@@ -2238,13 +2248,6 @@ https://www.goodfire.ai/research/verbalized-eval-awareness-inflates-measured-saf
 Chaudhary, M. (2026). *In-Context Environments Induce
 Evaluation-Awareness in Language Models.* arXiv:2603.03824.
 
-Devbunova, A. (2026). *Format Sensitivity and Evaluation-Awareness
-Conflation in Large Language Models.* arXiv:2603.19426. **[verify
-exact title and author list at submission time; this paper argues
-that apparent eval-awareness evidence can collapse into
-format-sensitivity artifacts, and is the relevant disclaimer for
-this paper's V2 intrinsic-eval-label finding — see §8.]**
-
 Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L.,
 Plappert, M., Tworek, J., Hilton, J., Nakano, R., Hesse, C., &
 Schulman, J. (2021). *Training Verifiers to Solve Math Word
@@ -2252,6 +2255,10 @@ Problems.* arXiv:2110.14168.
 
 DeepSeek-AI (2025). *DeepSeek-V3.2 Technical Report.*
 arXiv:2512.02556.
+
+Devbunova, V. (2026). *Is Evaluation Awareness Just Format
+Sensitivity? Limitations of Probe-Based Evidence under Controlled
+Prompt Structure.* arXiv:2603.19426.
 
 Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D.,
 & Steinhardt, J. (2021). *Measuring Massive Multitask Language
@@ -2261,11 +2268,9 @@ Representations. arXiv:2009.03300.
 Holm, S. (1979). A simple sequentially rejective multiple test
 procedure. *Scandinavian Journal of Statistics,* 6(2), 65-70.
 
-Hua, et al. (2025/2026). *Steering Eval-Aware Model Organisms.*
-arXiv:2510.20487. **[verify full author list and exact title at
-submission time; this paper is a steering / model-organism study
-of explicit eval-awareness; relevant to §2 Related Work and §8
-limitations as a closely related design point.]**
+Hua, T. T., Qin, A., Marks, S., & Nanda, N. (2025). *Steering
+Evaluation-Aware Language Models to Act Like They Are Deployed.*
+arXiv:2510.20487.
 
 Ji, J., Liu, M., Dai, J., Pan, X., Zhang, C., Zhang, C., Bian, C.,
 Sun, R., Wang, Y., & Yang, Y. (2023). *BeaverTails: Towards Improved
@@ -2279,11 +2284,9 @@ University of Stuttgart. arXiv:2605.05835, May 7, 2026.
 Lin, S., Hilton, J., & Evans, O. (2022). *TruthfulQA: Measuring How
 Models Mimic Human Falsehoods.* ACL. arXiv:2109.07958.
 
-Nguyen, et al. (2025). *Probing and Steering Evaluation Awareness in
-Language Models.* arXiv:2507.01786. **[verify full author list and
-exact title at submission time; this paper is a probing/steering
-methodology directly relevant to §2 Related Work as a
-representation-level alternative to our behavioral approach.]**
+Nguyen, J., Hoang, K., Attubato, C. L., & Hofstätter, F. (2025).
+*Probing and Steering Evaluation Awareness of Language Models.*
+arXiv:2507.01786.
 
 Needham, J., Edkins, G., Pimpale, G., Bartsch, H., & Hobbhahn, M.
 (2025). *Large Language Models Often Know When They Are Being
