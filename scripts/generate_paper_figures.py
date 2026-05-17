@@ -159,9 +159,8 @@ def _render_refusal_forest(summary: Dict[str, Any], out_path: Path) -> None:
     )
     ax.grid(axis="x", alpha=0.25)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=160, bbox_inches="tight")
+    _save_figure(fig, out_path)
     plt.close(fig)
-    LOGGER.info("wrote %s", out_path)
 
 
 # ---------------------------------------------------------------------------
@@ -206,9 +205,8 @@ def _render_vea_inflation(summary: Dict[str, Any], out_path: Path) -> None:
     )
     ax.grid(axis="y", alpha=0.25)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=160, bbox_inches="tight")
+    _save_figure(fig, out_path)
     plt.close(fig)
-    LOGGER.info("wrote %s", out_path)
 
 
 # ---------------------------------------------------------------------------
@@ -287,9 +285,8 @@ def _render_qwen3_per_family(summary: Dict[str, Any], out_path: Path) -> None:
     )
     ax.grid(axis="y", alpha=0.25)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=160, bbox_inches="tight")
+    _save_figure(fig, out_path)
     plt.close(fig)
-    LOGGER.info("wrote %s", out_path)
 
 
 # ---------------------------------------------------------------------------
@@ -429,9 +426,8 @@ def _render_mediation_panels(
         fontsize=12,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.92])
-    fig.savefig(out_path, dpi=160, bbox_inches="tight")
+    _save_figure(fig, out_path)
     plt.close(fig)
-    LOGGER.info("wrote %s", out_path)
 
 
 # ---------------------------------------------------------------------------
@@ -536,9 +532,13 @@ def _render_two_mechanism(
         _panel(axes[0], qwen3_row, "qwen3-235B (primary, n=500)")
         _panel(axes[1], qwen3_repl_row, "qwen3-235B (replication, n=200)")
         _panel(axes[2], opus_row, "claude-opus-4-7 (n=300)")
+        for idx, ax in enumerate(axes):
+            _add_panel_letter(ax, "abc"[idx])
     else:
         _panel(axes[0], qwen3_row, "qwen3-235B-thinking (n=500)")
         _panel(axes[1], opus_row, "claude-opus-4-7 (n=300)")
+        for idx, ax in enumerate(axes):
+            _add_panel_letter(ax, "ab"[idx])
 
     # Unify y-limits so the magnitude contrast is visually faithful
     # rather than each panel auto-scaling independently.
@@ -565,9 +565,8 @@ def _render_two_mechanism(
             fontsize=11,
         )
     fig.tight_layout(rect=[0, 0, 1, 0.88])
-    fig.savefig(out_path, dpi=160, bbox_inches="tight")
+    _save_figure(fig, out_path)
     plt.close(fig)
-    LOGGER.info("wrote %s", out_path)
 
 
 # ---------------------------------------------------------------------------
@@ -640,9 +639,8 @@ def _render_v2_intrinsic_main_effect(
     )
     ax.grid(axis="x", alpha=0.25)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=160, bbox_inches="tight")
+    _save_figure(fig, out_path)
     plt.close(fig)
-    LOGGER.info("wrote %s", out_path)
 
 
 # ---------------------------------------------------------------------------
@@ -747,9 +745,8 @@ def _render_triangulation(
     ax.legend(loc="best", frameon=True)
     ax.grid(axis="y", alpha=0.25)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=160, bbox_inches="tight")
+    _save_figure(fig, out_path)
     plt.close(fig)
-    LOGGER.info("wrote %s", out_path)
 
 
 # ---------------------------------------------------------------------------
@@ -788,7 +785,7 @@ def _render_v3_clause_attribution(
     ]
     bar_keys = ["eval_only", "reviewer_only", "comparison_only", "_sum", "_full"]
 
-    for ax, (model_label, entry) in zip(axes, targets):
+    for panel_idx, (ax, (model_label, entry)) in enumerate(zip(axes, targets)):
         singleton_effects = entry.get("singleton_effects") or {}
         full = entry.get("full_inject_effect") or {}
         sum_point = float(entry.get("singleton_sum_point") or 0.0)
@@ -834,6 +831,7 @@ def _render_v3_clause_attribution(
             fontsize=10,
         )
         ax.grid(axis="y", alpha=0.25)
+        _add_panel_letter(ax, "ab"[panel_idx])
 
     axes[0].set_ylabel("Δ refusal (condition − neutral, paired)")
     fig.suptitle(
@@ -843,9 +841,8 @@ def _render_v3_clause_attribution(
         fontsize=11,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.91])
-    fig.savefig(out_path, dpi=160, bbox_inches="tight")
+    _save_figure(fig, out_path)
     plt.close(fig)
-    LOGGER.info("wrote %s", out_path)
 
 
 # ---------------------------------------------------------------------------
@@ -880,7 +877,7 @@ def _render_v3_vea_dissociation(
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
 
-    for ax, (model_label, entry) in zip(axes, targets):
+    for panel_idx, (ax, (model_label, entry)) in enumerate(zip(axes, targets)):
         cells = entry.get("cells") or {}
         refusals = [float((cells.get(c) or {}).get("refusal_mean", 0.0)) for c in conditions]
         veas = [float((cells.get(c) or {}).get("vea_mean", 0.0)) for c in conditions]
@@ -909,6 +906,7 @@ def _render_v3_vea_dissociation(
         ax2.set_ylim(0, max(0.5, max(veas) * 1.15))
 
         ax.set_title(model_label, fontsize=10)
+        _add_panel_letter(ax, "ab"[panel_idx])
 
     fig.suptitle(
         "V3 verbalization-vs-behavior dissociation: same additive refusal\n"
@@ -917,14 +915,37 @@ def _render_v3_vea_dissociation(
         fontsize=11,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.88])
-    fig.savefig(out_path, dpi=160, bbox_inches="tight")
+    _save_figure(fig, out_path)
     plt.close(fig)
-    LOGGER.info("wrote %s", out_path)
 
 
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
+
+
+def _save_figure(fig, out_path: Path) -> None:
+    """Save figure as both PNG (for GitHub markdown rendering) and PDF
+    (for arXiv / LaTeX submission). The PDF is vector and scales without
+    pixelation in the final paper PDF. Both files share the same stem
+    so paper Markdown references work unchanged (it links to .png) and
+    the LaTeX export pass swaps in .pdf automatically via pandoc.
+    """
+    fig.savefig(out_path, dpi=160, bbox_inches="tight")
+    pdf_path = out_path.with_suffix(".pdf")
+    fig.savefig(pdf_path, bbox_inches="tight")
+    LOGGER.info("wrote %s (+%s)", out_path, pdf_path.name)
+
+
+def _add_panel_letter(ax, letter: str) -> None:
+    """Add a small bold (a)/(b)/(c) label in the upper-left of the
+    subplot, in axes coordinates so it doesn't move with data."""
+    ax.text(
+        -0.08, 1.02, f"({letter})",
+        transform=ax.transAxes,
+        fontsize=12, fontweight="bold",
+        ha="right", va="bottom",
+    )
 
 
 def _short_model(name: str) -> str:

@@ -1297,16 +1297,21 @@ all three claims.**
 
 ![](figures/fig7_triangulation.png)
 
-**Figure 7.** V1+V2+V3 direction-asymmetry triangulation on opus and
-qwen3. Y-axis: paired Δ refusal (inject − neutral) with 95% CIs.
-X-axis: the three pre-registered experiments. V1 measures on
-BeaverTails safety prompts (replication sample n=200). V2 measures
-on Apollo's alignment-eval stratum deep-dive (n=53 per model).
-V3 measures on Apollo's full alignment-eval pool (n=297 per active
-model). The opposite-signed pattern (opus −, qwen3 +) replicates at
-consistent within-model magnitudes across three independent samples
-and two distinct corpora (BeaverTails, Apollo). The cross-experiment
-triangulation rules out sample-specific or corpus-specific artifacts.
+**Figure 7.** V1+V2+V3 cross-experiment triangulation of
+direction-asymmetric refusal shifts on opus and qwen3. Y-axis: paired
+Δ refusal (inject − neutral) with 95% CIs. X-axis: the three
+pre-registered experiments. V1 measures on BeaverTails safety prompts
+(replication sample n=200). V2 measures on Apollo's alignment-eval
+stratum deep-dive (n=53 per model). V3 measures on Apollo's full
+alignment-eval pool (n=297 per active model). The opposite-signed
+pattern (opus −, qwen3 +) replicates at consistent within-model
+magnitudes across three independent samples and two distinct corpora
+(BeaverTails, Apollo). Lines connect same-model estimates across
+independent samples to aid visual tracking of sign preservation
+per model; they do not denote a temporal trajectory or repeated
+measurement of the same prompts. The cross-experiment same-model
+sign preservation rules out sample-specific or corpus-specific
+artifacts.
 
 ![](figures/fig8_v3_clause_attribution.png)
 
