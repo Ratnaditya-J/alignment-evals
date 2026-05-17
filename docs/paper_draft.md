@@ -250,9 +250,13 @@ first-discovery.
    clauses.
 3. **Triangulation of model-heterogeneous direction-asymmetric
    refusal shifts on safety/alignment prompts across three
-   independent samples (extends Burnat & Davidson 2026).**
+   independent samples (extends Burnat & Davidson 2026; complements
+   Abdelnabi & Salem 2025).**
    Burnat & Davidson (2026) report model-heterogeneous directionality
-   under explicit eval / deployment / neutral framing. Our extension
+   under explicit eval / deployment / neutral framing; Abdelnabi &
+   Salem (2025) report model-dependent compliance under linear
+   steering of a test-awareness direction in activations, providing
+   a white-box analogue to the prompt-level pattern. Our extension
    triangulates the same per-model sign (opus −, qwen3 +) across
    three independent samples and two distinct corpora: BeaverTails
    safety (V1 strict-VEA-stable stratum from the pre-registered
@@ -2357,7 +2361,11 @@ channel is not explained by measured VEA; the intrinsic-label effect
 is behavioral-only in this design (V2 does not run VEA-flip mediation,
 and closed-CoT models have no VEA channel). Both are consistent with
 Knecht et al. (2026)'s broad-scope finding that VEA does not robustly
-drive behavior under CoT-level interventions.** Prompt-level eval
+drive refusal / answer-distribution behavior under CoT-level
+interventions (a scoping noted to avoid implying contradiction with
+Schoen et al. 2025, which establishes a CoT-causal positive on a
+different behavioral outcome — covert action under deliberative
+anti-scheming training, §2).** Prompt-level eval
 cues exist as behavioral signals; explicit-VEA monitoring of CoT
 does not capture the explicit-framing safety shifts we observe.
 
@@ -2448,9 +2456,9 @@ Devbunova, V. (2026). *Is Evaluation Awareness Just Format
 Sensitivity? Limitations of Probe-Based Evidence under Controlled
 Prompt Structure.* arXiv:2603.19426.
 
-Fan, Y., Zhang, W., Pan, X., & Yang, M. (2025/2026). *Evaluation
-Faking: Unveiling Observer Effects in Safety Evaluation of Frontier
-AI Systems.* arXiv:2505.17815.
+Fan, Y., Zhang, W., Pan, X., & Yang, M. (2025). *Evaluation Faking:
+Unveiling Observer Effects in Safety Evaluation of Frontier AI
+Systems.* arXiv:2505.17815.
 
 Frank, G. N. (2026). *Detection Is Cheap, Routing Is Learned: Why
 Refusal-Based Alignment Evaluation Fails.* arXiv:2603.18280.
@@ -2511,8 +2519,9 @@ arXiv:2505.09388.
 Schoen, et al. (2025). *Stress Testing Deliberative Alignment for
 Anti-Scheming Training.* arXiv:2509.15541.
 
-van der Weij, T., et al. (2024/2025). *AI Sandbagging: Language
-Models can Strategically Underperform on Evaluations.* ICLR 2025.
+van der Weij, T., Hofstätter, F., Jaffe, O., Brown, S. F., & Ward,
+F. R. (2024/2025). *AI Sandbagging: Language Models can
+Strategically Underperform on Evaluations.* ICLR 2025.
 arXiv:2406.07358.
 
 Xiong, L., Bhargava, N., Hong, J., Chang, J., Liu, H., Sharma, V.,
