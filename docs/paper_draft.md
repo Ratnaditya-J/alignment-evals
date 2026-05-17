@@ -343,7 +343,7 @@ the V1+V2+V3 qwen3 +/opus − pattern we report under explicit
 inject framing in §5.4, §5.5.4, and §5.6. Our specific contribution
 on this thread is therefore not first-discovery of model-heterogeneous
 directionality under explicit framing, but rather (a) triangulation
-of the same per-model sign across three pre-registered samples and
+of the same per-model sign across three independent samples and
 two distinct corpora (BeaverTails + Apollo), (b) addition of an
 intrinsic-eval-label design axis (V2) that Burnat & Davidson do not
 test, and (c) addition of a 5-condition clause ablation (V3) that
@@ -2374,9 +2374,8 @@ Devbunova, V. (2026). *Is Evaluation Awareness Just Format
 Sensitivity? Limitations of Probe-Based Evidence under Controlled
 Prompt Structure.* arXiv:2603.19426.
 
-Frank, J. (2026). *Detection Is Cheap, Routing Is Learned.*
-arXiv:2603.18280. [verify exact title and full author list at
-submission time]
+Frank, G. N. (2026). *Detection Is Cheap, Routing Is Learned: Why
+Refusal-Based Alignment Evaluation Fails.* arXiv:2603.18280.
 
 Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D.,
 & Steinhardt, J. (2021). *Measuring Massive Multitask Language
