@@ -160,9 +160,10 @@ Section 9 concludes.
 ### 1.1 Contributions
 
 1. **Triangulated direction asymmetry across three pre-registered
-   experiments and six frontier and frontier-adjacent reasoning
-   models from four labs.** The same opposite-signed refusal-shift
-   pattern (opus −, qwen3 +) replicates on BeaverTails (V1),
+   experiments and six reasoning models (frontier and
+   frontier-adjacent) from four labs.** The same opposite-signed
+   refusal-shift pattern (opus −, qwen3 +) replicates on
+   BeaverTails (V1),
    Apollo's alignment-eval stratum (V2
    deep-dive), and the V3 inject-clause-ablation sample, at
    consistent within-model magnitudes (qwen3: +0.217 / +0.057 /
@@ -989,7 +990,7 @@ produces ~zero pooled effect on all six models, spanning open- and
 closed-CoT families and three model labs.** Read across both
 experiments, this is a scope finding: the inject effect operates on
 safety-relevant prompts only and dilutes to zero when averaged across
-a mixed corpus. The alignment-stratum deep-dive in §5.5.4 confirms
+a mixed corpus. The alignment-stratum deep-dive in §5.5.4 supports
 this reading by recovering V1's directions at proportional magnitude
 on the safety-relevant subset of Apollo's eval prompts.
 
@@ -1459,7 +1460,7 @@ The closed-CoT backfill adds two strong null checks to V3:
   Every singleton effect is ±0.01 with CIs cleanly including zero. gpt-5.5
   reads as a model with a stable refusal posture on Apollo alignment-eval
   prompts that is completely unresponsive to extrinsic eval-framing
-  at any clause resolution. This confirms V1's gpt-5.5 behavioral null
+  at any clause resolution. This reproduces V1's gpt-5.5 behavioral null
   (V1 §5.1) at clause resolution.
 - **gemini-2.5-pro:** full_inject Δ refusal **−0.010** with CI [−0.05, +0.03].
   Each singleton mildly suppresses refusal (each Δ ≈ −0.02 to −0.03),
