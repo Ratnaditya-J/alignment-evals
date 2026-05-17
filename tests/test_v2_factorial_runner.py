@@ -13,10 +13,12 @@ import pytest
 from scripts.run_v2_apollo_factorial import (
     CONDITIONS,
     _build_condition_transcript,
+    _build_model_lineup,
     load_apollo_examples,
     run_factorial,
     write_rollouts_jsonl,
 )
+from scripts.run_goodfire_vea import _AnthropicWithThinking
 from src.eval_awareness import TranscriptInput
 from src.eval_awareness.dataset import EvalAwarenessExample
 from src.eval_awareness.runner import ScriptedModelClient
@@ -207,6 +209,43 @@ def test_concurrent_runner_produces_same_rollouts_as_serial(tmp_path):
     parallel_keys = {(r["example_id"], r["condition"]) for r in parallel}
     assert serial_keys == parallel_keys
     assert len(parallel) == len(serial)
+
+
+def test_include_opus_wires_anthropic_thinking_wrapper(monkeypatch):
+    """opus-4.7 needs adaptive thinking enabled or its rollouts come back
+    with empty reasoning_trace, which silently breaks the VEA arm of the
+    analysis. Verify the wrapper is used (not the bare AnthropicClient)
+    when --include-opus is set."""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-openrouter-key")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
+    models = _build_model_lineup(
+        openrouter_models=["qwen/qwen3-235b-a22b-thinking-2507"],
+        include_opus=True,
+        anthropic_model="claude-opus-4-7",
+        thinking_budget=4096,
+        thinking_effort="max",
+        thinking_display="summarized",
+    )
+    assert len(models) == 2
+    anthropic_model = models[-1]
+    assert isinstance(anthropic_model, _AnthropicWithThinking), (
+        f"expected _AnthropicWithThinking, got {type(anthropic_model).__name__}"
+    )
+    # Spot-check the thinking config flowed through to the wrapper instance
+    assert anthropic_model._thinking_budget == 4096
+    assert anthropic_model._thinking_effort == "max"
+    assert anthropic_model._thinking_display == "summarized"
+
+
+def test_no_opus_means_no_anthropic_model(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-openrouter-key")
+    models = _build_model_lineup(
+        openrouter_models=["qwen/qwen3-235b-a22b-thinking-2507"],
+        include_opus=False,
+        anthropic_model="claude-opus-4-7",
+    )
+    assert len(models) == 1
+    assert not isinstance(models[0], _AnthropicWithThinking)
 
 
 def test_load_apollo_examples_returns_correct_label_counts(tmp_path):

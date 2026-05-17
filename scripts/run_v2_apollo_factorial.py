@@ -62,6 +62,12 @@ from scripts.run_cross_protocol_comparison import (  # noqa: E402
     _refusal_score,
     _safe_call,
 )
+# Reuse V1's extended-thinking wrapper so opus-4.7 actually returns
+# reasoning blocks. Without it the bare AnthropicClient gets text-only
+# responses, which silently breaks the VEA analysis on opus rollouts
+# (reasoning_trace empty -> VEA judge short-circuits to no_trace -> opus
+# VEA cells in the analysis are all 0).
+from scripts.run_goodfire_vea import _AnthropicWithThinking  # noqa: E402
 
 LOGGER = logging.getLogger("v2_apollo_factorial")
 
@@ -302,14 +308,29 @@ def _build_openrouter_model(model_id: str) -> OpenRouterClient:
     )
 
 
-def _build_anthropic_model(model_id: str) -> AnthropicClient:
-    return AnthropicClient(
+def _build_anthropic_model(
+    model_id: str,
+    *,
+    thinking_budget: int,
+    thinking_effort: Optional[str],
+    thinking_display: str,
+) -> AnthropicClient:
+    """Build an Anthropic client with extended thinking enabled.
+
+    opus-4.7 requires this; without it the model returns text-only
+    responses and the VEA judge sees empty reasoning_trace on every
+    opus rollout.
+    """
+    return _AnthropicWithThinking(
         name=f"anthropic:{model_id}",
         base_url=os.environ.get(
             "ANTHROPIC_BASE_URL", "https://api.anthropic.com/v1"
         ),
         api_key=os.environ["ANTHROPIC_API_KEY"],
         model=model_id,
+        thinking_budget=thinking_budget,
+        thinking_effort=thinking_effort,
+        thinking_display=thinking_display,
     )
 
 
@@ -319,18 +340,34 @@ _DEFAULT_OPENROUTER_MODELS: Tuple[str, ...] = (
     "moonshotai/kimi-k2-thinking",
 )
 _DEFAULT_ANTHROPIC_MODEL = "claude-opus-4-7"
+# Matches the V1 defaults in scripts/run_goodfire_vea.py — keep in sync
+# so opus rollouts in V2 use the same thinking config as the V1 paper.
+_DEFAULT_THINKING_BUDGET = 4096
+_DEFAULT_THINKING_EFFORT = "max"
+_DEFAULT_THINKING_DISPLAY = "summarized"
 
 
 def _build_model_lineup(
     openrouter_models: Sequence[str],
     include_opus: bool,
     anthropic_model: str,
+    *,
+    thinking_budget: int = _DEFAULT_THINKING_BUDGET,
+    thinking_effort: Optional[str] = _DEFAULT_THINKING_EFFORT,
+    thinking_display: str = _DEFAULT_THINKING_DISPLAY,
 ) -> List[Any]:
     models: List[Any] = [
         _build_openrouter_model(model_id) for model_id in openrouter_models
     ]
     if include_opus:
-        models.append(_build_anthropic_model(anthropic_model))
+        models.append(
+            _build_anthropic_model(
+                anthropic_model,
+                thinking_budget=thinking_budget,
+                thinking_effort=thinking_effort,
+                thinking_display=thinking_display,
+            )
+        )
     return models
 
 
@@ -388,6 +425,24 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help="Anthropic model id used when --include-opus is set.",
     )
     parser.add_argument(
+        "--thinking-budget",
+        type=int,
+        default=_DEFAULT_THINKING_BUDGET,
+        help="Anthropic extended-thinking token budget (legacy API).",
+    )
+    parser.add_argument(
+        "--thinking-effort",
+        choices=("low", "medium", "high", "xhigh", "max"),
+        default=_DEFAULT_THINKING_EFFORT,
+        help="Anthropic adaptive-thinking effort (opus-4.7 API).",
+    )
+    parser.add_argument(
+        "--thinking-display",
+        choices=("summarized", "omitted"),
+        default=_DEFAULT_THINKING_DISPLAY,
+        help="Anthropic thinking display mode (opus-4.7 API).",
+    )
+    parser.add_argument(
         "--rollout-concurrency",
         type=int,
         default=16,
@@ -430,6 +485,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         args.openrouter_models,
         include_opus=args.include_opus,
         anthropic_model=args.anthropic_model,
+        thinking_budget=args.thinking_budget,
+        thinking_effort=args.thinking_effort,
+        thinking_display=args.thinking_display,
     )
     if not models:
         LOGGER.error("no models in the lineup; aborting")

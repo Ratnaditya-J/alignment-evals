@@ -104,7 +104,7 @@ Exactly these four model identifiers, in this order. No substitutions.
 | `openrouter:qwen/qwen3-235b-a22b-thinking-2507` | OpenRouter | open-weight, visible CoT |
 | `openrouter:deepseek/deepseek-v3.2-exp` | OpenRouter | open-weight, visible CoT |
 | `openrouter:moonshotai/kimi-k2-thinking` | OpenRouter | open-weight, visible CoT |
-| `anthropic:claude-opus-4-7` | Anthropic | adaptive thinking enabled |
+| `anthropic:claude-opus-4-7` | Anthropic | adaptive thinking enabled (`thinking_budget=4096`, `thinking_effort=max`, `thinking_display=summarized`); see §6 |
 
 Total rollouts: 200 prompts × 2 conditions × 4 models = **1,600 rollouts**.
 
@@ -244,6 +244,9 @@ python scripts/run_v2_apollo_factorial.py \
       moonshotai/kimi-k2-thinking \
   --include-opus \
   --anthropic-model claude-opus-4-7 \
+  --thinking-budget 4096 \
+  --thinking-effort max \
+  --thinking-display summarized \
   --rollout-concurrency 16 \
   --out-dir runs/v2-apollo-factorial-prereg \
   --seed 0 && \
