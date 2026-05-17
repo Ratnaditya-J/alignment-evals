@@ -1885,6 +1885,96 @@ the asymmetry comes from.
 
 ---
 
+## References
+
+Citations are listed alphabetically by first author. Items marked
+**[verify]** are best-effort identifications by the authors for
+which the exact venue or arXiv ID should be confirmed against the
+source before final submission. Items marked **[in-text only]** are
+referenced in the paper body but lack a formal entry here pending
+disambiguation.
+
+Anthropic. *Claude Opus 4.7 Model Card.* Anthropic, 2026.
+[verify URL at submission time]
+
+Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L.,
+Plappert, M., Tworek, J., Hilton, J., Nakano, R., Hesse, C., &
+Schulman, J. (2021). *Training Verifiers to Solve Math Word
+Problems.* arXiv:2110.14168.
+
+DeepSeek-AI. *DeepSeek-V3.2 Technical Report.* 2025.
+[verify URL at submission time]
+
+Goodfire Research. *Verbalized Eval-Awareness in Reasoning Models.*
+2024-2025 publication series.
+[verify: this paper's "Goodfire-style" setup follows the spontaneous
+verbalized-eval-awareness operationalization from Goodfire's
+published research; confirm exact title, authors, and venue/URL
+against the Goodfire Research publication index before submission.]
+
+Google DeepMind. *Gemini 2.5 Pro Technical Report.* 2025.
+[verify URL at submission time]
+
+Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D.,
+& Steinhardt, J. (2021). *Measuring Massive Multitask Language
+Understanding (MMLU).* ICLR. arXiv:2009.03300.
+
+Holm, S. (1979). A simple sequentially rejective multiple test
+procedure. *Scandinavian Journal of Statistics,* 6(2), 65-70.
+
+Ji, J., Liu, M., Dai, J., Pan, X., Zhang, C., Bian, C., Sun, R.,
+Wang, Y., & Yang, Y. (2023). *BeaverTails: Towards Improved Safety
+Alignment of LLM via a Human-Preference Dataset.* NeurIPS.
+arXiv:2307.04657. **[verify arXiv ID]**
+
+Lin, S., Hilton, J., & Evans, O. (2022). *TruthfulQA: Measuring How
+Models Mimic Human Falsehoods.* ACL. arXiv:2109.07958.
+
+Moonshot AI. *Kimi K2 Thinking.* 2025. [verify URL at submission
+time]
+
+Needham, J. J. et al. (2025). *Apollo Research Eval-Awareness
+Corpus.* arXiv:2505.23836. Data:
+`huggingface.co/datasets/jjpn2/eval_awareness`. **[verify exact
+title and full author list at submission time; arXiv ID confirmed
+by V2 pre-reg §3.1]**
+
+OpenAI. *GPT-5 / GPT-5.5 System Card.* 2025.
+[verify URL at submission time]
+
+OpenRouter. *Inference API and model routing service.*
+`https://openrouter.ai/`. Used as the meta-provider for all
+non-Anthropic model calls in V1, V2, and V3 (model IDs in
+§3, §5.5.1, §5.6.1).
+
+Park, P. S., Goldstein, S., O'Gara, A., Chen, M., & Hendrycks, D.
+(2024). *AI Deception: A Survey of Examples, Risks, and Potential
+Solutions.* Patterns, 5(5). arXiv:2308.14752. **[verify: the
+in-text "Park et al. (2023)" citation in §2 refers to this work;
+confirm pre-print vs published-year usage.]**
+
+Qwen Team. *Qwen3 Technical Report.* Alibaba Cloud, 2024-2025.
+arXiv:2407.10671. **[verify version targeted at submission time;
+this paper uses `qwen3-235b-a22b-thinking-2507`.]**
+
+### In-text-only references (need disambiguation)
+
+The paper body refers to the following at a topical level without a
+precise per-paper citation. Resolve before submission:
+
+- *Sandbagging / strategic deception literature* (§2 "distinct from
+  sandbagging or strategic deception claims"). Candidates include
+  Hagendorff (2024) and the broader AI Deception survey above.
+- *Inspect AI* (UK AISI evaluation framework, referenced indirectly
+  in §3 and §6 as a representative comparison evaluation harness).
+- *Pre-registration practice in ML* — the V1/V2/V3 design follows
+  the pre-registration discipline from psychology/replication-
+  science literature; cite the Wagenmakers et al. (2012) /
+  Nosek et al. (2018) pre-registration framework if discussing
+  methodology background.
+
+---
+
 ## Appendix A. Data and code availability
 
 All rollouts, classifications, summary JSONs, analysis scripts,
