@@ -1787,9 +1787,10 @@ inject main effect at −0.010 [−0.050, +0.030]. **GPT-5.5 has a
 stable refusal posture (highest baseline of any model, 0.37) that is
 completely unresponsive to extrinsic eval-framing at any clause
 resolution.** Gemini-2.5-pro behaves similarly but with a borderline
-sub-additive pattern at the singleton level. Closed-CoT models
-confirm the inject effect is restricted to a specific subset of
-the tested model lineup, not a universal eval-awareness phenomenon.
+sub-additive pattern at the singleton level. Closed-CoT models make
+it less plausible that the inject effect is universal across the
+tested lineup; the V3 evidence is more consistent with the effect
+being restricted to a specific subset.
 
 **What V2 + V3 do not change about V1.** Neither experiment re-ran
 the within-prompt mediation analysis from V1's §5.3 (no per-prompt
