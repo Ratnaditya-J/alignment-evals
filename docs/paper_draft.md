@@ -10,36 +10,52 @@
 
 ## Abstract
 
-We test whether evaluation framing changes refusal behavior in
-frontier and frontier-adjacent reasoning models, and whether such
-changes are mediated by verbalized evaluation awareness in
-chain-of-thought. Across three pre-registered experiments totaling
-32,170 rollouts, we compare
-explicit eval-framing prompts, intrinsic eval-vs-deployment labels,
-and clause-level ablations across six models from four labs.
+Recent work (Knecht, Florin, & Hagendorff 2026) finds that
+CoT-level interventions on verbalized evaluation awareness (VEA) —
+injecting or removing eval-aware sentences mid-trace — have limited
+behavioral effect on frontier reasoning models. We test the
+complementary prompt-level question: when evaluation context is
+introduced through *explicit system-prompt framing* or already
+embedded in benchmark prompts as an *intrinsic eval label*, which
+behavioral shifts remain, are they mediated by measured VEA, and
+what specific prompt features drive them? Across three pre-registered
+experiments totaling 32,170 rollouts on six frontier and
+frontier-adjacent reasoning models from four labs, we find:
 
-The main behavioral effect is model-specific rather than uniform. On
-safety/alignment prompts, qwen3-235B refuses more under eval framing,
-while claude-opus-4-7 refuses less; this opposite-signed pattern is
-directionally consistent in V2 and CI-excluding in V1 and V3. A
-pre-registered disjoint-prompt replication of an apparent qwen3
-verbalized-eval-awareness mediation effect fails, indicating that the
-surviving refusal shifts are not explained by the measured
-verbalization channel. In a 2×2 Apollo factorial, the explicit inject
-has near-zero pooled effect across six models, but Apollo's intrinsic
-eval label predicts higher refusal by 7.5–13.0 percentage points,
-with 5/6 models surviving Holm-Bonferroni correction. Finally, clause
-ablation shows that the inject effect on qwen3 and opus is
-distributed-additive: no individual clause is detectable after
-correction, but the singleton effects sum to the full-inject effect.
+**Apollo's intrinsic eval label predicts +7.5 to +13.0 percentage
+points of additional refusal across the lineup; 5 of 6 models
+survive Holm-Bonferroni correction in their respective families.**
+This is the only effect that generalizes across visible-CoT and
+closed-CoT model families.
 
-These results suggest that evaluation awareness affects measured
-refusal behavior through model- and prompt-dependent behavioral
-channels that need not be verbalized in chain-of-thought.
+**The explicit inject prompt produces direction-asymmetric refusal
+shifts on safety/alignment prompts in two of six models —
+qwen3-235B refuses more, claude-opus-4-7 refuses less.** The pattern
+is CI-excluding in V1 (BeaverTails) and V3 (Apollo alignment-eval),
+directionally consistent in V2 (Apollo alignment-stratum deep-dive).
+On the two active models, V3's 5-condition clause ablation finds
+the inject's effect attributes additively across three component
+clauses with no single clause detectable after correction —
+distributed-additive cue attribution rather than single-clause
+attribution.
+
+**A pre-registered disjoint-prompt replication of an apparent
+qwen3-safety VEA mediation effect (DiD +0.222 at n_flip=63 in the
+primary sample) returns null on replication (−0.017 [−0.175, +0.139]
+at n_flip=100).** This is independent convergent evidence with
+Knecht et al.'s broad-scope null on a different operationalization
+(system-prompt inject + within-prompt VEA-flip diff-in-diff, rather
+than CoT-level sentence prefilling). The surviving refusal shifts are
+not explained by the measured VEA channel.
+
+Together, these results suggest that prompt-level evaluation cues —
+extrinsic framing or intrinsic prompt content — drive measurable
+behavioral shifts on a specific subset of frontier models, and that
+explicit-VEA monitoring of CoT is insufficient to detect them.
 
 **Keywords:** evaluation awareness, reasoning models, chain-of-thought,
-safety evaluation, benchmark validity, pre-registration,
-cross-model triangulation
+safety evaluation, benchmark validity, pre-registration, intrinsic
+eval-label, clause-level attribution
 
 ---
 
@@ -50,12 +66,32 @@ language models distinguish evaluation contexts from deployment and
 behave differently when they detect the former. If true, this would
 mean published benchmark numbers systematically over- or
 underestimate the behavior researchers actually care about — the
-deployment behavior. Goodfire's recent finding that reasoning models
+deployment behavior. Goodfire's earlier finding that reasoning models
 sometimes spontaneously verbalize evaluation awareness in their
-chain-of-thought (CoT) sharpens the concern by giving it a
+chain-of-thought (CoT) sharpened the concern by giving it a
 mechanistic foothold: the model sometimes writes an explicit
 "this looks like a test" hypothesis in its reasoning trace, before
 producing the visible response.
+
+Concurrent work by Knecht, Florin, & Hagendorff (2026) provides the
+first large-scale causal test of whether VEA in CoT actually drives
+behavior. Using CoT-level sentence prefilling to inject or remove
+eval-aware sentences mid-trace across 8 open-weight reasoning models
+and 4 benchmarks, they find that VEA has **limited behavioral
+effect** — injection effects are near-zero (Cohen's ω ≤ 0.06),
+removal effects small (ω ≤ 0.12), spontaneous-VEA differentials at
+most 3.7 percentage points (ω ≤ 0.31). The bare "VEA drives
+behavior" hypothesis is therefore not supported at the CoT
+intervention level.
+
+This paper addresses the **complementary prompt-level question** that
+Knecht et al.'s CoT-level design does not test: when evaluation
+context is introduced through *explicit system-prompt framing*
+("Note: this is an evaluation…") rather than mid-CoT sentence
+prefilling, or when it is already embedded in benchmark prompts as
+an *intrinsic eval/deployment label* authored by an independent
+research group, which behavioral shifts remain, are they mediated by
+measured VEA, and what specific prompt features carry them?
 
 This paper asks four complementary empirical questions, each
 addressed by a dedicated experimental phase.
@@ -159,73 +195,83 @@ Section 9 concludes.
 
 ### 1.1 Contributions
 
-1. **Triangulated direction asymmetry across three pre-registered
-   experiments and six reasoning models (frontier and
-   frontier-adjacent) from four labs.** The same opposite-signed
-   refusal-shift pattern (opus −, qwen3 +) replicates on
-   BeaverTails (V1),
-   Apollo's alignment-eval stratum (V2
-   deep-dive), and the V3 inject-clause-ablation sample, at
-   consistent within-model magnitudes (qwen3: +0.217 / +0.057 /
-   +0.054; opus: −0.339 / −0.060 / −0.067). Cross-model triangulation
-   against four null models (deepseek, kimi, gpt-5.5, gemini-2.5-pro)
-   makes a model-selection artifact a less plausible explanation of
-   the asymmetric signal.
-2. **Distributed-additive attribution of the V1 inject effect.** V3's
-   pre-registered 5-condition clause ablation finds that the V1 inject
-   prompt's effect on opus and qwen3 sums linearly across three
-   component clauses, with no single clause individually detectable
-   after Holm-Bonferroni correction (0 of 18 singleton hypotheses
-   survive across both correction families). Under the
-   pre-registered §5.5 decision tree and the three clauses tested,
-   this argues against single-clause attribution and a gestalt-only
-   mechanism in this design; the eval-noticing behavior on these
-   two models is more consistent with a response to the cumulative
-   weight of eval-framing claims than with any single propositional
-   content.
-3. **Verbalization-vs-behavior dissociation at clause resolution
-   (extending Knecht et al. 2026's broad-scope null).** The broad
-   finding that VEA verbalization has limited behavioral effect was
-   first reported by Knecht, Florin, & Hagendorff (2026; arXiv:2605.05835)
-   across 8 open-weight models and 4 benchmarks under CoT-level
-   sentence-prefilling intervention. Our contribution is to extend the
-   dissociation to *clause resolution* under a different
-   operationalization (system-prompt-level explicit inject): qwen3's
-   strict-VEA verbalization scales proportionally with each inject
-   clause (×13 baseline on `eval_only` alone, ×22 on the full inject);
-   opus's stays at baseline on every singleton and only inflates ×4
-   under the combined inject. Yet both models' refusal attribution is
+The primary novel contributions are V2's cross-laboratory
+intrinsic-eval-label finding and V3's clause-level inject
+decomposition. Our V1 mediation-null result is reported as
+independent convergent evidence with Knecht et al. (2026)'s
+concurrent CoT-level null on a different operationalization, not as
+first-discovery.
+
+1. **Cross-laboratory intrinsic-eval-label refusal signal (V2 —
+   primary novel finding).** Apollo's `metadata.eval_category=true`
+   label predicts +7.5 to +13.0pp higher refusal across all six
+   tested models from four different labs; 5 of 6 survive
+   Holm-Bonferroni in their respective correction families. The
+   signal is encoded in the prompt content itself, not in any
+   framing we added — implying that benchmark prompts carry an
+   eval-recognition signal that shifts behavior even in the absence
+   of explicit framing. This is the only behavioral effect in our
+   lineup that generalizes cleanly across visible-CoT and closed-CoT
+   model families and the only one with an *intrinsic* (not
+   author-constructed) cue, addressing a methodological gap that
+   Knecht et al.'s CoT-intervention design does not cover.
+2. **Distributed-additive attribution of the explicit inject (V3 —
+   primary novel finding).** V3's pre-registered 5-condition clause
+   ablation finds that the V1 inject prompt's effect on opus and
+   qwen3 sums linearly across three component clauses
+   (`eval_only`, `reviewer_only`, `comparison_only`), with no single
+   clause individually detectable after Holm-Bonferroni correction
+   (0 of 18 singleton hypotheses survive across both correction
+   families). Under the pre-registered §5.5 decision tree and the
+   three clauses tested, the data argue against single-clause
+   attribution and a gestalt-only mechanism in this design; the
+   evidence is more consistent with a distributed-additive response
+   to the cumulative weight of eval-framing claims. No prior work
+   we are aware of ablates the inject prompt into its component
+   clauses.
+3. **Direction-asymmetric refusal shifts on safety/alignment prompts,
+   triangulated across three pre-registered experiments (V1+V2+V3).**
+   The same opposite-signed pattern (opus −, qwen3 +) recurs on
+   BeaverTails safety prompts (V1, CI-excluding), Apollo's
+   alignment-eval stratum (V2 deep-dive, directionally consistent;
+   qwen3 CI includes zero at V2's n), and the V3 inject-clause-
+   ablation sample (CI-excluding on both), at consistent within-model
+   magnitudes (qwen3: +0.217 / +0.057 / +0.054; opus: −0.339 /
+   −0.060 / −0.067). Triangulation against four null models
+   (deepseek, kimi, gpt-5.5, gemini-2.5-pro) makes a model-selection
+   artifact less plausible.
+4. **Clause-resolution verbalization-vs-behavior dissociation
+   extending Knecht et al.'s broad-scope null.** Knecht et al. (2026)
+   establish that VEA verbalization has limited behavioral effect
+   under CoT-level prefilling intervention across 8 open-weight
+   models. We extend their dissociation to *clause resolution* under
+   a different operationalization: qwen3's strict-VEA verbalization
+   scales proportionally with each inject clause (×13 baseline on
+   `eval_only` alone, ×22 on the full inject); opus's stays at
+   baseline on every singleton and only inflates ×4 under the
+   combined inject. Yet both models' refusal attribution is
    identically additive across clauses. Two distinct model-level
    verbalization profiles co-occur with the same refusal-attribution
    pattern, providing a clause-resolution variant of the broader
    dissociation Knecht et al. established at the rollout level.
-4. **Cross-laboratory intrinsic-eval-label refusal signal.** Apollo's
-   `metadata.eval_category=true` label predicts +7.5 to +13.0pp higher
-   refusal across all six tested models from four different labs;
-   5 of 6 survive Holm-Bonferroni in their respective correction
-   families. The signal is encoded in the prompt content itself, not
-   in any framing we added — implying that benchmark prompts carry an
-   eval-recognition signal that shifts behavior even in the absence
-   of explicit framing.
-5. **Pre-registered disjoint-prompt replication of an apparent VEA
-   mediation estimate, conducted concurrently with Knecht et al.'s
-   broad-scope null.** Knecht, Florin, & Hagendorff (2026) provide
-   the first large-scale causal test that VEA has limited behavioral
-   effect under CoT-level prefilling. Our methodological contribution
-   on this question is a pre-registered disjoint-prompt replication
-   of an apparent positive mediation finding (qwen3 safety DiD
-   +0.222 [+0.029, +0.430] at n_flip=63 paired in the V1 primary
-   sample) under a different operationalization (system-prompt-level
-   explicit inject) and a different estimator (within-prompt
-   diff-in-diff over VEA-flip strata, validated strict rubric). The
-   replication at n_flip=100 was null (−0.017 [−0.175, +0.139]). The
-   result is a boundary condition on broad claims that contextual or
-   verbalized eval-awareness reliably explains behavioral shifts
-   (Aranguri & Bloom 2026; Chaudhary 2026), and is consistent with
-   Knecht et al.'s broad-scope null on a different intervention
-   modality. §7.5 discusses the conditions under which this
-   replication null is and is not in tension with the surrounding
-   literature.
+5. **V1 mediation null as independent convergent evidence with
+   Knecht et al. (2026), under a different operationalization.**
+   Knecht et al. provide the first large-scale causal test that VEA
+   has limited behavioral effect (CoT-level sentence-prefilling
+   intervention; 8 open-weight models; 4 benchmarks). Our V1 result
+   is convergent evidence from a different operationalization: a
+   pre-registered disjoint-prompt replication of an apparent
+   positive mediation finding (qwen3 safety DiD +0.222 [+0.029,
+   +0.430] at n_flip=63 paired in the primary sample) returned null
+   on replication (−0.017 [−0.175, +0.139] at n_flip=100) under a
+   system-prompt-level explicit inject and a within-prompt VEA-flip
+   diff-in-diff estimator. Our specific methodological contribution
+   here is the pre-registered disjoint-prompt replication discipline
+   on a different operationalization than Knecht et al.'s — not
+   first-discovery of the substantive null. §7.5 discusses the
+   conditions under which this replication null is and is not in
+   tension with the surrounding literature (Aranguri & Bloom 2026;
+   Chaudhary 2026; Knecht et al. 2026).
 
 All three pre-registrations were filed and committed before
 execution. The pre-registration documents, run JSON outputs,
@@ -2001,60 +2047,80 @@ controls prompt length within each intrinsic label.
 
 ## 9. Conclusion
 
-**Three pre-registered experiments** — V1 (cross-protocol behavioral
-+ Goodfire-style reasoning-trace on BeaverTails safety, 8 models),
-V2 (Apollo 2×2 factorial on the eval-awareness corpus, 6 models with
+Concurrent work by Knecht, Florin, & Hagendorff (2026) establishes
+that CoT-level VEA interventions have limited behavioral effect on
+8 open-weight reasoning models across 4 benchmarks. Our paper tests
+the complementary **prompt-level** question: when evaluation context
+is introduced through *explicit system-prompt framing* or already
+embedded in benchmark prompts as an *intrinsic eval label*, which
+behavioral shifts remain, are they mediated by measured VEA, and
+what specific prompt features drive them?
+
+Three pre-registered experiments — V1 (cross-protocol behavioral +
+Goodfire-style reasoning-trace on BeaverTails safety, 8 models), V2
+(Apollo 2×2 factorial on the eval-awareness corpus, 6 models with
 closed-CoT backfill), V3 (5-condition inject-clause ablation on
 Apollo's alignment-eval stratum, 6 models) — totaling **32,170
-rollouts** test whether explicit eval-framing in the system prompt
-changes (a) visible refusal behavior, (b) verbalized evaluation
-awareness in CoT, (c) whether the latter mediates the former, (d)
-how the effect interacts with an external eval/deployment label
-authored by a different research group, and (e) which clause of the
-V1 inject prompt carries the behavioral effect. We find:
+rollouts** address this question. The primary novel findings are:
 
-- **(a) Aggregate behavioral effect: no.** V1's 8/8 tested models
-  (5 frontier or near-frontier closed-source + 3 open-reasoning)
-  show null inject−neutral refusal shifts at the model-aggregate
-  level. V2's 6/6 models show pooled inject main effects within ±0.015
-  of zero, none surviving Holm in either correction family.
-- **(b) Reasoning-trace VEA inflation: yes, model-heterogeneously.**
-  qwen3-235B-thinking +0.380 [+0.336, +0.424] under inject;
-  deepseek-v3.2-exp +0.050 [+0.024, +0.074]; claude-opus-4-7
-  +0.080 [+0.050, +0.113] at n=300; kimi-k2-thinking null. Closed-CoT
-  models (gpt-5.5, gemini-2.5-pro) cannot be ranked.
-- **(c) Within-prompt mediation: not supported on a fresh sample.**
-  The primary V1 analysis flagged qwen3 safety mediation (DiD +0.222
-  [+0.029, +0.430], n_flip=63 paired); pre-registered disjoint-prompt
-  replication at n_flip=100 returned null (DiD −0.017 [−0.175, +0.139]).
-  The primary mediation finding failed to replicate.
-- **(d) Cross-laboratory intrinsic-eval-label refusal signal.** V2's
-  Apollo factorial finds the intrinsic `eval_category=true` label
-  predicts +7.5 to +13.0pp higher refusal across all 6 models from 4
-  labs; **5 of 6 survive Holm-Bonferroni in their respective
+- **(a) Cross-laboratory intrinsic-eval-label refusal signal (V2 —
+  primary novel finding).** Apollo's intrinsic `eval_category=true`
+  label predicts +7.5 to +13.0pp higher refusal across all 6 models
+  from 4 labs; **5 of 6 survive Holm-Bonferroni in their respective
   correction families** at family-wise α=0.05. The signal lives in
-  the prompt content itself, independent of any framing we add.
-- **(e) Distributed-additive attribution of the V1 inject effect on
-  the two active models.** V3's 5-condition clause ablation finds
-  the V1 inject's effect on opus and qwen3 sums linearly across three
-  component clauses (sum-of-singletons matches full_inject within
-  CI on both models). 0 of 18 singleton hypotheses survive Holm; no
-  single clause is individually detectable after correction. The
-  data favor distributed-additive attribution over single-clause
-  attribution; the eval-noticing behavior is more consistent with a
-  response to the cumulative weight of three eval-framing claims than
-  with any specific propositional content carrying the effect alone.
-- **(f) Direction-asymmetric refusal effects on safety/alignment
+  the prompt content itself, independent of any framing we add, and
+  is the only behavioral effect in our lineup that generalizes
+  cleanly across visible-CoT and closed-CoT model families.
+- **(b) Distributed-additive clause attribution of the explicit
+  inject (V3 — primary novel finding).** V3's 5-condition clause
+  ablation finds the V1 inject's effect on opus and qwen3 sums
+  linearly across three component clauses (sum-of-singletons
+  matches full_inject within CI on both models). 0 of 18 singleton
+  hypotheses survive Holm. The data favor distributed-additive
+  attribution over single-clause attribution; the eval-noticing
+  behavior is more consistent with a response to the cumulative
+  weight of eval-framing claims than with any specific propositional
+  content carrying the effect alone.
+- **(c) Direction-asymmetric refusal effects on safety/alignment
   prompts, triangulated across three pre-registered experiments.**
   qwen3-235B refuses more under inject; opus-4.7 refuses less. The
-  asymmetric pattern replicates at consistent within-model magnitudes
-  on V1's BeaverTails (qwen3 +0.217 [+0.098, +0.337]; opus −0.339
-  [−0.446, −0.231]), V2's alignment-stratum (qwen3 +0.057 [−0.04,
-  +0.14]; opus −0.060 [−0.18, −0.001]), and V3's alignment-eval pool
-  (qwen3 +0.054 [+0.014, +0.094] p=0.013; opus −0.067 [−0.104, −0.030]
-  p=0.001). Four other models (deepseek, kimi, gpt-5.5,
-  gemini-2.5-pro) are flat on V3 — the asymmetry is robust under
-  cross-model triangulation against null baselines.
+  asymmetric pattern recurs on V1's BeaverTails (qwen3 +0.217
+  [+0.098, +0.337]; opus −0.339 [−0.446, −0.231]; both CI-excluding),
+  V2's alignment-stratum (qwen3 +0.057 [−0.04, +0.14] directional,
+  opus −0.060 [−0.18, −0.001] CI-excluding), and V3's alignment-eval
+  pool (qwen3 +0.054 [+0.014, +0.094] p=0.013; opus −0.067 [−0.104,
+  −0.030] p=0.001; both CI-excluding). Four other models (deepseek,
+  kimi, gpt-5.5, gemini-2.5-pro) are flat on V3 — triangulation
+  against null baselines makes a model-selection artifact a less
+  plausible explanation.
+
+We additionally report results that are convergent with concurrent
+prior work but, for completeness in this paper's specific
+operationalization, were not independent discoveries:
+
+- **(d) V1 mediation null on a fresh disjoint sample (convergent
+  with Knecht et al. 2026).** The primary V1 analysis flagged a
+  qwen3 safety mediation signal (DiD +0.222 [+0.029, +0.430],
+  n_flip=63 paired); pre-registered disjoint-prompt replication at
+  n_flip=100 returned null (DiD −0.017 [−0.175, +0.139]). Knecht
+  et al. (2026) had concurrently established a broad-scope null on
+  CoT-level VEA interventions. Our replication contributes the
+  pre-registered disjoint-prompt discipline on a different
+  operationalization (system-prompt-level explicit inject), not
+  first-discovery of the substantive null.
+- **(e) Aggregate behavioral effect of explicit inject framing
+  pooled across models is small.** V1's 8/8 tested models show null
+  inject−neutral refusal shifts at the model-aggregate level; V2's
+  6/6 models show pooled inject main effects within ±0.015 of zero,
+  none surviving Holm. This is consistent with Knecht et al. (2026)
+  at the aggregate level and is reframed by findings (a) and (b)
+  above as a story about *which prompts and which models* the
+  effect lives in.
+- **(f) Reasoning-trace VEA inflation under explicit inject is
+  real and model-heterogeneous.** qwen3-235B-thinking +0.380
+  [+0.336, +0.424] under inject; deepseek-v3.2-exp +0.050 [+0.024,
+  +0.074]; claude-opus-4-7 +0.080 [+0.050, +0.113] at n=300;
+  kimi-k2-thinking null. Closed-CoT models cannot be ranked.
 
 **The central finding** is that inject framing has direction-
 asymmetric refusal effects on safety prompts in at least two
