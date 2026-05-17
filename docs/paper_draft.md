@@ -323,7 +323,14 @@ this paper (see Appendix A).
 
 **Evaluation awareness.** Concerns about LLMs distinguishing eval
 from deployment contexts go back at least to Park et al. (2024) and
-have been operationalized in various ways. Laine et al. (2024)
+have been operationalized in various ways. The broader strategic-
+deception literature — alignment faking (Greenblatt et al., 2024),
+sandbagging-on-eval (van der Weij et al., 2025), and anti-scheming
+stress-testing (Schoen et al., 2025) — motivates the eval/deployment
+distinction as an alignment-eval validity concern that our V1/V2/V3
+designs all engage at the prompt and corpus level rather than at
+the training-time or scheming-policy level those papers study.
+Laine et al. (2024)
 introduce the Situational Awareness Dataset (SAD) as a foundational
 benchmark for whether models can recognize internal-evaluation versus
 deployment contexts and self-locate within them; SAD frames the
@@ -2223,7 +2230,14 @@ per cell would tighten per-prompt estimates further.
 prompts. We patched a math-response false-positive bug (pre-fix
 ~13% of `gpt-4o-mini` math step-by-step responses tagged
 `partial_refuse`; post-fix ~2%). The post-fix scorer is used for all
-numbers in this report.
+numbers in this report. A separate scope concern raised by Nair,
+Ruan, & Wang (2026; arXiv:2604.20995) is that standard harmful /
+refusal-heavy diagnostics can miss alignment faking under
+oversight-conditioned activation shifts; their value-conflict
+diagnostic is a different operationalization than refusal-rate
+scoring and we do not test it here, so our refusal-rate-based
+conclusions are properly bounded by what a refusal scorer can
+detect (cf. the explicit-VEA-monitor scope note in §7.3).
 
 **Pre-registration.** The original mixed-corpus findings were
 exploratory; the qwen3 safety mediation cell was followed up with a
@@ -2475,6 +2489,13 @@ Gupta, M., Nair, I., Wang, L., & Kumar, D. (2026). *Context Over
 Content: Exposing Evaluation Faking in Automated Judges.*
 arXiv:2604.15224.
 
+Greenblatt, R., Denison, C., Wright, B., Roger, F., MacDiarmid, M.,
+Marks, S., Treutlein, J., Belonax, T., Chen, J., Duvenaud, D.,
+Khan, A., Michael, J., Mindermann, S., Perez, E., Petrini, L.,
+Uesato, J., Kaplan, J., Shlegeris, B., Bowman, S. R., & Hubinger,
+E. (2024). *Alignment faking in large language models.* Anthropic /
+Redwood Research. arXiv:2412.14093.
+
 Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D.,
 & Steinhardt, J. (2021). *Measuring Massive Multitask Language
 Understanding (MMLU).* International Conference on Learning
@@ -2507,6 +2528,10 @@ Language Models.* arXiv:2605.08942.
 
 Lin, S., Hilton, J., & Evans, O. (2022). *TruthfulQA: Measuring How
 Models Mimic Human Falsehoods.* ACL. arXiv:2109.07958.
+
+Nair, Ruan, & Wang (2026). *Value-Conflict Diagnostics Reveal
+Widespread Alignment Faking in Language Models.* arXiv:2604.20995.
+[Full author list to be expanded from arXiv at submission time.]
 
 Nguyen, J., Hoang, K., Attubato, C. L., & Hofstätter, F. (2025).
 *Probing and Steering Evaluation Awareness of Language Models.*
