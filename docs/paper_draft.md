@@ -10,52 +10,107 @@
 
 ## Abstract
 
-**We measure whether eval framing changes safety refusal in
-reasoning models and find that it does — but the effect is
-direction-asymmetric across models, runs through a non-verbalized
-channel, and operates only on safety-relevant prompts.** Two
-experiments. **V1** (cross-protocol behavioral + Goodfire-style
-reasoning-trace analysis on BeaverTails safety prompts; 23,200
-rollouts total) finds qwen3-235B refuses +22pp more under inject
-framing and claude-opus-4-7 refuses −34pp less, both with CIs
-excluding zero. A pre-registered disjoint-prompt replication of the
-apparent qwen3 safety-VEA mediation effect (DiD +0.222 at n_flip=63
-in the primary sample) returns null on replication (−0.017 [−0.175,
-+0.139] at n_flip=100); what survives is the non-VEA-mediated,
-direction-asymmetric refusal shift visible in the strict-VEA-stable
-stratum. **V2** (pre-registered 2×2 factorial on Apollo Research's
-released eval-awareness corpus; 1,600 rollouts on 4 reasoning models)
-crosses Apollo's intrinsic eval/deployment label with the V1 inject
-framing and finds that **the pooled inject main effect is ~0 on all
-four models** — V1's safety-prompt-specific effect dilutes to zero
-when averaged across capability + alignment + deployment prompts.
-A stratified deep-dive recovers V1's direction asymmetry on the
-alignment-relevant subset (opus −6pp, qwen3 +5.7pp; proportional
-magnitudes given the smaller safety slice). V2 also reveals a
-qwen3-specific capability-eval inject-suppresses-refusal effect
-(Δ−6.4pp, CI excludes zero) that V1's safety-only corpus could not
-detect, and confirms qwen3's strict-VEA verbalization rate (~36%
-under inject) is 4× any other model.
+We test whether eval framing changes refusal behavior on six frontier
+reasoning models across four model labs, in three pre-registered
+experiments totaling 32,170 rollouts. We find a behavioral signature
+that is **direction-asymmetric across models, distributed-additively
+across the inject's component clauses, and decoupled from verbalized
+awareness.**
 
-> *The behavioral signature exists, is direction-asymmetric across
-> models, and operates on safety-relevant prompts. The verbal
-> fingerprint of "noticing the eval" is a separate, partially
-> correlated phenomenon.*
+**V1** (BeaverTails safety; 23,200 rollouts on 8 models) finds the
+inject prompt shifts refusal in opposite directions across two
+reasoning models — qwen3-235B refuses +22pp more, claude-opus-4-7
+refuses −34pp less, both with CIs excluding zero. A pre-registered
+disjoint-prompt replication of the apparent verbalized-eval-awareness
+(VEA) mediation channel (DiD +0.222 in the primary sample) returns
+**null** on replication (−0.017 [−0.175, +0.139] at n_flip=100).
+What survives is the non-VEA-mediated, direction-asymmetric refusal
+shift visible in the strict-VEA-stable stratum.
 
-**Headline cross-paper claims.** (i) On safety prompts, inject framing
-produces opposite-signed refusal shifts on qwen3 and opus (V1 +22pp /
-−34pp; V2 alignment-stratum +5.7pp / −6.0pp at proportional
-magnitudes). (ii) These effects survive in the strict-VEA-stable
-stratum, so they are NOT mediated by verbalized eval-awareness. (iii)
-Apollo's intrinsic eval label (independent of any inject framing)
-predicts +7.5–13.0pp higher refusal across 4 reasoning models; 3 of
-4 survive Holm-Bonferroni at family-wise α=0.05. (iv) The inject
-prompt bundles eval-context signaling with comparison-to-deployment
-language; we treat this as a core interpretive limitation
-(§3.1.1, §5.5.8).
+**V2** (Apollo eval-awareness corpus, 2×2 factorial; 2,400 rollouts
+on 6 models including a closed-CoT backfill of gpt-5.5 and
+gemini-2.5-pro) crosses the V1 inject with Apollo's intrinsic
+eval/deployment label. The pooled inject effect is ~0 on all six
+models, but Apollo's intrinsic label is itself a robust refusal
+predictor: **+7.5 to +13.0pp across the lineup, with 5 of 6 surviving
+Holm-Bonferroni** at family-wise α=0.05 across two correction
+families.
+
+**V3** (inject-clause ablation, 5 conditions × 6 models on 297
+alignment-eval prompts; 4,970 rollouts) decomposes the V1 inject into
+its three component clauses. The V1+V2 direction asymmetry replicates
+at full magnitude on opus (−0.067 [−0.104, −0.027] p=0.001) and qwen3
+(+0.054 [+0.014, +0.094] p=0.013). **Attribution on both active models
+is ADDITIVE**: sum-of-singletons matches full_inject within CI; 0 of
+18 singleton hypotheses survive Holm. No single clause carries the
+V1 effect — it is the distributed sum of three roughly equal
+per-clause contributions. The verbalization channel and the
+behavioral channel are decoupled at clause resolution: qwen3's
+strict-VEA scales ×3-×22 per clause while opus's stays at baseline
+on singletons and only inflates ×4 on the combined inject, yet both
+models' refusal attribution is identically additive.
+
+> *Inject framing produces direction-asymmetric refusal shifts on
+> safety/alignment prompts in two of six tested frontier models, via
+> a distributed-additive mechanism, through a non-verbalized channel,
+> alongside a separately-detectable intrinsic-eval-label signal that
+> generalizes across the lineup.*
 
 **Keywords:** evaluation awareness, reasoning models, chain-of-thought,
-safety evaluation, benchmark validity
+safety evaluation, benchmark validity, pre-registration,
+cross-model triangulation
+
+### Contributions
+
+This paper makes the following claims that, to our knowledge, are not
+in the existing literature:
+
+1. **Triangulated direction asymmetry across three pre-registered
+   experiments and six frontier models from four labs.** Same
+   asymmetric refusal-shift pattern (opus −, qwen3 +) replicates on
+   BeaverTails (V1), Apollo's alignment-eval stratum (V2 deep-dive),
+   and the V3 inject-clause-ablation sample, at consistent within-model
+   magnitudes. Cross-model triangulation against four null models
+   (deepseek, kimi, gpt-5.5, gemini-2.5-pro) confirms the asymmetric
+   signal is not an artifact of the model selection.
+2. **Distributed-additive attribution of the V1 inject effect.** V3's
+   pre-registered 5-condition clause ablation finds that the V1 inject
+   prompt's effect on opus and qwen3 sums linearly across three
+   component clauses with no single clause individually detectable.
+   This rules out single-clause attribution AND synergistic (gestalt-
+   only) mechanisms. The eval-noticing behavior on these models is a
+   response to the cumulative weight of eval-framing claims, not to
+   any specific propositional content.
+3. **Model-specific verbalization-vs-behavior dissociation at clause
+   resolution.** qwen3's strict-VEA verbalization scales proportionally
+   with each clause (×13 baseline on `eval_only` alone, ×22 on the full
+   inject); opus's stays at baseline on every singleton and only
+   inflates ×4 under the combined inject. The two models' refusal
+   attribution is identically additive across clauses despite these
+   different verbalization patterns. V1's verbalization-vs-behavior
+   dissociation generalizes to V3 and manifests as two distinct
+   model-level mechanisms.
+4. **Cross-laboratory intrinsic-eval-label refusal signal.** Apollo's
+   `metadata.eval_category=true` label predicts +7.5 to +13.0pp higher
+   refusal across all six tested models from four different labs,
+   5 of which survive Holm-Bonferroni in their respective correction
+   families. The signal is encoded in the prompt content itself, not
+   in any framing we added — implying that benchmark prompts carry an
+   eval-recognition signal that shifts behavior even in the absence
+   of explicit framing.
+5. **Replication failure of the apparent VEA mediation channel.** The
+   primary V1 within-prompt VEA mediation analysis suggested
+   significant mediation on qwen3 safety prompts (DiD +0.222 at
+   n_flip=63). A pre-registered disjoint-prompt replication at
+   larger n_flip=100 was null (−0.017 [−0.175, +0.139]). This is, to
+   our knowledge, the first published direct test of the
+   verbalized-eval-awareness mediation channel that includes a
+   pre-registered replication on a disjoint sample.
+
+All three pre-registrations were filed and committed before
+execution. The pre-registration documents, run JSON outputs,
+analyzer scripts, and figure-generation code are released alongside
+this paper (see Appendix A).
 
 ---
 
