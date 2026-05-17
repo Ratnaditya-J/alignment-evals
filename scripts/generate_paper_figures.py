@@ -738,7 +738,7 @@ def _render_triangulation(
     ax.set_ylabel("Δ refusal (inject − neutral, paired)")
     ax.set_title(
         "Opposite-signed refusal shifts preserve sign across three\n"
-        "pre-registered samples on opus and qwen3 (sign-level\n"
+        "independent samples (V1/V2/V3) on opus and qwen3 (sign-level\n"
         "triangulation; magnitudes attenuate on Apollo — see caption)."
     )
     ax.legend(loc="best", frameon=True)

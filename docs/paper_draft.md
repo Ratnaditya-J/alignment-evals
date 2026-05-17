@@ -447,7 +447,12 @@ distribution-match → contamination."
 on LLM-judge-based scoring (with regex cross-checks) as the
 practical default. Our analysis uses the LLM judge as the primary
 scorer with a regex cross-check, and we report scorer-validation
-metrics in §6.
+metrics in §6. Adjacent work argues that the open methodological
+question for refusal evaluation is not detection accuracy per se
+but how refusal decisions are routed across model behavior (Frank,
+2026); our judge-validation pipeline (§4.4, §6.2) addresses the
+detection-fidelity prerequisite, but we do not test the
+routing-side claim and treat it as out-of-scope.
 
 **Reasoning models and CoT visibility.** Open-weight reasoning models
 (DeepSeek-V3.2, Qwen3-thinking, Moonshot Kimi-K2-thinking) expose
@@ -544,7 +549,9 @@ prompts that V2 localized the V1 effect to. The headline V3 result
 is that no single clause's effect is detectable after Holm-Bonferroni
 correction (0 of 18 singleton hypotheses survive across two correction
 families), but **the singleton effects on opus and qwen3 sum within
-the additivity residual's CI to the full V1 inject effect**. The
+the additivity residual's CI to the V3 `full_inject` anchor (V3's
+attenuated Apollo magnitude, not V1's larger BeaverTails magnitude)**.
+The
 data on these two models are more consistent with a
 *distributed-additive pattern across the three clauses* than with
 single-clause attribution. We note that V3 does not test pairwise
@@ -1536,7 +1543,10 @@ effect is detectable in isolation.
 **model-heterogeneous direction-asymmetric** refusal shifts on opus
 and qwen3 (related to Burnat & Davidson 2026). Y-axis: paired Δ
 refusal (inject − neutral) with 95% CIs. X-axis: the three
-pre-registered experiments. **The three estimands are not identical
+independent samples (V1, V2, V3); note that only V1's qwen3 safety
+mediation, V2, and V3 were formally pre-registered (V1's broader
+cross-protocol and reasoning-trace work was exploratory, §3.3).
+**The three estimands are not identical
 and the comparison is sign-level, not magnitude-level.** V1 plots
 the **strict-VEA-stable stratum** paired Δ on the BeaverTails
 safety task (V1 §5.4; qwen3 n=92 from the pre-registered disjoint
@@ -2363,6 +2373,10 @@ arXiv:2512.02556.
 Devbunova, V. (2026). *Is Evaluation Awareness Just Format
 Sensitivity? Limitations of Probe-Based Evidence under Controlled
 Prompt Structure.* arXiv:2603.19426.
+
+Frank, J. (2026). *Detection Is Cheap, Routing Is Learned.*
+arXiv:2603.18280. [verify exact title and full author list at
+submission time]
 
 Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D.,
 & Steinhardt, J. (2021). *Measuring Massive Multitask Language
