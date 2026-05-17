@@ -139,7 +139,7 @@ naive answer:
 > full V1 effect on both active models. V1's effects operate on the
 > `stable_neg` stratum where strict-VEA verbalization did not flip; V2
 > shows they dilute to zero when averaged across non-safety prompts;
-> V3 confirms the absence of single-clause attribution. The verbal
+> V3 finds no detectable single-clause attribution. The verbal
 > fingerprint of "noticing the eval" visible to explicit VEA
 > monitoring and the behavioral signature visible to refusal
 > measurement are correlated phenomena, not causally linked at the
@@ -164,8 +164,8 @@ Section 9 concludes.
    consistent within-model magnitudes (qwen3: +0.217 / +0.057 /
    +0.054; opus: −0.339 / −0.060 / −0.067). Cross-model triangulation
    against four null models (deepseek, kimi, gpt-5.5, gemini-2.5-pro)
-   confirms the asymmetric signal is not an artifact of model
-   selection.
+   makes a model-selection artifact a less plausible explanation of
+   the asymmetric signal.
 2. **Distributed-additive attribution of the V1 inject effect.** V3's
    pre-registered 5-condition clause ablation finds that the V1 inject
    prompt's effect on opus and qwen3 sums linearly across three
@@ -1348,24 +1348,21 @@ the sum-of-singletons, and the `full_inject` anchor. Color encoding:
 **singleton bars are red if their paired-bootstrap CI excludes zero,
 grey otherwise** (in this run, zero red bars across all 6 singletons,
 consistent with the §5.5 Holm non-survival of all 18 singleton
-hypotheses); **sum-of-singletons is rendered in neutral grey, and
-no bootstrap CI is shown for it** (it is a derived point estimate,
-not a directly bootstrapped quantity; any tiny cap mark visible at
-the top of this bar is a matplotlib rendering artifact of the
-zero-length error specification and should be read as "no CI shown"
-rather than a one-sided CI); **the `full_inject` anchor
-is rendered in blue** to distinguish the V1-replication anchor from
-the singleton candidates. Error bars on singleton and full_inject
-bars are paired-bootstrap 95% CIs (B=2000, seed=0). **On both
-models, the sum-of-singletons bar matches the full_inject anchor bar
-within the additivity residual's CI**, confirming the additive
-attribution. No single clause individually carries a detectable
-share of the effect.
+hypotheses); **sum-of-singletons is rendered in neutral grey with no
+error bars** (it is a derived point estimate, not a directly
+bootstrapped quantity); **the `full_inject` anchor is rendered in
+blue** to distinguish the V1-replication anchor from the singleton
+candidates. Error bars on singleton and full_inject bars are
+paired-bootstrap 95% CIs (B=2000, seed=0). **On both models, the
+sum-of-singletons bar matches the full_inject anchor bar within the
+additivity residual's CI**, supporting the additive attribution. No
+single clause individually carries a detectable share of the effect.
 
 #### 5.6.3 What the additive attribution means
 
-The additive attribution rules out two competing interpretations of
-V1+V2 that V3 was designed to discriminate:
+The additive attribution argues against two competing interpretations
+of V1+V2, under the pre-registered §5.5 decision tree and the three
+clauses V3 tested:
 
 - *Not single-clause attribution.* If the V1 inject worked because
   models specifically react to "this is an evaluation," we would have

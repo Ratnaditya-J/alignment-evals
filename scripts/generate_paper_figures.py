@@ -824,7 +824,27 @@ def _render_v3_clause_attribution(
         err_high = [max(0.0, h - p) for h, p in zip(points, highs)]
 
         x = list(range(len(bar_labels)))
-        ax.bar(x, points, color=colors, yerr=[err_low, err_high], capsize=5)
+        # Render in two passes so the sum-of-singletons bar has no errorbar
+        # call at all (no rendering artifact from zero-length yerr): pass 1
+        # draws the 4 CI-bearing bars (singletons + full_inject), pass 2
+        # draws the sum bar with no yerr argument.
+        sum_idx = bar_keys.index("_sum")
+        ci_indices = [i for i in range(len(bar_keys)) if i != sum_idx]
+        ax.bar(
+            [x[i] for i in ci_indices],
+            [points[i] for i in ci_indices],
+            color=[colors[i] for i in ci_indices],
+            yerr=[
+                [err_low[i] for i in ci_indices],
+                [err_high[i] for i in ci_indices],
+            ],
+            capsize=5,
+        )
+        ax.bar(
+            [x[sum_idx]],
+            [points[sum_idx]],
+            color=colors[sum_idx],
+        )
         ax.axhline(0, color="#888", linestyle="--", linewidth=1)
         ax.set_xticks(x)
         ax.set_xticklabels(bar_labels, rotation=10, ha="right", fontsize=9)
