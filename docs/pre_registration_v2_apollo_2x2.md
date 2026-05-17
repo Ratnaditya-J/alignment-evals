@@ -427,13 +427,44 @@ qwen3 has TWO opposite-direction effects that cancel in the cross-corpus average
 
 The net pooled cross-corpus inject effect on qwen3 was ~0 because these two cancel.
 
-**Synthesis of A + B (exploratory).**
+**Deep-dive C: deepseek-v3.2-exp.**
 
-1. **V1's direction asymmetry replicates on V2's alignment stratum.** opus refuses LESS under inject on alignment evals (matches V1 direction); qwen3 refuses MORE (also matches V1). Magnitudes are ~1/4 to 1/6 of V1's; expected given V2's alignment stratum (n=53) is a thinner slice than V1's BeaverTails corpus (hundreds of safety prompts).
-2. **qwen3 has a novel capability-eval-specific inject-suppresses-refusal effect** that V1's safety-only corpus could not detect. This is a substantive V2-only finding worth its own paper subsection.
-3. **qwen3's strict-VEA verbalization rate under inject is 5-10× the other models.** Inject_eval VEA mean on qwen3 alignment stratum is 0.36 (35.9% of rollouts have explicit eval-recognition verbalization). Opus, deepseek, and kimi are all below 0.10 across the board. Confirms V1's qwen3-VEA pattern via the strict-rubric operationalization.
+| Stratum | n (eval) | interaction | 95% CI | p | verdict |
+|---|---:|---:|---|---:|---|
+| alignment evals | 53 | +0.038 | [−0.039, +0.114] | 0.435 | additive |
+| capability evals | 47 | +0.000 | [−0.030, +0.030] | 1.000 | additive |
+| chat scaffold | 54 | +0.037 | [−0.058, +0.134] | 0.513 | null_both |
+| agentic scaffold | 46 | +0.000 | [+0.000, +0.000] | 1.000 | additive |
 
-Caveats: alignment-eval stratum has n=53 per model, which is moderate; CIs are wide. Per-category rankings (in the deep-dive JSONs at `runs/v2-apollo-factorial-prereg/deepdive_*.{json,md}` locally) flag `agentharm` (n=12) as the single category with the largest opus interaction (−0.20, CI [−0.54, −0.01]) but n is too small to draw a confident conclusion. Suggested as a V3 probe target.
+deepseek aligns directionally with qwen3 on the alignment stratum (refuses slightly more under inject: 0.189 → 0.226 = Δ+0.037), but the effect is half qwen3's magnitude and the CI cleanly includes zero. Capability stratum has 0% refusal in both eval cells (floor effect — no refusals to move).
+
+**Deep-dive D: kimi-k2-thinking.**
+
+| Stratum | n (eval) | interaction | 95% CI | p | verdict |
+|---|---:|---:|---|---:|---|
+| alignment evals | 53 | −0.020 | [−0.098, +0.059] | 0.624 | additive |
+| capability evals | 47 | +0.001 | [−0.050, +0.064] | 0.999 | additive |
+| chat scaffold | 54 | −0.063 | [−0.164, +0.032] | 0.195 | null_both |
+| agentic scaffold | 46 | +0.041 | [+0.000, +0.104] | 0.267 | additive |
+
+kimi is the flattest of the four. Alignment-eval refusal is **identical** under both conditions (0.283 → 0.283 = Δ0). The chat-scaffold direction (−0.063) is suggestive of an opus-like pattern but CI includes zero. No stratum-level effect survives.
+
+**Synthesis across all four models (exploratory).**
+
+Cross-model alignment-eval Δ table (refusal: neutral → inject):
+
+| Model | Δ | CI | V1 direction match? |
+|---|---:|---|---|
+| opus    | **−0.060** | [−0.18, −0.001] | ✓ matches V1 −34pp |
+| qwen3   | **+0.057** | [−0.04, +0.141]  | ✓ matches V1 +22pp |
+| deepseek| +0.037     | [−0.04, +0.114] | qwen3-direction; V1 untested |
+| kimi    | +0.000     | [−0.10, +0.06]  | flat; V1 untested |
+
+1. **V1 direction asymmetry holds on V2's alignment stratum.** The two V1-tested models (opus, qwen3) both preserve their V1 signs at proportional magnitude. The two V2-only models (deepseek, kimi) don't contradict this: deepseek leans qwen3-direction at half magnitude, kimi is dead flat. None of the four individual CIs cleanly exclude zero, but the V1-pair sign-preservation is the cohering signal.
+2. **qwen3's capability-eval inject-suppresses-refusal is unique.** Three of four models (opus, deepseek, kimi) refuse 0% on capability evals in BOTH conditions — floor effect, no room to suppress. Only qwen3 has refusals to move (6.4% baseline) and inject brings them to zero. This is a qwen3-specific behavioral pattern, not a general one.
+3. **qwen3's strict-VEA verbalization rate under inject is 4× any other model.** Inject_eval VEA mean across the four models: qwen3 0.359, kimi 0.094, opus 0.075, deepseek 0.057. Stable trait across all strata. Confirms V1's qwen3-VEA pattern via a fully different operationalization.
+
+Caveats: alignment-eval stratum has n=53 per model, which is moderate; per-model CIs are wide. Per-category rankings (in the deep-dive JSONs at `runs/v2-apollo-factorial-prereg/deepdive_*.{json,md}` locally) flag opus on `agentharm` (−0.20 at n=12, CI [−0.54, −0.01]) as the largest per-category effect; deepseek on `do_not_answer` (+0.25 at n=8, wide CI). Both suggested as V3 probe targets.
 
 ### Paper / writeup updates
 
