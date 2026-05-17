@@ -417,6 +417,15 @@ released alongside this report at the repository linked in the
 appendix. Each summary JSON records the seeds, judge model IDs, and
 prompt-template hashes used in its production.
 
+The pre-registration discipline used here (filed-before-execution
+invariant) follows the broader psychology and replication-science
+pre-registration framework. The three pre-registration documents for
+V1, V2, and V3, and the closed-CoT backfill supplement, are committed
+to the project repository before the corresponding experimental run
+is executed; commit timestamps establish the "filed at" record (see
+Appendix A). Vendor model cards and exact API model identifiers used
+in each experiment are listed in Appendix C.
+
 ---
 
 ## 4. The VEA Judge
@@ -2108,21 +2117,13 @@ Solutions.* Patterns 5(5). Preprint: arXiv:2308.14752.
 Qwen Team (2025). *Qwen3 Technical Report.* Alibaba Cloud.
 arXiv:2505.09388.
 
-### Methodological background
-
-- Sandbagging / strategic deception literature: see Park et al. (2024)
-  for a survey. Related environment-cue evidence is discussed in
-  Chaudhary (2026).
-- Pre-registration discipline (filed-before-execution invariant) in
-  ML follows the broader psychology / replication-science pre-
-  registration framework. The three pre-registration documents for
-  V1, V2, and V3 are committed to the project repository before the
-  corresponding experimental run (see Appendix A).
-
 (Vendor model cards and exact API model identifiers used in this
 paper are listed in Appendix C for reproducibility; we do not cite
 them inline as primary literature because they are operational
-metadata rather than scholarly publications.)
+metadata rather than scholarly publications. Methodological
+background on pre-registration discipline is in §3.3; the
+sandbagging / strategic-deception and contextual-cue prior work is
+discussed in §2 with full references in the list above.)
 
 ---
 
