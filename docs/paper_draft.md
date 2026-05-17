@@ -132,9 +132,9 @@ naive answer:
 > safety/alignment-relevant prompts in two of six tested frontier
 > and frontier-adjacent reasoning models — qwen3 refuses more under
 > inject (V1 paired Δ +0.217 [+0.098, +0.337] on the replication
-> sample; V2 alignment-stratum
-> Δ +0.057 [−0.04, +0.14]; V3 alignment full_inject Δ +0.054 [+0.014,
-> +0.094]), opus-4.7 refuses less (V1 paired Δ −0.339 [−0.446, −0.231];
+> sample; V2 alignment-stratum Δ +0.057 [−0.04, +0.14]; V3 alignment
+> full_inject Δ +0.054 [+0.014, +0.094]), opus-4.7 refuses less
+> (V1 paired Δ −0.339 [−0.446, −0.231];
 > V2 alignment-stratum Δ −0.060 [−0.18, −0.001]; V3 alignment
 > full_inject Δ −0.067 [−0.104, −0.030]). The effects are
 > distributed-additive across three V1 inject clauses — no single
@@ -161,9 +161,9 @@ Section 9 concludes.
 
 1. **Triangulated direction asymmetry across three pre-registered
    experiments and six frontier and frontier-adjacent reasoning
-   models from four labs.** The same
-   opposite-signed refusal-shift pattern (opus −, qwen3 +) replicates
-   on BeaverTails (V1), Apollo's alignment-eval stratum (V2
+   models from four labs.** The same opposite-signed refusal-shift
+   pattern (opus −, qwen3 +) replicates on BeaverTails (V1),
+   Apollo's alignment-eval stratum (V2
    deep-dive), and the V3 inject-clause-ablation sample, at
    consistent within-model magnitudes (qwen3: +0.217 / +0.057 /
    +0.054; opus: −0.339 / −0.060 / −0.067). Cross-model triangulation
@@ -189,7 +189,7 @@ Section 9 concludes.
    singleton and only inflates ×4 under the combined inject. Yet both
    models' refusal attribution is identically additive across clauses.
    V1's verbalization-vs-behavior dissociation generalizes to V3 and
-   manifests as two distinct model-level mechanisms.
+   manifests as two distinct model-level profiles.
 4. **Cross-laboratory intrinsic-eval-label refusal signal.** Apollo's
    `metadata.eval_category=true` label predicts +7.5 to +13.0pp higher
    refusal across all six tested models from four different labs;
@@ -1446,7 +1446,7 @@ stays near baseline on every singleton and only inflates ×4 on
 `full_inject`. **Both models' refusal behavior is clause-additive
 (Figure 8), but the verbalization channel follows two distinct
 per-clause profiles.** V1's verbalization-vs-behavior dissociation
-generalizes to V3 and manifests as two model-level mechanisms.
+generalizes to V3 and manifests as two model-level profiles.
 
 #### 5.6.5 Closed-CoT addition: gpt-5.5 has the cleanest null in the lineup
 
