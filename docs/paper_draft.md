@@ -20,7 +20,9 @@ and clause-level ablations across six models from four labs.
 The main behavioral effect is model-specific rather than uniform. On
 safety/alignment prompts, qwen3-235B refuses more under eval framing,
 while claude-opus-4-7 refuses less; this opposite-signed pattern
-replicates across BeaverTails and Apollo-derived samples. A
+is directionally consistent in V2 (Apollo alignment stratum;
+qwen3 CI includes zero) and CI-excluding in V1 (BeaverTails) and
+V3 (Apollo alignment-eval full sample). A
 pre-registered disjoint-prompt replication of an apparent qwen3
 verbalized-eval-awareness mediation effect fails, indicating that the
 surviving refusal shifts are not explained by the measured
@@ -169,11 +171,13 @@ Section 9 concludes.
    prompt's effect on opus and qwen3 sums linearly across three
    component clauses, with no single clause individually detectable
    after Holm-Bonferroni correction (0 of 18 singleton hypotheses
-   survive across both correction families). This rules out
-   single-clause attribution AND synergistic (gestalt-only)
-   mechanisms; the eval-noticing behavior on these two models is a
-   response to the cumulative weight of eval-framing claims, not to
-   any specific propositional content.
+   survive across both correction families). Under the
+   pre-registered §5.5 decision tree and the three clauses tested,
+   this argues against single-clause attribution and a gestalt-only
+   mechanism in this design; the eval-noticing behavior on these
+   two models is more consistent with a response to the cumulative
+   weight of eval-framing claims than with any single propositional
+   content.
 3. **Model-specific verbalization-vs-behavior dissociation at clause
    resolution.** qwen3's strict-VEA verbalization scales
    proportionally with each clause (×13 baseline on `eval_only` alone,
@@ -197,12 +201,12 @@ Section 9 concludes.
    [+0.029, +0.430] at n_flip=63 paired). A pre-registered
    disjoint-prompt replication at n_flip=100 was null
    (−0.017 [−0.175, +0.139]). The result is a boundary condition on
-   positive causal claims about CoT-mediated eval-aware behavior
-   (Aranguri & Bloom 2026; Chaudhary 2026): the within-prompt
-   VEA-flip mediation channel we measured did not survive a fresh
-   disjoint sample at our n_flip and design. §7.5 discusses the
-   conditions under which this null is and is not in tension with
-   those prior positive results.
+   broad claims that contextual or verbalized eval-awareness reliably
+   explains behavioral shifts (Aranguri & Bloom 2026; Chaudhary 2026):
+   the within-prompt VEA-flip mediation channel we measured did not
+   survive a fresh disjoint sample at our n_flip and design. §7.5
+   discusses the conditions under which this null is and is not in
+   tension with those prior results.
 
 All three pre-registrations were filed and committed before
 execution. The pre-registration documents, run JSON outputs,
@@ -250,12 +254,12 @@ We position our pre-registered disjoint-prompt replication null
 (§5.3) as a boundary condition: the within-prompt VEA-flip mediation
 channel that the V1 primary sample suggested for qwen3 safety does
 not survive replication on a fresh sample at our n_flip and design.
-This narrows the conditions under which positive causal mediation
-claims hold, without contradicting either of those prior results
-(which use different operationalizations of "evaluation awareness"
-and different causal estimators than ours). Readers should treat the
-cross-paper comparison qualitatively rather than as a direct
-replication of any specific prior protocol.
+This narrows the conditions under which VEA-flip mediation should be
+expected in our explicit-inject setting, without contradicting either
+of those prior results (which use different operationalizations of
+"evaluation awareness" and different causal estimators than ours).
+Readers should treat the cross-paper comparison qualitatively rather
+than as a direct replication of any specific prior protocol.
 
 **Benchmark contamination and validity.** A separate literature on
 benchmark contamination (e.g. MMLU leakage into training corpora)
@@ -1295,11 +1299,13 @@ additivity residual's CI on both opus and qwen3:
 | opus  | −0.077 | −0.067 | +0.010 | [−0.047, +0.071] (incl. 0) | **additive** |
 | qwen3 | +0.051 | +0.054 | +0.003 | [−0.067, +0.074] (incl. 0) | **additive** |
 
-The three clauses contribute roughly equally (each ~1/3 of the full
-effect) and their effects add up linearly to reproduce the full_inject
-effect within CI on both models. **No single clause's effect is
-detectable in isolation; the V1 inject's signal is distributed across
-all three claims.**
+The singleton point estimates are compatible with roughly distributed
+contributions across the three clauses, but individual per-clause
+magnitudes are not resolved at this n (no singleton survives Holm
+correction). The aggregate additivity is what the data support:
+**sum-of-singletons matches the full_inject anchor within the
+additivity residual's CI on both opus and qwen3.** No single clause's
+effect is detectable in isolation.
 
 ![](figures/fig7_triangulation.png)
 
@@ -1316,8 +1322,8 @@ magnitudes across three independent samples and two distinct corpora
 independent samples to aid visual tracking of sign preservation
 per model; they do not denote a temporal trajectory or repeated
 measurement of the same prompts. The cross-experiment same-model
-sign preservation rules out sample-specific or corpus-specific
-artifacts.
+sign preservation makes sample-specific or corpus-specific
+explanations of the asymmetry less plausible.
 
 ![](figures/fig8_v3_clause_attribution.png)
 
@@ -1709,12 +1715,17 @@ researchers" claim, (c) the "compared against deployment" claim, or
 **ADDITIVE on both opus and qwen3**: sum-of-singletons (−0.077 on
 opus; +0.051 on qwen3) matches full_inject (−0.067; +0.054) within
 the residual's CI. No single clause's effect is detectable in
-isolation; the V1 inject's signal is a sum of three small per-clause
-effects, each ~1/3 the full magnitude. Removing any one clause would
-reduce the effect by ~1/3, not eliminate it. **The eval-noticing
-behavior on these models is not localized to any specific
-propositional content of the V1 inject — it is a response to the
-cumulative weight of eval-framing claims.**
+isolation; the singleton point estimates are compatible with
+roughly distributed contributions across the three clauses, but
+individual per-clause magnitudes are not resolved at this n. V3 does
+not directly test the counterfactual of removing a single clause
+(it tests singletons against neutral, not pairwise combinations), so
+the per-clause-removal prediction is the additive model's
+extrapolation rather than a measured result. **The eval-noticing
+behavior on these models appears not localized to any specific
+propositional content of the V1 inject — the data are more consistent
+with a response to the cumulative weight of eval-framing claims than
+with single-clause attribution.**
 
 **(iv) The verbalization channel and the behavioral channel are
 decoupled at clause resolution, and the decoupling is model-specific.**
@@ -1988,16 +1999,19 @@ with Apollo's intrinsic eval/deployment label on prompts authored by
 a different research group. V3's clause ablation addressed V1's
 bundled-inject limitation (the §3.1.1 "core interpretive limitation")
 by decomposing the V1 inject into its three component clauses and
-testing each in isolation. The two follow-ups together resolve the
-inject-prompt confound: the V1 effect is real on safety/alignment
-prompts, it generalizes across the alignment-eval stratum of an
-external corpus, and it attributes additively across three component
-clauses with no single clause individually responsible. **Closed-CoT
-extension** via the 6-model lineup (gpt-5.5 and gemini-2.5-pro added
-as behavioral-only participants per `docs/pre_registration_closed_cot_backfill.md`)
-triangulates the V1 direction asymmetry against 4 different null
-models from 4 different labs, confirming the asymmetric signal is not
-an artifact of model selection.
+testing each in isolation. The two follow-ups substantially narrow
+the inject-prompt confound (without fully exhausting it — V3 does
+not test pairwise clause combinations or semantic variants): the V1
+effect is real on safety/alignment prompts, it generalizes across
+the alignment-eval stratum of an external corpus, and the data are
+more consistent with distributed-additive attribution across the
+three measured clauses than with single-clause attribution.
+**Closed-CoT extension** via the 6-model lineup (gpt-5.5 and
+gemini-2.5-pro added as behavioral-only participants per
+`docs/pre_registration_closed_cot_backfill.md`) triangulates the V1
+direction asymmetry against 4 different null models from 4 different
+labs, making model-selection-artifact explanations of the asymmetry
+less plausible.
 
 Future work should (i) extend the V3 clause-ablation design to
 additional reasoning-capable models to characterize *why* opus and
