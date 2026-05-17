@@ -550,9 +550,9 @@ def _render_two_mechanism(
         fig.suptitle(
             "Safety-family stratum-level paired Δrefusal under inject "
             "(validated strict rubric):\n"
-            "qwen3 primary mediation suggestive → replication null; "
-            "both samples + opus show CI-excludes-zero stable_neg "
-            "effects in opposite directions.",
+            "qwen3 primary stable_neg too imprecise to resolve effect; "
+            "replication n=92 and opus n=65 show CI-excluding stable_neg "
+            "effects in opposite directions (qwen3 +, opus −).",
             fontsize=11,
         )
     else:
