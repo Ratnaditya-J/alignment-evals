@@ -354,6 +354,21 @@ intrinsic-eval-label design axis (V2) that Burnat & Davidson do not
 test, and (c) addition of a 5-condition clause ablation (V3) that
 decomposes the explicit-framing effect into per-clause contributions.
 
+**Linear steering of test-awareness and model-dependent compliance.**
+Abdelnabi & Salem (2025; arXiv:2505.14617) identify a linear
+test-awareness direction in reasoning-model activations and use it
+to steer awareness up and down, reporting that the resulting
+compliance shifts are model-dependent in sign and magnitude. This
+work is directly adjacent on two fronts: (i) the model-heterogeneous
+directionality theme overlapping our opus −/qwen3 + pattern (§5.4,
+§5.5.4, §5.6) and Burnat & Davidson's findings above, and (ii) the
+white-box steering operationalization complementing the prompt-level
+inject and corpus-level intrinsic-label axes our V1/V2/V3 designs
+use. Their causal-steering-on-activations result is a positive
+intervention finding on a different operationalization than the
+explicit-inject or CoT-prefill operationalizations covered by other
+prior work below.
+
 **Probing-side and scaling-side adjacent work.** Two additional
 adjacent results inform the broader eval-awareness literature
 without directly overlapping our prompt-level behavioral design:
@@ -380,16 +395,21 @@ prompt-content/format signal*, not as evidence that models
 internally recognize "this is an eval" in the way the
 mentalistically-loaded version of the claim would require (§8).
 
-**Prior positive results on eval-awareness and CoT.** Two recent
-results bear directly on the questions this paper tests. Aranguri &
-Bloom (2026) report that verbalized eval-awareness in CoT correlates
-with safer behavior and claim causal refusal inflation in Kimi K2.5
-on the Fortress benchmark. Chaudhary (2026) reports that in-context
-environment cues can induce evaluation-awareness in language models,
-providing evidence relevant to the broader causal pathway from
-contextual eval cues to model behavior. Both lines argue, in
-different ways, that eval-awareness signals — verbalized or
-context-induced — are associated with behavioral change.
+**Prior positive results on eval-awareness and CoT.** Several recent
+results bear directly on the questions this paper tests, spanning
+multiple operationalizations. On the CoT-correlation-and-causal
+side, Aranguri & Bloom (2026) report that verbalized eval-awareness
+in CoT correlates with safer behavior and claim causal refusal
+inflation in Kimi K2.5 on the Fortress benchmark, and Chaudhary
+(2026) reports that in-context environment cues can induce
+evaluation-awareness in language models — evidence relevant to the
+broader causal pathway from contextual eval cues to model behavior.
+The observer-effects, white-box steering, and CoT-prefill paragraphs
+that follow cover other operationalizations (Fan et al., Abdelnabi &
+Salem above, Schoen et al. and Knecht et al. below). The literature
+collectively argues that eval-awareness signals are associated with
+behavioral change in multiple operationalizations, with sign and
+magnitude depending sensitively on which operationalization is used.
 
 **Observer effects in safety evaluation.** Fan et al. (2025/2026;
 arXiv:2505.17815) study "evaluation faking" as an observer effect
@@ -407,6 +427,26 @@ Fan et al.'s positive observer-effect finding sits alongside the
 Aranguri & Bloom and Chaudhary positive results above, and the
 Knecht et al. null below, in a literature where the observed
 effect direction depends sensitively on the operationalization.
+
+**CoT-prefill causal positive on a different outcome
+(anti-scheming).** Schoen et al. (2025; arXiv:2509.15541; *Stress
+Testing Deliberative Alignment for Anti-Scheming Training*) provide
+causal evidence that eval-aware CoT content affects covert-action
+rates in anti-scheming evaluations under deliberative-alignment
+training. This is an important scoping anchor: a CoT-level causal
+positive on a *different* behavioral outcome (covert-action rate),
+which means readers should not generalize Knecht et al.'s or our V1
+mediation null from "VEA does not robustly change refusal under
+their / our operationalizations" to "CoT eval-awareness never
+causally changes behavior." Our refusal-mediation scope, and
+Knecht et al.'s answer-distribution scope, are specific to the
+behavioral outcomes those papers measure; Schoen et al.'s covert-
+action scope is outside both. The combined V1 + Knecht +
+Schoen picture is that CoT eval-awareness causally shifts some
+safety-relevant behaviors (covert action under anti-scheming
+training) and does not robustly shift others (refusal under our
+explicit inject; answer distributions under Knecht's mid-trace
+prefilling); the answer depends on outcome and operationalization.
 
 **Recent prior null finding on VEA's behavioral effect.** Knecht,
 Florin, & Hagendorff (2026; arXiv:2605.05835, posted May 7, 2026)
@@ -546,7 +586,7 @@ bundling three distinct manipulations that V1 did not factor apart:
 * **Eval-context signaling.** The text names an evaluation scenario
   ("this is an evaluation"). This is the classical "the model knows
   it is being watched" manipulation that sandbagging-on-eval
-  predictions are about.
+  predictions are about (van der Weij et al., 2024/2025).
 * **Reviewer attribution.** The text identifies safety researchers as
   the audience, which adds a specific authority cue distinct from
   generic eval framing.
@@ -2370,6 +2410,10 @@ negative-result interpretation.
 
 ## References
 
+Abdelnabi, S., & Salem, A. (2025). *Linear Control of Test
+Awareness Reveals Differential Compliance in Reasoning Models.*
+arXiv:2505.14617.
+
 Ahmed, N., Zaman, M. I., Saleem, G., & Hassan, A. (2025). *Do
 LLMs Know They Are Being Tested?
 Evaluation Awareness and Incentive-Sensitive Failures in
@@ -2404,15 +2448,16 @@ Devbunova, V. (2026). *Is Evaluation Awareness Just Format
 Sensitivity? Limitations of Probe-Based Evidence under Controlled
 Prompt Structure.* arXiv:2603.19426.
 
-Fan, et al. (2025/2026). *Evaluation Faking: Unveiling Observer
-Effects in Safety Evaluation of Frontier AI Systems.*
-arXiv:2505.17815.
+Fan, Y., Zhang, W., Pan, X., & Yang, M. (2025/2026). *Evaluation
+Faking: Unveiling Observer Effects in Safety Evaluation of Frontier
+AI Systems.* arXiv:2505.17815.
 
 Frank, G. N. (2026). *Detection Is Cheap, Routing Is Learned: Why
 Refusal-Based Alignment Evaluation Fails.* arXiv:2603.18280.
 
-Gupta, et al. (2026). *Context Over Content: Exposing Evaluation
-Faking in Automated Judges.* arXiv:2604.15224.
+Gupta, M., Nair, I., Wang, L., & Kumar, D. (2026). *Context Over
+Content: Exposing Evaluation Faking in Automated Judges.*
+arXiv:2604.15224.
 
 Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D.,
 & Steinhardt, J. (2021). *Measuring Massive Multitask Language
@@ -2435,8 +2480,10 @@ Knecht, A., Florin, L., & Hagendorff, T. (2026). *Evaluation
 Awareness in Language Models Has Limited Effect on Behaviour.*
 University of Stuttgart. arXiv:2605.05835, May 7, 2026.
 
-Laine, R., et al. (2024). *Me, Myself, and AI: The Situational
-Awareness Dataset (SAD) for LLMs.* arXiv:2407.04694.
+Laine, R., Chughtai, B., Betley, J., Hariharan, K., Scheurer, J.,
+Balesni, M., Hobbhahn, M., Meinke, A., & Evans, O. (2024). *Me,
+Myself, and AI: The Situational Awareness Dataset (SAD) for LLMs.*
+arXiv:2407.04694.
 
 Lin, S., Hilton, J., & Evans, O. (2022). *TruthfulQA: Measuring How
 Models Mimic Human Falsehoods.* ACL. arXiv:2109.07958.
@@ -2460,6 +2507,13 @@ Solutions.* Patterns 5(5). Preprint: arXiv:2308.14752.
 
 Qwen Team (2025). *Qwen3 Technical Report.* Alibaba Cloud.
 arXiv:2505.09388.
+
+Schoen, et al. (2025). *Stress Testing Deliberative Alignment for
+Anti-Scheming Training.* arXiv:2509.15541.
+
+van der Weij, T., et al. (2024/2025). *AI Sandbagging: Language
+Models can Strategically Underperform on Evaluations.* ICLR 2025.
+arXiv:2406.07358.
 
 Xiong, L., Bhargava, N., Hong, J., Chang, J., Liu, H., Sharma, V.,
 & Zhu, K. (2025). *Probe-Rewrite-Evaluate: A Workflow for Reliable
@@ -2514,14 +2568,22 @@ regenerate:
 
 ```bash
 python scripts/generate_paper_figures.py \
-  --cross-protocol-summary runs/cross-protocol-v6/cross_protocol_summary.json \
-  --goodfire-summary runs/goodfire-mixed-n500/goodfire_vea_summary.json \
-  --mediation-summary runs/goodfire-mixed-n500/vea_mediation_summary.json \
-  --strict-mediation-summary runs/goodfire-mixed-n500/vea_mediation_summary.strict.json \
-  --opus-strict-mediation-summary runs/goodfire-opus-mixed-n300/vea_mediation_summary.strict.json \
-  --qwen3-replication-strict-mediation-summary runs/goodfire-replication-qwen3-safety/vea_mediation_summary.strict.json \
-  --v2-summary runs/v2-apollo-factorial-prereg/v2_apollo_factorial_summary.strict.with-backfill.json \
-  --v3-summary runs/v3-clause-ablation-prereg/v3_clause_ablation_summary.strict.with-backfill.json \
+  --cross-protocol-summary \
+      runs/cross-protocol-v6/cross_protocol_summary.json \
+  --goodfire-summary \
+      runs/goodfire-mixed-n500/goodfire_vea_summary.json \
+  --mediation-summary \
+      runs/goodfire-mixed-n500/vea_mediation_summary.json \
+  --strict-mediation-summary \
+      runs/goodfire-mixed-n500/vea_mediation_summary.strict.json \
+  --opus-strict-mediation-summary \
+      runs/goodfire-opus-mixed-n300/vea_mediation_summary.strict.json \
+  --qwen3-replication-strict-mediation-summary \
+      runs/goodfire-replication-qwen3-safety/vea_mediation_summary.strict.json \
+  --v2-summary \
+      runs/v2-apollo-factorial-prereg/v2_apollo_factorial_summary.strict.with-backfill.json \
+  --v3-summary \
+      runs/v3-clause-ablation-prereg/v3_clause_ablation_summary.strict.with-backfill.json \
   --out-dir docs/figures/
 ```
 
