@@ -121,8 +121,8 @@ def _load_json(path: Optional[str]) -> Optional[Dict[str, Any]]:
 
 def _render_refusal_forest(summary: Dict[str, Any], out_path: Path) -> None:
     """Per-model inject-neutral refusal Δ with CIs, ordered by point
-    estimate. Vertical line at Δ=0. Used to make the "8/8 frontier models
-    null" claim visual."""
+    estimate. Vertical line at Δ=0. Used to make the "null on 8/8 tested
+    models (frontier and frontier-adjacent)" claim visual."""
     import matplotlib.pyplot as plt
 
     rows: List[Dict[str, Any]] = list(summary.get("per_model", []))
@@ -155,7 +155,7 @@ def _render_refusal_forest(summary: Dict[str, Any], out_path: Path) -> None:
     ax.set_xlabel("Δ inject − neutral refusal rate")
     ax.set_title(
         "Cross-protocol refusal-rate Δ inject−neutral per model\n"
-        "(no CI excludes zero on 8/8 frontier models)"
+        "(no CI excludes zero on 8/8 tested models)"
     )
     ax.grid(axis="x", alpha=0.25)
     fig.tight_layout()
@@ -420,10 +420,8 @@ def _render_mediation_panels(
     _panel_did(axes[2], per_family_strict or [], "strict")
 
     fig.suptitle(
-        "qwen3 primary mediation signal (panel c, strict) — "
-        "replication null in Figure 5; see §5.3. "
-        "Capability families null by floor effect.",
-        fontsize=11,
+        "Primary qwen3 mediation signal; disjoint replication is null",
+        fontsize=12,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.92])
     _save_figure(fig, out_path)

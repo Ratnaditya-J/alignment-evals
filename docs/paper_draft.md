@@ -1,6 +1,6 @@
 # Verbalized vs Behavioral Eval-Awareness in Frontier Reasoning Models
 
-*Three pre-registered studies: a non-replication of an apparent verbalized-eval-awareness mediation channel under explicit inject framing, a 2×2 factorial test of an intrinsic eval-label signal against the same inject across six models from four labs, and a five-condition ablation of the inject prompt into its component clauses.*
+*Three pre-registered studies of explicit eval framing, intrinsic eval labels, and inject-clause attribution across frontier models.*
 
 **Author:** Ratnaditya Jonnalagadda  
 **Date:** May 2026  
@@ -19,10 +19,8 @@ and clause-level ablations across six models from four labs.
 
 The main behavioral effect is model-specific rather than uniform. On
 safety/alignment prompts, qwen3-235B refuses more under eval framing,
-while claude-opus-4-7 refuses less; this opposite-signed pattern
-is directionally consistent in V2 (Apollo alignment stratum;
-qwen3 CI includes zero) and CI-excluding in V1 (BeaverTails) and
-V3 (Apollo alignment-eval full sample). A
+while claude-opus-4-7 refuses less; this opposite-signed pattern is
+directionally consistent in V2 and CI-excluding in V1 and V3. A
 pre-registered disjoint-prompt replication of an apparent qwen3
 verbalized-eval-awareness mediation effect fails, indicating that the
 surviving refusal shifts are not explained by the measured
@@ -92,8 +90,8 @@ might take — is that Q1 and Q2 resolve positive uniformly across
 models and task families: inject framing causes the model to verbalize
 awareness, which in turn causes the model to refuse more, everywhere.
 The integrated V1+V2 picture is sharper and more partial. The V1
-cross-protocol behavioral analysis returns null on 8/8 frontier
-models at the aggregate level. V1's Goodfire reasoning-trace analysis
+cross-protocol behavioral analysis returns null on 8/8 frontier-tier
+and frontier-adjacent models at the aggregate level. V1's Goodfire reasoning-trace analysis
 returns large VEA inflation on qwen3, small but CI-excludes-zero on
 deepseek and on claude-opus-4-7, and null on kimi. Within-prompt
 diff-in-diff mediation analysis under the empirically-validated strict
@@ -151,7 +149,7 @@ judge (used in V1; V2 and V3 reuse the same judge unchanged for
 their strict and broad cell summaries). Section 5 reports results:
 §5.1–§5.4 are V1, §5.5 is V2, §5.6 is V3. Section 6 reports V1
 robustness checks. Section 7 discusses implications (with §7.5
-synthesizing V1+V2+V3). Section 8 lists limitations honestly.
+synthesizing V1+V2+V3). Section 8 discusses limitations.
 Section 9 concludes.
 
 ### 1.1 Contributions
@@ -325,7 +323,7 @@ claude-opus-4-7 at n=300 prompts + n=800 rollouts on a pre-registered
 disjoint qwen3-235B safety replication at n=200 prompts):
 
 - 3 open-reasoning models + claude-opus-4-7 on the n=300 extension.
-- Same 4-condition arxiv protocol.
+- Same 4-condition protocol.
 - Same mixed task corpus, n=500 prompts (125 per family) for the
   primary qwen3/deepseek/kimi run. opus extension uses n=300 mixed
   (75 per family). The pre-registered qwen3 safety replication uses
@@ -591,8 +589,10 @@ amount of safety-family signal that is itself within CI of zero.
 
 ![](figures/fig1_refusal_forest.png)
 
-**Figure 1.** Per-model inject−neutral refusal Δ across all 8 frontier
-models, ordered by point estimate. Horizontal error bars are 95%
+**Figure 1.** Per-model inject−neutral refusal Δ across all 8 tested
+models (frontier and frontier-adjacent: opus-4.7, sonnet-4.6,
+haiku-4-5, gpt-5.5, gpt-4o-mini, qwen3-thinking, kimi-k2-thinking,
+deepseek-v3.2), ordered by point estimate. Horizontal error bars are 95%
 paired-bootstrap CIs (B=200). Vertical dashed line at Δ=0. No model
 in the lineup has a CI excluding zero. The closed-source aggregate
 at n=2,499 paired places the effect at +0.002 [−0.018, +0.023].
@@ -769,17 +769,18 @@ zero at n_flip=10.
 
 ![](figures/fig4_mediation_panels.png)
 
-**Figure 4.** Mediation analysis visualization for the primary qwen3
-n=500 sample across three panels. (a) Aggregate within-cohort
-VEA+/VEA− refusal split — observational and confounded by task-family
-composition (shown for context). (b) Per-family within-prompt
-diff-in-diff under broad rubric. (c) Per-family within-prompt
-diff-in-diff under the validated strict rubric ({explicit_eval,
-benchmark, safety_check}). Bars colored red where the diff-in-diff CI
-excludes zero. The qwen3-safety panel shows the original
-strong_mediation point estimate (+0.222); the pre-registered
-replication that returned epiphenomenal is shown separately in
-Figure 5.
+**Figure 4.** Mediation analysis for the primary qwen3 n=500 sample
+across three panels. (a) Aggregate within-cohort VEA+/VEA− refusal
+split — observational and confounded by task-family composition,
+shown for context. (b) Per-family within-prompt diff-in-diff under
+broad rubric. (c) Per-family within-prompt diff-in-diff under the
+validated strict rubric ({explicit_eval, benchmark, safety_check}).
+Bars colored red where the diff-in-diff CI excludes zero. The
+qwen3-safety panel (c) shows the primary strong-mediation point
+estimate (+0.222); **the pre-registered disjoint-prompt replication
+returned null and is shown in Figure 5; see §5.3 for the headline
+interpretation.** Capability families (knowledge, math) are
+mechanically null on this analysis (refusal floor at ~0).
 
 **Bottom line on mediation:** Across all cells where we have
 sufficient n_flip to test (qwen3 safety primary, qwen3 safety
@@ -1541,7 +1542,7 @@ missing data; capture is solid for the open-reasoning routes.
    with a clean zero baseline; kimi is a clean negative control.
 
 2. **Aggregate inject framing has at most a small aggregate refusal
-   effect**, with no CI-excludes-zero shift on 8/8 frontier models in
+   effect**, with no CI-excludes-zero shift on 8/8 tested models in
    the cross-protocol experiment at the model-aggregate level. The
    closed-source pooled CI at +0.002 [−0.018, +0.023] (n=2,499
    paired) is tight enough to be informative. Family- and model-
@@ -1581,7 +1582,7 @@ literature:
 
 **Against the "models broadly notice the eval and refuse more"
 reading.** The cross-protocol behavioral analysis is null at the
-model-aggregate level: none of 8 frontier models, including the
+model-aggregate level: none of 8 tested models, including the
 closed-source flagships (gpt-5.5, opus-4.7) at pooled n=2,499, show a
 CI-excludes-zero refusal shift under explicit eval framing in the
 aggregate. The "refuse more" reading is wrong as a universal claim.
@@ -1941,7 +1942,8 @@ how the effect interacts with an external eval/deployment label
 authored by a different research group, and (e) which clause of the
 V1 inject prompt carries the behavioral effect. We find:
 
-- **(a) Aggregate behavioral effect: no.** V1's 8/8 frontier models
+- **(a) Aggregate behavioral effect: no.** V1's 8/8 tested models
+  (5 frontier or near-frontier closed-source + 3 open-reasoning)
   show null inject−neutral refusal shifts at the model-aggregate
   level. V2's 6/6 models show pooled inject main effects within ±0.015
   of zero, none surviving Holm in either correction family.
@@ -2101,7 +2103,7 @@ vendor pages can move.
 ### Methodological background
 
 - Sandbagging / strategic deception literature: see Park et al. (2024)
-  for a survey. Specific causal interventions are reviewed in
+  for a survey. Related environment-cue evidence is discussed in
   Chaudhary (2026).
 - Pre-registration discipline (filed-before-execution invariant) in
   ML follows the broader psychology / replication-science pre-
@@ -2122,7 +2124,7 @@ Two reproduction costs are worth distinguishing:
 
 * **Full reproduction** (rerun every model-under-test and judge call
   from scratch): approximately **$500 in API fees** as of this draft,
-  accumulated across the cross-protocol experiment (8 frontier models
+  accumulated across the cross-protocol experiment (8 tested models
   × 4 conditions × n=2,000 prompts per model = ~16k rollouts), the
   Goodfire-style open-reasoning experiment (3 models × 4 conditions ×
   n=500 = 6k rollouts), the closed-source opus-4.7 extension (1 model
@@ -2169,6 +2171,19 @@ This writes nine figures to the specified output directory:
 and `fig9_v3_vea_dissociation.png` (V3). Each `--*-summary` flag is
 optional; figures whose inputs aren't supplied are skipped with an
 info log.
+
+**Vector PDF outputs for arXiv submission.** Each figure is also
+written as a vector `.pdf` at the same stem path (e.g.
+`fig7_triangulation.pdf` alongside `fig7_triangulation.png`). The
+Markdown draft in this repository references the `.png` files
+because GitHub's Markdown renderer does not display PDFs inline; the
+arXiv LaTeX build should prefer the `.pdf` files by setting
+`\graphicspath{{docs/figures/}}` and `\DeclareGraphicsExtensions{.pdf,.png}`
+in the LaTeX preamble (or by passing `--resource-path=docs/figures`
+to pandoc and using the default LaTeX behavior of preferring `.pdf`
+over `.png` when both extensions exist for the same stem). This
+keeps the source draft and the submission build in sync without
+maintaining two figure-reference paths.
 
 ---
 
