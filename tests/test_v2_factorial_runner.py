@@ -96,8 +96,11 @@ def test_apollo_metadata_is_preserved_on_every_rollout(tmp_path):
     required_keys = {
         "apollo_id",
         "apollo_is_eval",
-        "apollo_eval_category",
+        "apollo_eval_type",
         "apollo_category",
+        "apollo_subcategory",
+        "apollo_safety_category",
+        "apollo_scaffold_type",
         "apollo_prompt_mode",
     }
     for r in rollouts:
