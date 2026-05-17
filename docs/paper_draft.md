@@ -1,4 +1,4 @@
-# Verbalized vs Behavioral Eval-Awareness in Frontier Reasoning Models
+# Verbalized vs Behavioral Eval-Awareness in Frontier and Frontier-Adjacent Reasoning Models
 
 *Three pre-registered studies of explicit eval framing, intrinsic eval labels, and inject-clause attribution across frontier and frontier-adjacent reasoning models.*
 
@@ -18,9 +18,9 @@ complementary prompt-level question: when evaluation context is
 introduced through *explicit system-prompt framing* or already
 embedded in benchmark prompts as an *intrinsic eval label*, which
 behavioral shifts remain, are they mediated by measured VEA, and
-what specific prompt features carry or predict them? Across three pre-registered
-experiments totaling 32,170 rollouts on six frontier and
-frontier-adjacent reasoning models from four labs, we find:
+what specific prompt features carry or predict them? Across three
+pre-registered experiments totaling 32,170 rollouts on six frontier
+and frontier-adjacent reasoning models from four labs, we find:
 
 **Apollo's intrinsic eval label predicts +7.5 to +13.0 percentage
 points of additional refusal across the lineup; 5 of 6 models
@@ -2195,28 +2195,19 @@ operationalization, were not independent discoveries:
 labels predict higher refusal across 5 of 6 tested models from 4
 labs (V2; broad associative effect, not a randomized intervention),
 while explicit eval framing produces direction-asymmetric refusal
-shifts on a specific subset of models (V1 + V3; causal intervention
-via system-prompt manipulation). The explicit-framing safety
-effects are not captured by strict-VEA monitoring of CoT (V1 §5.4);
-the intrinsic-label effect is behavioral-only in this design (V2
-does not run VEA-flip mediation, and closed-CoT models have no VEA
-channel).** V3 further localizes the explicit-framing
-effect to *distributed-additive cue attribution across three
-clauses* rather than to any single clause's propositional content.
-The intrinsic-label effect generalizes across 5 of 6 models from 4
-labs (V2); the explicit-framing effect is direction-asymmetric and
-lives in a specific
-subset of models (qwen3 +, opus −; null on four others). **The
-explicit-framing safety effects survive in the strict-VEA-stable
-stratum** (V1 §5.4), so the explicit-framing channel is not
-explained by measured VEA; **the intrinsic-label effect is
-behavioral-only in this design** (V2 does not VEA-flip-stratify,
-and closed-CoT models have no VEA channel to measure). Both
-results are consistent with Knecht et al. (2026)'s broad-scope
-finding that VEA does not robustly drive behavior under CoT-level
-interventions. **Prompt-level eval cues
+shifts on a specific subset of models (V1 + V3; qwen3 +, opus −;
+causal intervention via system-prompt manipulation). V3 further
+localizes the explicit-framing effect to distributed-additive cue
+attribution across three clauses rather than to any single clause's
+propositional content. The explicit-framing safety effects survive
+in the strict-VEA-stable stratum (V1 §5.4), so the explicit-framing
+channel is not explained by measured VEA; the intrinsic-label effect
+is behavioral-only in this design (V2 does not run VEA-flip mediation,
+and closed-CoT models have no VEA channel). Both are consistent with
+Knecht et al. (2026)'s broad-scope finding that VEA does not robustly
+drive behavior under CoT-level interventions.** Prompt-level eval cues
 exist as behavioral signals; explicit-VEA monitoring of CoT does
-not capture where those signals act.**
+not capture where those signals act.
 
 This has practical implications for alignment-eval research:
 **explicit-VEA monitors** — those that read CoT specifically for
