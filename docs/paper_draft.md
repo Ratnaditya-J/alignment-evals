@@ -83,9 +83,10 @@ large-scale causal test of whether VEA in CoT actually drives
 behavior. Using CoT-level sentence prefilling to inject or remove
 eval-aware sentences mid-trace across 8 open-weight reasoning models
 and 4 benchmarks, they find that VEA has **limited behavioral
-effect** — injection effects are near-zero (Cohen's ω ≤ 0.06),
-removal effects small (ω ≤ 0.12), spontaneous-VEA differentials at
-most 3.7 percentage points (ω ≤ 0.31). The bare "VEA drives
+effect** — under their main mid-trace prefilling setup, injection
+effects are near-zero (Cohen's ω ≤ 0.06), removal effects small
+(ω ≤ 0.12), spontaneous-VEA differentials at most 3.7 percentage
+points (ω ≤ 0.31). The bare "VEA drives
 behavior" hypothesis is therefore not supported at the CoT
 intervention level.
 
@@ -382,8 +383,9 @@ safety, alignment, dilemmas, and political-opinion benchmarks
 (N=500 prompts each). Using CoT-level sentence prefilling to inject
 or remove VEA sentences mid-trace, plus on-policy comparison of
 spontaneously-aware vs spontaneously-unaware rollouts, they find
-**limited behavioral effect of VEA**: injection produces near-zero
-shifts (Cohen's ω ≤ 0.06), removal produces small shifts (ω ≤ 0.12),
+**limited behavioral effect of VEA** under their main mid-trace
+prefilling setup: injection produces near-zero shifts (Cohen's
+ω ≤ 0.06), removal produces small shifts (ω ≤ 0.12),
 spontaneous VEA shifts answer distributions by at most 3.7
 percentage points (ω ≤ 0.31). The qualitative finding — VEA
 verbalization in CoT does not robustly translate into behavioral
@@ -2179,9 +2181,9 @@ embedded in benchmark prompts as an *intrinsic eval label*, which
 behavioral shifts remain, are they mediated by measured VEA, and
 what specific prompt features carry or predict them?
 
-Three pre-registered experiments — V1 (cross-protocol behavioral +
-Goodfire-style reasoning-trace on mixed task families, plus
-BeaverTails safety replication, 8 models), V2
+Three pre-registered experiments — V1 (8-model cross-protocol
+behavioral study, plus Goodfire-style reasoning-trace analyses on
+trace-visible models and a BeaverTails safety replication), V2
 (Apollo 2×2 factorial on the eval-awareness corpus, 6 models with
 closed-CoT backfill), V3 (5-condition inject-clause ablation on
 Apollo's alignment-eval stratum, 6 models) — totaling **32,170
