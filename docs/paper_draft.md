@@ -12,9 +12,9 @@
 
 We test whether evaluation framing changes refusal behavior in
 frontier and frontier-adjacent reasoning models, and whether such
-changes are mediated by
-verbalized evaluation awareness in chain-of-thought. Across three
-pre-registered experiments totaling 32,170 rollouts, we compare
+changes are mediated by verbalized evaluation awareness in
+chain-of-thought. Across three pre-registered experiments totaling
+32,170 rollouts, we compare
 explicit eval-framing prompts, intrinsic eval-vs-deployment labels,
 and clause-level ablations across six models from four labs.
 
@@ -1468,8 +1468,9 @@ The closed-CoT backfill adds two strong null checks to V3:
 **The direction asymmetry on opus and qwen3 is now triangulated
 against 4 different null models** spanning closed-CoT (gpt-5.5,
 gemini-2.5-pro), open-reasoning small-effect (deepseek), and
-open-reasoning flat (kimi) family categories. The asymmetric signal
-is not an artifact of the original V2 4-model lineup choice.
+open-reasoning flat (kimi) family categories. The cross-lineup
+sign preservation makes a lineup-selection artifact less plausible
+than under the V2 4-model lineup alone.
 
 #### 5.6.6 What survives, what doesn't (V3, 6-model lineup)
 
@@ -1477,7 +1478,7 @@ is not an artifact of the original V2 4-model lineup choice.
 |---|---|
 | The V1 inject effect's direction asymmetry on opus (−) and qwen3 (+) replicates on a fresh V3 sample | **Supported.** opus full_inject Δ −0.067 CI [−0.104, −0.030] p=0.001; qwen3 full_inject Δ +0.054 CI [+0.014, +0.094] p=0.013. Both CIs exclude zero. |
 | At least one of the three V1 inject clauses individually carries the V1 effect | **Not supported.** 0/18 singleton hypotheses survive Holm-Bonferroni. All singleton point estimates ≤0.04 in absolute value with CIs including zero. |
-| The V1 inject is synergistic: requires all three clauses together to produce the effect | **Not supported on either active model.** Additivity residual CIs include zero on opus and qwen3. The clauses are not super-additive. |
+| The V1 inject is synergistic: requires all three clauses together to produce the effect | **Not supported on either active model.** Additivity residual CIs include zero on opus and qwen3. No super-additive pattern is detected under the tested design. |
 | The V1 inject is distributed-additive on opus and qwen3 | **Supported.** Sum-of-singletons matches full_inject within CI on both active models. |
 | Closed-CoT frontier/near-frontier models react to extrinsic eval-framing in V3 | **Not supported.** gpt-5.5 full_inject Δ +0.000 [−0.060, +0.060]; gemini-2.5-pro full_inject Δ −0.010 [−0.050, +0.030]. Both null at clause and full resolution. |
 | qwen3's strict-VEA verbalization scales with the number of eval-frame clauses present | **Supported descriptively.** Each singleton inflates qwen3 strict VEA ×3-×13 over neutral; full_inject ×22. |
