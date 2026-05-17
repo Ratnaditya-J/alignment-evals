@@ -1,6 +1,6 @@
 # Verbalized vs Behavioral Eval-Awareness in Frontier Reasoning Models
 
-*Three pre-registered studies of explicit eval framing, intrinsic eval labels, and inject-clause attribution across frontier models.*
+*Three pre-registered studies of explicit eval framing, intrinsic eval labels, and inject-clause attribution across frontier and frontier-adjacent reasoning models.*
 
 **Author:** Ratnaditya Jonnalagadda  
 **Date:** May 2026  
@@ -11,7 +11,8 @@
 ## Abstract
 
 We test whether evaluation framing changes refusal behavior in
-frontier reasoning models, and whether such changes are mediated by
+frontier and frontier-adjacent reasoning models, and whether such
+changes are mediated by
 verbalized evaluation awareness in chain-of-thought. Across three
 pre-registered experiments totaling 32,170 rollouts, we compare
 explicit eval-framing prompts, intrinsic eval-vs-deployment labels,
@@ -91,9 +92,10 @@ models and task families: inject framing causes the model to verbalize
 awareness, which in turn causes the model to refuse more, everywhere.
 The integrated V1+V2 picture is sharper and more partial. The V1
 cross-protocol behavioral analysis returns an aggregate null across
-8 frontier-tier and frontier-adjacent models. V1's Goodfire reasoning-trace analysis
-returns large VEA inflation on qwen3, small but CI-excludes-zero on
-deepseek and on claude-opus-4-7, and null on kimi. Within-prompt
+8 frontier-tier and frontier-adjacent models. V1's Goodfire
+reasoning-trace analysis returns large VEA inflation on qwen3, small
+but CI-excludes-zero on deepseek and on claude-opus-4-7, and null on
+kimi. Within-prompt
 diff-in-diff mediation analysis under the empirically-validated strict
 VEA rubric (§4.5) suggested mediation on qwen3 safety prompts (DiD
 +0.222 [+0.029, +0.430], n_flip=63 paired), but a pre-registered
@@ -126,8 +128,9 @@ naive answer:
 
 > **Inject framing produces direction-asymmetric refusal shifts on
 > safety/alignment-relevant prompts in two of six tested frontier
-> models — qwen3 refuses more under inject (V1 paired Δ +0.217
-> [+0.098, +0.337] on the replication sample; V2 alignment-stratum
+> and frontier-adjacent reasoning models — qwen3 refuses more under
+> inject (V1 paired Δ +0.217 [+0.098, +0.337] on the replication
+> sample; V2 alignment-stratum
 > Δ +0.057 [−0.04, +0.14]; V3 alignment full_inject Δ +0.054 [+0.014,
 > +0.094]), opus-4.7 refuses less (V1 paired Δ −0.339 [−0.446, −0.231];
 > V2 alignment-stratum Δ −0.060 [−0.18, −0.001]; V3 alignment
@@ -155,7 +158,8 @@ Section 9 concludes.
 ### 1.1 Contributions
 
 1. **Triangulated direction asymmetry across three pre-registered
-   experiments and six frontier models from four labs.** The same
+   experiments and six frontier and frontier-adjacent reasoning
+   models from four labs.** The same
    opposite-signed refusal-shift pattern (opus −, qwen3 +) replicates
    on BeaverTails (V1), Apollo's alignment-eval stratum (V2
    deep-dive), and the V3 inject-clause-ablation sample, at
@@ -1027,8 +1031,9 @@ OpenAI, Google) and both visible-CoT and closed-CoT model families.
 **Implication:** the intrinsic signal that "this prompt looks like
 an eval" — encoded in the prompt content itself, not in any framing
 we added — is enough to shift refusal behavior on **5 of 6 frontier
-models from 4 different model labs.** This is V2's headline positive
-finding and it generalizes well beyond the original 4-model lineup.
+and frontier-adjacent reasoning models from 4 different model labs.**
+This is V2's headline positive finding and it generalizes well
+beyond the original 4-model lineup.
 
 Per-cell summary (strict VEA, B=2000; closed-CoT models added with
 VEA=0.00 by design per the backfill pre-reg §4):
@@ -1214,7 +1219,7 @@ observation; discriminating them needs a follow-up.
 | The V1 inject effect generalizes to non-safety prompts | **Not supported on any of 6 models.** All inject main effects within ±0.015 of zero; none survive Holm in either family. |
 | The V1 inject effect was specific to safety/alignment-relevant prompts | **Supported (post-hoc).** Stratified deep-dive (§5.5.4) recovers V1's directions on the alignment stratum at proportional magnitude. |
 | The V1 qwen3-vs-opus direction asymmetry holds on V2's alignment stratum | **Directionally consistent.** Opus −0.060 (CI excludes zero), qwen3 +0.057 (CI [−0.04, +0.14] includes zero) at ~1/4-1/6 V1 magnitude. V3 (§5.6) confirms both at full CI-excludes-zero strength on a larger alignment-eval sample. |
-| Apollo's intrinsic eval label predicts refusal behavior on frontier models | **Supported across the lineup.** Cross-model main effect +0.075 to +0.130; **5 of 6 models survive Holm** in their respective families (opus / deepseek / qwen3 in Family A; gpt-5.5 / gemini-2.5-pro in Family B; only kimi fails). |
+| Apollo's intrinsic eval label predicts refusal behavior on frontier and frontier-adjacent reasoning models | **Supported across the lineup.** Cross-model main effect +0.075 to +0.130; **5 of 6 models survive Holm** in their respective families (opus / deepseek / qwen3 in Family A; gpt-5.5 / gemini-2.5-pro in Family B; only kimi fails). |
 | The intrinsic-eval-label refusal signal extends to closed-CoT models | **Supported.** gpt-5.5 (+0.110, Family B Holm-survivor) and gemini-2.5-pro (+0.095, Family B Holm-survivor) both reproduce the magnitude V1+V2's reasoning-trio-plus-opus established. |
 | qwen3 has a capability-eval inject-suppresses-refusal pattern | **Supported.** Δ−0.064, CI [−0.16, −0.001], p=0.046. Unique to qwen3 (other 3 reasoning models have floor refusal on capability; closed-CoT models not analyzed in this stratified subanalysis). |
 | qwen3's strict-VEA verbalization rate exceeds other models by ~4× | **Supported, stable trait.** Replicates the V1 §5.2 pattern via the V2 corpus and the validated strict rubric. Closed-CoT models cannot be ranked on VEA (see §8). |
@@ -1690,7 +1695,8 @@ crossing the V1 inject framing with an intrinsic eval/deployment
 label from Apollo's external corpus. V3 addresses V1's bundled-inject
 weakness by ablating the V1 inject into its three constituent clauses.
 The three experiments triangulate into a coherent picture across
-**six frontier models from four model labs** (opus, qwen3, deepseek,
+**six frontier and frontier-adjacent reasoning models from four
+model labs** (opus, qwen3, deepseek,
 kimi, gpt-5.5, gemini-2.5-pro).
 
 **(i) The V1 inject effect is real, direction-asymmetric on
@@ -1718,7 +1724,8 @@ and the only effect that generalizes cleanly across closed-CoT
 families.** The implication for alignment-eval methodology: when
 constructing a benchmark, the prompts' own *content* carries an
 eval-recognition signal that shifts behavior across 5 of 6 frontier
-models from 4 different labs, before any explicit framing is added.
+and frontier-adjacent reasoning models from 4 different labs, before
+any explicit framing is added.
 Eval validity has to account for this even in the "neutral" condition.
 
 **(iii) The V1 inject's effect on opus and qwen3 is distributed-
