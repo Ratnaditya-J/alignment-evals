@@ -1610,11 +1610,11 @@ pre-registered replication.
 own primary analysis initially suggested.** The pre-registered
 disjoint-prompt replication of the qwen3 safety mediation effect was
 null (§5.3); the primary +0.222 mediation point estimate failed to
-replicate. **VEA
-verbalization in CoT is *correlated* with the inject framing — its
-inflation under inject is well-replicated across four independent
-runs on qwen3 (including the pre-registered safety replication) — but
-does *not* mediate the inject-to-refusal channel in any cell where
+replicate. **VEA verbalization in CoT is *correlated* with the inject
+framing — its inflation under inject is well-replicated across four
+independent runs on qwen3 (including the pre-registered safety
+replication) — but does *not* mediate the inject-to-refusal channel
+in any cell where
 we have meaningful n_flip on a fresh sample.**
 
 **Direction asymmetry, not two mechanisms.** Earlier drafts framed
@@ -1766,7 +1766,7 @@ clauses. **Two different per-clause patterns produce the same
 distributed-additive refusal attribution on the same kind of
 prompts.** V1's verbalization-vs-behavior dissociation generalizes
 to V3 and shows up at clause resolution as two distinct model-level
-mechanisms.
+profiles.
 
 **(v) qwen3 has a direction-asymmetric inject response across prompt
 types.** V1 saw qwen3 +22pp on safety. V2 sees qwen3 +5.7pp on
@@ -2050,9 +2050,9 @@ Future work should (i) extend the V3 clause-ablation design to
 additional reasoning-capable models to characterize *why* opus and
 qwen3 react to clause-additive eval-framing while four other
 tested models do not, (ii) test whether the V2 intrinsic-eval-label
-signal
-operates through the same distributed-additive mechanism by ablating
-which prompt-level features carry the eval-recognition signal, and
+signal operates through the same distributed-additive mechanism by
+ablating which prompt-level features carry the eval-recognition
+signal, and
 (iii) replicate the V1 mediation null on a third independent sample
 to firm up the negative-result interpretation.
 
