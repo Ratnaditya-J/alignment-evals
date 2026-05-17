@@ -18,7 +18,7 @@ complementary prompt-level question: when evaluation context is
 introduced through *explicit system-prompt framing* or already
 embedded in benchmark prompts as an *intrinsic eval label*, which
 behavioral shifts remain, are they mediated by measured VEA, and
-what specific prompt features drive them? Across three pre-registered
+what specific prompt features carry or predict them? Across three pre-registered
 experiments totaling 32,170 rollouts on six frontier and
 frontier-adjacent reasoning models from four labs, we find:
 
@@ -50,11 +50,13 @@ not explained by the measured VEA channel.
 
 Together, these results indicate that **intrinsic eval-associated
 prompt content predicts higher refusal across 5 of 6 tested models**
-(broad cross-laboratory effect), while **explicit eval framing
+(broad cross-laboratory association), while **explicit eval framing
 produces direction-asymmetric refusal shifts on a specific subset of
-models** (qwen3 +, opus −; null on four others) — two distinct
-prompt-level signals, neither captured by explicit-VEA monitoring of
-CoT.
+models** (qwen3 +, opus −; null on four others). The
+explicit-framing safety effects are not captured by strict-VEA
+monitoring of CoT (V1 §5.4); the intrinsic-label effect is
+behavioral-only in this design (V2 does not run VEA-flip mediation,
+and closed-CoT models have no VEA channel).
 
 **Keywords:** evaluation awareness, reasoning models, chain-of-thought,
 safety evaluation, benchmark validity, pre-registration, intrinsic
@@ -302,14 +304,19 @@ benchmarking, or grading without being prompted to do so. Apollo
 Research (Needham et al., 2025) released a held-out 976-prompt
 corpus with intrinsic eval/deployment labels that frames eval
 recognition as a corpus-level signal rather than a CoT-level one;
-our V2 and V3 experiments use that corpus.
+our V2 and V3 experiments use that corpus. Ahmed et al. (2025)
+study a closely related "evaluation scent" framing using paired
+eval-vs-real-world prompts and measure resulting changes in CoT,
+refusal, and compliance on GPT-OSS-20B — methodologically adjacent
+to our V2 design point of using a corpus-level eval/deployment
+contrast as the manipulation rather than a CoT-level intervention.
 
 **Mechanism-level work and the format-sensitivity confound.**
 Representation-level approaches probe and steer eval-awareness
 inside model activations rather than at the prompt or CoT level
 (Nguyen et al., 2025); steering studies have also constructed
 explicit eval-aware "model organisms" to study the phenomenon
-under controlled training conditions (Hua et al., 2025/2026).
+under controlled training conditions (Hua et al., 2025).
 A related thread, important for interpreting intrinsic-label
 results like our V2 finding, is the observation that apparent
 eval-awareness evidence in benchmark contexts can collapse into
@@ -2116,7 +2123,7 @@ the complementary **prompt-level** question: when evaluation context
 is introduced through *explicit system-prompt framing* or already
 embedded in benchmark prompts as an *intrinsic eval label*, which
 behavioral shifts remain, are they mediated by measured VEA, and
-what specific prompt features drive them?
+what specific prompt features carry or predict them?
 
 Three pre-registered experiments — V1 (cross-protocol behavioral +
 Goodfire-style reasoning-trace on BeaverTails safety, 8 models), V2
@@ -2189,8 +2196,11 @@ labels predict higher refusal across 5 of 6 tested models from 4
 labs (V2; broad associative effect, not a randomized intervention),
 while explicit eval framing produces direction-asymmetric refusal
 shifts on a specific subset of models (V1 + V3; causal intervention
-via system-prompt manipulation); neither effect is captured by
-VEA monitoring of CoT.** V3 further localizes the explicit-framing
+via system-prompt manipulation). The explicit-framing safety
+effects are not captured by strict-VEA monitoring of CoT (V1 §5.4);
+the intrinsic-label effect is behavioral-only in this design (V2
+does not run VEA-flip mediation, and closed-CoT models have no VEA
+channel).** V3 further localizes the explicit-framing
 effect to *distributed-additive cue attribution across three
 clauses* rather than to any single clause's propositional content.
 The intrinsic-label effect generalizes across 5 of 6 models from 4
@@ -2256,6 +2266,10 @@ negative-result interpretation.
 ---
 
 ## References
+
+Ahmed, et al. (2025). *Do LLMs Know They Are Being Tested?
+Evaluation Awareness and Incentive-Sensitive Failures in
+GPT-OSS-20B.* arXiv:2510.08624.
 
 Aranguri, S., & Bloom, J. (2026). *Verbalized Eval Awareness Inflates
 Measured Safety.* Goodfire Research. May 4, 2026.
