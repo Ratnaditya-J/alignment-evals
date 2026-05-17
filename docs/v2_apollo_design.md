@@ -1,6 +1,6 @@
 # V2 detailed design: Apollo dataset integration
 
-**Status:** design (May 2026). PR 1 (data layer, `d76502c`) + PR 2 (runner, `337a2d4`) + PR 3 (analysis) landed; PR 4 (pre-reg) + PR 5 (results) pending.
+**Status:** design (May 2026). PR 1 (data layer, `d76502c`) + PR 2 (runner, `337a2d4`) + PR 3 (analysis, `f22faf7`) + PR 4 (pre-reg) landed; PR 5 (results) pending.
 **Supersedes:** `docs/v2_apollo_integration_plan.md` (the planning sketch).
 
 ---
@@ -330,8 +330,8 @@ These should be resolved during the smoke-test phase, before locking the pre-reg
 
 - **Day 1** ✅ *done (commit `d76502c`)*: schema confirmed, `ApolloEvalAwarenessLoader` built, 12 unit tests passing. Smoke test on real dataset still pending (requires downloading the decrypted file from HF).
 - **Day 2** ✅ *done (commit `337a2d4`)*: `run_v2_apollo_factorial.py` runner built with `run_factorial()` library entry-point + CLI, 10 integration tests passing using `ScriptedModelClient`. End-to-end smoke against a real model still pending.
-- **Day 3** ✅ *done (this PR)*: `analyze_v2_factorial.py` built — paired-bootstrap cell means, main effects, interaction effect, verdict tiers (`insufficient_data` / `null_both` / `additive` / `interaction_supported`), Holm-Bonferroni across (model × effect), and a markdown report. 16 analysis tests passing.
-- **Day 4**: file pre-reg (commit + push), run main experiment, generate report.
+- **Day 3** ✅ *done (commit `f22faf7`)*: `analyze_v2_factorial.py` built — paired-bootstrap cell means, main effects, interaction effect, verdict tiers (`insufficient_data` / `null_both` / `additive` / `interaction_supported`), Holm-Bonferroni across (model × effect), and a markdown report. 16 analysis tests passing.
+- **Day 4** ✅ *pre-reg filed (this PR)*: `docs/pre_registration_v2_apollo_2x2.md` locks subsample recipe, model lineup, condition text, VEA judge, statistical procedure, verdict tiers, Holm-Bonferroni family, and deviations policy. The pre-registered command is ready to execute against the downloaded Apollo dataset.
 - **Day 5**: write up findings, update paper §X with V2 results.
 
 ---
@@ -402,7 +402,7 @@ This needs separate infrastructure (calibration analysis pipeline). Likely V5 or
 1. ~~PR 1: data layer (`ApolloEvalAwarenessLoader` + unit tests). No experiment runs yet.~~ **Landed: commit `d76502c`.**
 2. ~~PR 2: runner (`run_v2_apollo_factorial.py` + integration tests). Smoke test only.~~ **Landed (this PR).**
 3. ~~PR 3: analysis (`analyze_v2_factorial.py` + analysis tests).~~ **Landed (this PR).**
-4. PR 4: pre-registration document. Committed to `main` before any experiment runs.
+4. ~~PR 4: pre-registration document. Committed to `main` before any experiment runs.~~ **Landed (this PR): `docs/pre_registration_v2_apollo_2x2.md`.**
 5. PR 5: results — runs/, summary JSON, report markdown, paper-section update.
 
 Each PR is small enough to review in 15–30 minutes. The pre-reg PR is the gate: anything past PR 4 is the experimental run, and that requires the pre-reg locked first.
