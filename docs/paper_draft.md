@@ -598,7 +598,7 @@ bundling three distinct manipulations that V1 did not factor apart:
 * **Eval-context signaling.** The text names an evaluation scenario
   ("this is an evaluation"). This is the classical "the model knows
   it is being watched" manipulation that sandbagging-on-eval
-  predictions are about (van der Weij et al., 2024/2025).
+  predictions are about (van der Weij et al., 2025).
 * **Reviewer attribution.** The text identifies safety researchers as
   the audience, which adds a specific authority cue distinct from
   generic eval framing.
@@ -2428,9 +2428,7 @@ negative-result interpretation.
 
 Abdelnabi, S., & Salem, A. (2025). *The Hawthorne Effect in
 Reasoning Models: Evaluating and Steering Test Awareness.*
-arXiv:2505.14617. [Revised Oct. 28, 2025; supersedes the earlier
-preprint title 'Linear Control of Test Awareness Reveals
-Differential Compliance in Reasoning Models'.]
+arXiv:2505.14617.
 
 Ahmed, N., Zaman, M. I., Saleem, G., & Hassan, A. (2025). *Do
 LLMs Know They Are Being Tested?
@@ -2503,9 +2501,9 @@ Balesni, M., Hobbhahn, M., Meinke, A., & Evans, O. (2024). *Me,
 Myself, and AI: The Situational Awareness Dataset (SAD) for LLMs.*
 arXiv:2407.04694.
 
-Li, Bai, Liu, Zhang, & Zeng (2026). *Decomposing and Steering
-Functional Metacognition in Large Language Models.*
-arXiv:2605.08942.
+Li, Y., Bai, X., Liu, S., Zhang, H., & Zeng, A. (2026).
+*Decomposing and Steering Functional Metacognition in Large
+Language Models.* arXiv:2605.08942.
 
 Lin, S., Hilton, J., & Evans, O. (2022). *TruthfulQA: Measuring How
 Models Mimic Human Falsehoods.* ACL. arXiv:2109.07958.
@@ -2534,9 +2532,8 @@ Schoen, et al. (2025). *Stress Testing Deliberative Alignment for
 Anti-Scheming Training.* arXiv:2509.15541.
 
 van der Weij, T., Hofstätter, F., Jaffe, O., Brown, S. F., & Ward,
-F. R. (2024/2025). *AI Sandbagging: Language Models can
-Strategically Underperform on Evaluations.* ICLR 2025.
-arXiv:2406.07358.
+F. R. (2025). *AI Sandbagging: Language Models can Strategically
+Underperform on Evaluations.* ICLR 2025. arXiv:2406.07358.
 
 Xiong, L., Bhargava, N., Hong, J., Chang, J., Liu, H., Sharma, V.,
 & Zhu, K. (2025). *Probe-Rewrite-Evaluate: A Workflow for Reliable
