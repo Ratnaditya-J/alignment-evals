@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+title: "alignment-evals: evaluation-awareness, sandbagging, and honesty evals for frontier language models"
+message: "If you use this work or its findings, please cite as below."
+type: software
+authors:
+  - family-names: "Jonnalagadda"
+    given-names: "Ratnaditya"
+    email: "ratna.ditya@gmail.com"
+repository-code: "https://github.com/Ratnaditya-J/alignment-evals"
+date-released: 2026-05-13
+license: MIT
+keywords:
+  - ai-safety
+  - alignment
+  - evaluation-awareness
+  - llm-evaluation
+  - sandbagging
+  - reasoning-models
+abstract: >
+  Empirical alignment-eval research and infrastructure. V1 (complete) measures
+  whether explicit "you are being evaluated" framing changes refusal behavior
+  on eight frontier models and whether the effect is mediated by visible
+  verbalized eval-awareness in chain-of-thought. Pre-registered disjoint-prompt
+  replication of the qwen3 safety mediation effect returned null; what survives
+  is a direction-asymmetric refusal shift (qwen3 +22pp, opus-4.7 -34pp) that
+  operates on prompts where neither model verbalized the evaluation. V2
+  extends the analysis using Apollo Research's released eval-awareness corpus.
