@@ -48,6 +48,13 @@ fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Match V2 / V3 pre-reg §6 discipline: ensure we're on latest main before
+# any rollouts so the recorded commit-hash and the executed code agree.
+echo "==> git: ensuring latest main"
+git checkout main
+git pull origin main
+echo
+
 # Validate main run dirs exist before doing anything destructive
 if [ "$SKIP_V2" != "1" ]; then
     if [ ! -f "$V2_RUN_DIR/rollouts.jsonl" ]; then
