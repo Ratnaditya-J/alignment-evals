@@ -983,8 +983,10 @@ CIs include zero:
 | gpt-5.5         | −0.010 | [−0.050, +0.030] | no |
 | gemini-2.5-pro  | +0.005 | [−0.020, +0.030] | no |
 
-Compare V1's BeaverTails-safety numbers from §5.4: qwen3 +0.217,
-opus −0.339, both CI-excludes-zero, both replicated. **On Apollo's
+Compare V1's BeaverTails-safety numbers from §5.4: qwen3 +0.217 and
+opus −0.339, both CI-excluding-zero; V3 later reproduces the same
+opposite-signed pattern on Apollo alignment-eval prompts (qwen3
++0.054, opus −0.067; §5.6). **On Apollo's
 mixed capability+alignment+deployment corpus the same inject prompt
 produces ~zero pooled effect on all six models, spanning open- and
 closed-CoT families and three model labs.** Read across both
@@ -1457,11 +1459,11 @@ The closed-CoT backfill adds two strong null checks to V3:
 
 - **gpt-5.5:** baseline refusal 0.37 (highest of the 6 models), full_inject
   Δ refusal **+0.000** with the tightest CI in the lineup [−0.060, +0.060].
-  Every singleton effect is ±0.01 with CIs cleanly including zero. gpt-5.5
-  reads as a model with a stable refusal posture on Apollo alignment-eval
-  prompts that is completely unresponsive to extrinsic eval-framing
-  at any clause resolution. This reproduces V1's gpt-5.5 behavioral null
-  (V1 §5.1) at clause resolution.
+  Every singleton effect is ±0.01 with CIs cleanly including zero.
+  gpt-5.5 therefore has a stable refusal posture on Apollo
+  alignment-eval prompts that is completely unresponsive to extrinsic
+  eval-framing at any clause resolution. This reproduces V1's
+  gpt-5.5 behavioral null (V1 §5.1) at clause resolution.
 - **gemini-2.5-pro:** full_inject Δ refusal **−0.010** with CI [−0.05, +0.03].
   Each singleton mildly suppresses refusal (each Δ ≈ −0.02 to −0.03),
   but full_inject reverts to baseline. Attribution lands on
@@ -2050,7 +2052,7 @@ Future work should (i) extend the V3 clause-ablation design to
 additional reasoning-capable models to characterize *why* opus and
 qwen3 react to clause-additive eval-framing while four other
 tested models do not, (ii) test whether the V2 intrinsic-eval-label
-signal operates through the same distributed-additive mechanism by
+signal operates through an analogous distributed-additive pattern by
 ablating which prompt-level features carry the eval-recognition
 signal, and (iii) replicate the V1 mediation null on a third
 independent sample to firm up the negative-result interpretation.
