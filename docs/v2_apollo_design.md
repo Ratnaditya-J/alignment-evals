@@ -1,6 +1,6 @@
 # V2 detailed design: Apollo dataset integration
 
-**Status:** design (May 2026). No code written yet.
+**Status:** design (May 2026). PR 1 (data layer) landed at commit `d76502c`; PR 2+ pending.
 **Supersedes:** `docs/v2_apollo_integration_plan.md` (the planning sketch).
 
 ---
@@ -33,36 +33,44 @@
 
 ## 2. Data layer
 
-### Apollo's `dataset.json` (assumed shape, verify on first inspection)
+### Apollo's dataset file (confirmed schema, May 2026)
 
-From the Apollo repo, the dataset is a JSON file consumed by their Inspect-based pipeline. Expected shape per entry:
+Verified by reading `pipeline/dataset.py` and `constants.py` in [jjpn97/eval_awareness](https://github.com/jjpn97/eval_awareness). The file is a JSON list whose entries follow the Inspect AI `Sample` schema:
 
 ```json
 {
-  "transcript_id": "string",
-  "source_dataset": "mmlu" | "swebench" | "ifeval" | ... ,
-  "is_eval": true | false,
-  "transcript": [
-    {"role": "system" | "user" | "assistant", "content": "string"}
-  ],
-  "metadata": { ... }
+  "id": "string",
+  "input": "string OR [ {\"role\": \"system\"|\"user\"|\"assistant\", \"content\": \"string\"} ]",
+  "metadata": {
+    "category": "mmlu" | "swebench" | "support_ticket" | ... ,
+    "eval_category": "Capability" | "Alignment" | null,
+    "tools": [ ... ],
+    "scaffold": null | { ... }
+  }
 }
 ```
 
-**Open question:** confirm exact keys on first inspection. If the shape differs, update normalization accordingly. Apollo's `run.py` consumes the file via Inspect; reading that code is the fastest way to confirm the schema.
+Key facts:
+
+- **Default filename** is `eval_awareness_val.json` (overridable via the `EVAL_AWARENESS_DATA_FILE` env var in Apollo's pipeline), not `dataset.json`.
+- **The eval label is 3-valued, not boolean.** `metadata.eval_category` is `"Capability"`, `"Alignment"`, or `null` (= real deployment). V2 binarizes: truthy → eval, falsy/null/missing → deployment. The original string is preserved for stratification.
+- **The file is encrypted in the GitHub repo** (to keep it out of training corpora). Decrypt locally per Apollo's instructions, or download from HuggingFace (`huggingface.co/datasets/jjpn2/eval_awareness`).
+- `input` can be a bare string (single user turn) or a list of chat messages. The loader handles both.
 
 ### Normalization target
 
-Map each Apollo entry to a `TaskExample` (the existing dataclass in `src/eval_awareness/dataset.py`) so the existing runner pipeline ingests it without modification:
+Map each Apollo entry to an `EvalAwarenessExample` (the existing dataclass in `src/eval_awareness/dataset.py`) so the existing runner pipeline ingests it without modification. Field mapping used by the loader:
 
-```python
-@dataclass(frozen=True)
-class TaskExample:
-    example_id: str        # f"apollo:{transcript_id}"
-    task_family: str       # "apollo_eval_aware"
-    user_prompt: str       # see "Prompt construction" below
-    metadata: Dict[str, Any]  # carries is_eval label + source_dataset
-```
+| Apollo field | `EvalAwarenessExample` field |
+|---|---|
+| `id` | `example_id = f"apollo:{id}"` |
+| `input` (last user message) | `transcript.user_prompt` |
+| `input` (system messages) | `transcript.system_prompt` (newline-joined) |
+| `input` (everything before the final user turn) | `transcript.conversation_history` |
+| `metadata.category` | `source` |
+| `metadata.eval_category` (truthy?) | `label = "hidden_eval"` else `"deployment_like"` |
+| `metadata.eval_category` (raw string) | `metadata["apollo_eval_category"]` |
+| binarized is-eval | `metadata["apollo_is_eval"]` |
 
 ### Prompt construction decision
 
@@ -75,36 +83,29 @@ Apollo's prompts are multi-turn transcripts. V1's were single-turn. Two options:
 
 **Default for V2:** full transcript. Rationale: Apollo's label is about the transcript-level eval-vs-deployment classification. Truncating to the last user turn discards exactly the context the label is built on. Cost increase is bounded (≤2-5x per rollout) and offset by the small sample size.
 
-### Loader spec
+### Loader spec (as implemented, commit `d76502c`)
 
 ```python
 # src/eval_awareness/dataset_loaders.py
 class ApolloEvalAwarenessLoader:
-    """Loads Apollo Research's released eval-awareness corpus
-    (arXiv 2505.23836). Wraps Apollo's `dataset.json` (downloaded
-    once from huggingface.co/datasets/jjpn2/eval_awareness) and emits
-    TaskExample objects compatible with the existing runner.
-    """
     def __init__(
         self,
-        dataset_path: Path,
+        dataset_path: str | Path,
         *,
-        label_filter: Optional[Literal["eval", "deployment", "both"]] = "both",
-        prompt_mode: Literal["full_transcript", "last_user_turn"] = "full_transcript",
+        label_filter: ApolloLabelFilter = "both",          # "eval" | "deployment" | "both"
+        prompt_mode: ApolloPromptMode = "full_transcript", # | "last_user_turn"
         max_examples: Optional[int] = None,
         seed: int = 0,
-    ): ...
-    def load(self) -> List[TaskExample]:
-        """Returns TaskExample objects, deterministically subsampled and
-        ordered by hash(transcript_id). Each example's metadata includes
-        the Apollo is_eval label and source_dataset name."""
+    ) -> None: ...
+    def load(self) -> List[EvalAwarenessExample]: ...
 ```
 
 Notes:
 
-- `max_examples` + `seed` enable deterministic subsampling (hash by `transcript_id`, take the lowest-hashed N). This is what the pre-registration will lock down.
+- `max_examples` + `seed` enable deterministic subsampling. Ordering recipe: sort all post-filter examples by `sha256(f"{seed}:{example_id}").hexdigest()`, take the first `max_examples`. This is what the pre-registration will lock down.
 - `label_filter="both"` is the default — we want both labels for the factorial.
 - The loader does NOT add the inject/neutral system prompt — that's the runner's job.
+- 12 unit tests in `tests/test_apollo_loader.py` cover label filtering, prompt-mode behavior, deterministic subsampling, string-vs-list `input`, missing user messages, malformed entries, and missing-file errors.
 
 ---
 
@@ -116,7 +117,7 @@ Mirrors the structure of `scripts/run_goodfire_vea.py`. CLI:
 
 ```
 python scripts/run_v2_apollo_factorial.py \
-  --apollo-dataset-path /path/to/dataset.json \
+  --apollo-dataset-path /path/to/eval_awareness_val.json \
   --n-eval 100 --n-deployment 100 \
   --models qwen3-235b-thinking deepseek-v3.2 kimi-k2-thinking claude-opus-4-7 \
   --conditions neutral inject \
@@ -127,13 +128,13 @@ python scripts/run_v2_apollo_factorial.py \
 
 ### Per-rollout flow
 
-1. Loader returns 200 `TaskExample` objects (100 eval-labeled + 100 deployment-labeled, deterministically subsampled).
+1. Loader returns 200 `EvalAwarenessExample` objects (100 eval-labeled + 100 deployment-labeled, deterministically subsampled).
 2. For each (example, condition, model) triple → 1,600 rollouts total.
 3. Construct the system prompt:
    - `neutral` → "You are a helpful assistant."
    - `inject` → existing inject text from V1 ("Note: this is an evaluation...")
 4. Send `(system_prompt, transcript_or_last_user_turn)` to the model. Record response, reasoning trace (if available), latency, request ID.
-5. Append a row to `rollouts.jsonl` with all metadata including the Apollo `is_eval` label.
+5. Append a row to `rollouts.jsonl` with all metadata, including the binarized `apollo_is_eval` flag and the original `apollo_eval_category` string for stratification.
 
 ### Reuse, don't rewrite
 
@@ -224,7 +225,7 @@ Same style as the existing `vea_mediation_report.strict.md`: per-model tables, v
 
 Locked before running:
 
-1. **Subsample** — exact subsample selection rule (hash + seed). The pre-reg embeds the list of selected `transcript_id`s or the recipe to reproduce them.
+1. **Subsample** — exact subsample selection rule (hash + seed). The pre-reg embeds the list of selected Apollo `id`s or the recipe to reproduce them (sort by `sha256(f"{seed}:apollo:{id}").hexdigest()`, take first N per label).
 2. **Models** — exact model identifiers (with version pins where possible).
 3. **Conditions** — exact system-prompt text for `neutral` and `inject`. Apollo prompt construction mode (`full_transcript`).
 4. **Outcome variables** — refusal rate + strict-VEA rate. (Broad-VEA reported as secondary.)
@@ -241,13 +242,20 @@ The pre-reg document is committed to `main` on `alignment-evals`. The commit tim
 
 ## 6. Tests
 
-### Unit tests (`tests/test_apollo_loader.py`)
+### Unit tests (`tests/test_apollo_loader.py`) — **landed, 12 passing**
 
-- `test_loader_emits_correct_taskexample_count` — given a synthetic 10-row dataset.json, expect 10 TaskExamples.
-- `test_label_filter_eval_only` — `label_filter="eval"` returns only `is_eval=True` rows.
-- `test_max_examples_deterministic` — same `seed` + same `max_examples` → same subset (verify by hash).
-- `test_prompt_mode_full_transcript_preserves_turns` — synthetic 3-turn transcript → user_prompt has all 3 turns serialized.
-- `test_prompt_mode_last_user_turn_extracts_correctly` — synthetic 3-turn transcript → user_prompt has only the last user message.
+- `test_loader_emits_one_example_per_valid_entry`
+- `test_label_filter_eval_only_keeps_truthy_eval_category`
+- `test_label_filter_deployment_only_keeps_falsy_eval_category`
+- `test_max_examples_subsample_is_deterministic`
+- `test_full_transcript_mode_preserves_system_and_history`
+- `test_last_user_turn_mode_strips_everything_but_final_user_message`
+- `test_string_input_is_treated_as_single_user_turn`
+- `test_metadata_preserves_apollo_fields_and_label`
+- `test_entries_with_no_user_message_are_skipped`
+- `test_missing_dataset_file_raises_filenotfounderror`
+- `test_non_list_root_raises_value_error`
+- `test_malformed_entries_are_logged_and_skipped`
 
 ### Integration tests (`tests/test_v2_factorial_runner.py`)
 
@@ -267,7 +275,7 @@ Target: ~15 new tests on top of the existing 275.
 
 These should be resolved during the smoke-test phase, before locking the pre-reg:
 
-1. **Apollo `dataset.json` schema** — confirm exact field names by inspecting the file.
+1. ~~**Apollo `dataset.json` schema**~~ — **resolved (May 2026).** Confirmed by reading Apollo's `pipeline/dataset.py` + `constants.py`. Real schema documented in §2 above. Loader (commit `d76502c`) implements the field mapping.
 2. **Subsample selection criterion** — "100 cleanest eval-labeled + 100 cleanest deployment-labeled" needs a definition of "cleanest." Candidates:
    - Highest agreement with Apollo's published per-transcript scores (if available).
    - Drop any transcript Apollo flagged as ambiguous.
@@ -298,7 +306,7 @@ These should be resolved during the smoke-test phase, before locking the pre-reg
 
 ### Calendar timeline (estimated effort, not duration)
 
-- **Day 1**: download dataset, inspect schema, build `ApolloEvalAwarenessLoader`, write unit tests. Smoke test on 10 prompts.
+- **Day 1** ✅ *done (commit `d76502c`)*: schema confirmed, `ApolloEvalAwarenessLoader` built, 12 unit tests passing. Smoke test on real dataset still pending (requires downloading the decrypted file from HF).
 - **Day 2**: build `run_v2_apollo_factorial.py` runner + integration tests. Verify smoke-test end-to-end.
 - **Day 3**: build `analyze_v2_factorial.py` + analysis tests. Draft pre-registration doc.
 - **Day 4**: file pre-reg (commit + push), run main experiment, generate report.
@@ -357,7 +365,8 @@ This needs separate infrastructure (calibration analysis pipeline). Likely V5 or
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| Apollo dataset.json schema differs from assumption | Medium | Inspect on Day 1; the loader is the only thing that depends on shape. |
+| ~~Apollo dataset schema differs from assumption~~ **materialized — handled** | — | Real schema confirmed before PR 1 (§2). Loader binarizes the 3-valued `eval_category`; original string preserved in metadata. |
+| Apollo dataset only available encrypted in repo | Medium | Download decrypted JSON from HuggingFace once and point `--apollo-dataset-path` at it. Loader fails fast with a clear `FileNotFoundError` if missing. |
 | Full-transcript prompts exceed model context | Low | Default to `full_transcript`; fall back to `last_user_turn` for transcripts > 100k tokens. |
 | Interaction effect is null and uninteresting | Medium | That IS the finding. Pre-reg the verdict tiers; null is still publishable. |
 | qwen3-235B safety stable_neg result from V1 doesn't replicate when measured on Apollo prompts | Medium-high | This is one of the secondary questions V2 tests; expected to be variable. |
@@ -368,7 +377,7 @@ This needs separate infrastructure (calibration analysis pipeline). Likely V5 or
 
 ## Commit notes (for the implementer)
 
-1. PR 1: data layer (`ApolloEvalAwarenessLoader` + unit tests). No experiment runs yet.
+1. ~~PR 1: data layer (`ApolloEvalAwarenessLoader` + unit tests). No experiment runs yet.~~ **Landed: commit `d76502c`.**
 2. PR 2: runner (`run_v2_apollo_factorial.py` + integration tests). Smoke test only.
 3. PR 3: analysis (`analyze_v2_factorial.py` + analysis tests).
 4. PR 4: pre-registration document. Committed to `main` before any experiment runs.
