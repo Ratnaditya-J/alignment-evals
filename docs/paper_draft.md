@@ -1167,13 +1167,15 @@ inject main effect was ~0**: the qwen3 alignment-stratum
 inject-raises-refusal (Δ+0.057) and the qwen3 capability-stratum
 inject-suppresses-refusal (Δ−0.064) cancel in the pooled mean.
 
-Plausible interpretation: qwen3 reads the inject as a permission /
-grading signal that suppresses refusals on capability prompts ("this
-is a benchmark, I should answer not refuse") while simultaneously
-treating it as a watching/caution signal on safety prompts ("this is
-being reviewed, I should be more careful"). These two readings of the
-same inject text produce opposite-direction behavior on different
-prompt types, and V2's mixed corpus design was needed to expose both.
+One plausible interpretation: the inject may function as a
+permission/grading cue on capability prompts (suppressing refusals)
+and a watching/caution cue on safety prompts (increasing refusals).
+The data we report are behavioral and do not directly test that
+internal-representation claim. What V2's mixed corpus design exposes
+is the two-context behavioral pattern: the same inject text produces
+opposite-direction refusal effects on capability vs safety prompts on
+qwen3, and that prompt-type-conditional pattern is what V1's
+safety-only corpus structurally could not see.
 
 #### 5.5.6 qwen3's strict-VEA verbalization rate is 4× any other model
 
@@ -1772,12 +1774,16 @@ alignment-eval prompts (same direction, smaller magnitude) AND
 −6.4pp on capability-eval prompts (opposite direction, CI excludes
 zero). The two effects cancel in the pooled cross-corpus mean. V3
 focuses on alignment-eval prompts only and recovers qwen3 +5.4pp at
-3× the V2 sample size with tighter CI. **V2 + V3 confirm: qwen3 reads
-the inject as a permission/grading signal that suppresses refusals
-on capability prompts AND a watching/caution signal on safety
-prompts.** The other five models cannot show the capability-side
-effect in V2 because they refuse ~0% on capability evals to begin
-with (floor effect).
+3× the V2 sample size with tighter CI. **V2 + V3 support a
+two-context behavioral pattern on qwen3: the same inject is
+associated with suppressed refusals on capability prompts and
+increased refusals on safety/alignment prompts.** One plausible
+interpretation is that the inject functions as a permission/grading
+cue on capability prompts and a watching/caution cue on safety
+prompts, but the data are behavioral and do not directly test that
+internal-representation claim. The other five models cannot show the
+capability-side effect in V2 because they refuse ~0% on capability
+evals to begin with (floor effect).
 
 **(vi) gpt-5.5 is the cleanest behavioral null in the lineup.**
 The V3 backfill places gpt-5.5's full_inject Δ refusal at exactly
@@ -2042,8 +2048,9 @@ less plausible.
 
 Future work should (i) extend the V3 clause-ablation design to
 additional reasoning-capable models to characterize *why* opus and
-qwen3 react to clause-additive eval-framing while four other frontier
-models do not, (ii) test whether the V2 intrinsic-eval-label signal
+qwen3 react to clause-additive eval-framing while four other
+tested models do not, (ii) test whether the V2 intrinsic-eval-label
+signal
 operates through the same distributed-additive mechanism by ablating
 which prompt-level features carry the eval-recognition signal, and
 (iii) replicate the V1 mediation null on a third independent sample
@@ -2238,7 +2245,7 @@ All three reached via the OpenRouter meta-provider.
 
 Vendor model card: https://www.anthropic.com/claude
 
-### Closed-CoT frontier models (behavioral-only)
+### Closed-CoT behavioral-only models
 
 | Identifier | Lab | Used in | Notes |
 |---|---|---|---|
