@@ -1,6 +1,7 @@
 # V3 design: inject-clause ablation on safety/alignment prompts
 
-**Status:** design (May 2026). PR 1 (runner + 21 unit tests) landed; PR 2+ pending.
+**Status:** design (May 2026). PR 1 (runner + 21 tests) and PR 2
+(analyzer + 28 tests) landed; PR 3+ pending.
 **Supersedes nothing.** Follows up on V2's localization findings (see
 `docs/v2_apollo_design.md` §9 sketch and the §5.5/§7.5 paper sections).
 
@@ -168,17 +169,27 @@ Paired bootstrap CI (B=2000, paired by `example_id`).
 
 For each model, compare the four (singleton + full) effects:
 
-- **Single-clause attribution:** one singleton's effect matches
-  `full_inject`'s (within CI overlap) and the other two singletons'
-  CIs include zero. The attributed clause is the cause.
-- **Multi-clause additive:** the sum of singleton effects equals
-  `full_inject`'s effect (within combined CI).
-- **Synergistic:** `full_inject`'s effect is larger in magnitude
-  than the sum of singletons. The clauses interact; no singleton
-  reproduces the full effect.
-- **Null at full:** `full_inject`'s CI includes zero on this
+- **`insufficient_data`:** any of the 5 cells has fewer than
+  `min_cell_n` rollouts. No attribution attempted.
+- **`null_at_full`:** `full_inject`'s CI includes zero on this
   model. The V1 effect did not replicate on V3 (a possibility worth
   flagging, since V3 is also a fresh sample).
+- **`single_clause:<c>`:** one singleton's CI overlaps `full_inject`'s
+  CI AND the other two singletons' CIs include zero. The attributed
+  clause is the cause.
+- **`additive`:** the additivity residual (paired per example:
+  `full_inject - sum(singletons)`) has a 95% CI that includes zero.
+  Singletons sum to full.
+- **`synergistic`:** additivity residual CI excludes zero AND
+  `|full_inject| >= |sum(singletons)|`. The clauses combine
+  super-additively.
+- **`unclassified`:** the antagonistic / sub-additive case:
+  `|full_inject| < |sum(singletons)|`, i.e., singletons each have
+  effects that partially cancel when combined. Recorded honestly
+  rather than forced into a misleading category.
+
+The analyzer applies this decision tree in order; the first matching
+category is the verdict.
 
 ### 4.4 Multiple-comparisons correction
 
@@ -348,10 +359,18 @@ locks the decision before seeing the data.
    `test_singleton_clauses_carry_their_distinctive_phrases_from_full_inject`
    pins this requirement (each singleton's distinctive phrase appears
    verbatim in `full_inject`).
-2. **PR 2: analysis + tests.** `scripts/analyze_v3_clause_ablation.py`
+2. ~~PR 2: analysis + tests. `scripts/analyze_v3_clause_ablation.py`
    computes per-condition cell means + per-singleton main effects +
    attribution category. Tests cover all four §4.3 decision cases on
-   designed synthetic data.
+   designed synthetic data.~~ **Landed: 28 tests passing.** Notes:
+   the §4.3 decision tree expanded to 6 categories (added `unclassified`
+   for the antagonistic / sub-additive case where `|full| < |sum|`,
+   and `insufficient_data` for cell-n violations). `additivity_residual`
+   is computed paired per example (full − sum of singletons), with its
+   own paired bootstrap CI. Cross-model direction comparison detects
+   the V1-style asymmetry per clause (one model `+`, another `-`). The
+   `full_inject` effect is reported but excluded from Holm-Bonferroni
+   per §4.4 (V1-replication anchor, not a hypothesis under correction).
 3. **PR 3: smoke test script.** `scripts/smoke_test_v3.sh` mirrors
    the V2 pattern (`SMOKE_MODE=qwen|opus` + 10-prompt smoke). $2,
    5 min, validates pipeline before the main run.
