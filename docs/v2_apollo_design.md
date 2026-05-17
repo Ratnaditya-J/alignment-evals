@@ -1,6 +1,6 @@
 # V2 detailed design: Apollo dataset integration
 
-**Status:** design (May 2026). PR 1 (data layer) landed at commit `d76502c`; PR 2+ pending.
+**Status:** design (May 2026). PR 1 (data layer, `d76502c`) + PR 2 (runner) landed; PR 3+ pending.
 **Supersedes:** `docs/v2_apollo_integration_plan.md` (the planning sketch).
 
 ---
@@ -257,9 +257,18 @@ The pre-reg document is committed to `main` on `alignment-evals`. The commit tim
 - `test_non_list_root_raises_value_error`
 - `test_malformed_entries_are_logged_and_skipped`
 
-### Integration tests (`tests/test_v2_factorial_runner.py`)
+### Integration tests (`tests/test_v2_factorial_runner.py`) — **landed, 10 passing**
 
-- `test_factorial_runner_with_scripted_model` — use `ScriptedModelClient` (existing test helper) with a 10-prompt synthetic Apollo dataset; verify the runner produces 40 rollouts (10 × 2 × 2) and all metadata is preserved.
+- `test_runner_produces_full_cross_product_of_rollouts`
+- `test_each_example_appears_in_both_conditions_for_each_model`
+- `test_apollo_metadata_is_preserved_on_every_rollout`
+- `test_inject_condition_uses_inject_framing_neutral_uses_neutral`
+- `test_condition_framing_is_prepended_when_apollo_has_system_message`
+- `test_condition_framing_alone_when_apollo_has_no_system_message`
+- `test_full_transcript_mode_preserves_conversation_history`
+- `test_rollouts_jsonl_written_and_round_trips`
+- `test_concurrent_runner_produces_same_rollouts_as_serial`
+- `test_load_apollo_examples_returns_correct_label_counts`
 
 ### Analysis tests (`tests/test_v2_factorial_analysis.py`)
 
@@ -307,7 +316,7 @@ These should be resolved during the smoke-test phase, before locking the pre-reg
 ### Calendar timeline (estimated effort, not duration)
 
 - **Day 1** ✅ *done (commit `d76502c`)*: schema confirmed, `ApolloEvalAwarenessLoader` built, 12 unit tests passing. Smoke test on real dataset still pending (requires downloading the decrypted file from HF).
-- **Day 2**: build `run_v2_apollo_factorial.py` runner + integration tests. Verify smoke-test end-to-end.
+- **Day 2** ✅ *done (this PR)*: `run_v2_apollo_factorial.py` runner built with `run_factorial()` library entry-point + CLI, 10 integration tests passing using `ScriptedModelClient`. End-to-end smoke against a real model still pending.
 - **Day 3**: build `analyze_v2_factorial.py` + analysis tests. Draft pre-registration doc.
 - **Day 4**: file pre-reg (commit + push), run main experiment, generate report.
 - **Day 5**: write up findings, update paper §X with V2 results.
@@ -378,7 +387,7 @@ This needs separate infrastructure (calibration analysis pipeline). Likely V5 or
 ## Commit notes (for the implementer)
 
 1. ~~PR 1: data layer (`ApolloEvalAwarenessLoader` + unit tests). No experiment runs yet.~~ **Landed: commit `d76502c`.**
-2. PR 2: runner (`run_v2_apollo_factorial.py` + integration tests). Smoke test only.
+2. ~~PR 2: runner (`run_v2_apollo_factorial.py` + integration tests). Smoke test only.~~ **Landed (this PR).**
 3. PR 3: analysis (`analyze_v2_factorial.py` + analysis tests).
 4. PR 4: pre-registration document. Committed to `main` before any experiment runs.
 5. PR 5: results — runs/, summary JSON, report markdown, paper-section update.
