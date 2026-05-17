@@ -1222,7 +1222,7 @@ observation; discriminating them needs a follow-up.
 |---|---|
 | The V1 inject effect generalizes to non-safety prompts | **Not supported on any of 6 models.** All inject main effects within ±0.015 of zero; none survive Holm in either family. |
 | The V1 inject effect was specific to safety/alignment-relevant prompts | **Supported (post-hoc).** Stratified deep-dive (§5.5.4) recovers V1's directions on the alignment stratum at proportional magnitude. |
-| The V1 qwen3-vs-opus direction asymmetry holds on V2's alignment stratum | **Directionally consistent.** Opus −0.060 (CI excludes zero), qwen3 +0.057 (CI [−0.04, +0.14] includes zero) at ~1/4-1/6 V1 magnitude. V3 (§5.6) confirms both at full CI-excludes-zero strength on a larger alignment-eval sample. |
+| The V1 qwen3-vs-opus direction asymmetry holds on V2's alignment stratum | **Directionally consistent.** Opus −0.060 (CI excludes zero), qwen3 +0.057 (CI [−0.04, +0.14] includes zero) at ~1/4-1/6 V1 magnitude. V3 (§5.6) finds both at full CI-excluding strength on a larger alignment-eval sample. |
 | Apollo's intrinsic eval label predicts refusal behavior on frontier and frontier-adjacent reasoning models | **Supported across the lineup.** Cross-model main effect +0.075 to +0.130; **5 of 6 models survive Holm** in their respective families (opus / deepseek / qwen3 in Family A; gpt-5.5 / gemini-2.5-pro in Family B; only kimi fails). |
 | The intrinsic-eval-label refusal signal extends to closed-CoT models | **Supported.** gpt-5.5 (+0.110, Family B Holm-survivor) and gemini-2.5-pro (+0.095, Family B Holm-survivor) both reproduce the magnitude V1+V2's reasoning-trio-plus-opus established. |
 | qwen3 has a capability-eval inject-suppresses-refusal pattern | **Supported.** Δ−0.064, CI [−0.16, −0.001], p=0.046. Unique to qwen3 (other 3 reasoning models have floor refusal on capability; closed-CoT models not analyzed in this stratified subanalysis). |
@@ -1614,8 +1614,7 @@ replicate. **VEA verbalization in CoT is *correlated* with the inject
 framing — its inflation under inject is well-replicated across four
 independent runs on qwen3 (including the pre-registered safety
 replication) — but does *not* mediate the inject-to-refusal channel
-in any cell where
-we have meaningful n_flip on a fresh sample.**
+in any cell where we have meaningful n_flip on a fresh sample.**
 
 **Direction asymmetry, not two mechanisms.** Earlier drafts framed
 qwen3 and opus-4.7 as exhibiting two qualitatively distinct
@@ -2052,9 +2051,8 @@ qwen3 react to clause-additive eval-framing while four other
 tested models do not, (ii) test whether the V2 intrinsic-eval-label
 signal operates through the same distributed-additive mechanism by
 ablating which prompt-level features carry the eval-recognition
-signal, and
-(iii) replicate the V1 mediation null on a third independent sample
-to firm up the negative-result interpretation.
+signal, and (iii) replicate the V1 mediation null on a third
+independent sample to firm up the negative-result interpretation.
 
 ---
 
