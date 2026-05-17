@@ -10,114 +10,35 @@
 
 ## Abstract
 
-We test whether eval framing changes refusal behavior on six frontier
-reasoning models across four model labs, in three pre-registered
-experiments totaling 32,170 rollouts. We find a behavioral signature
-that is **direction-asymmetric across models, distributed-additively
-across the inject's component clauses, and decoupled from verbalized
-awareness.**
+We test whether evaluation framing changes refusal behavior in
+frontier reasoning models, and whether such changes are mediated by
+verbalized evaluation awareness in chain-of-thought. Across three
+pre-registered experiments totaling 32,170 rollouts, we compare
+explicit eval-framing prompts, intrinsic eval-vs-deployment labels,
+and clause-level ablations across six models from four labs.
 
-**V1** (BeaverTails safety; 23,200 rollouts on 8 models) finds the
-inject prompt shifts refusal in opposite directions across two
-reasoning models — qwen3-235B refuses +22pp more, claude-opus-4-7
-refuses −34pp less, both with CIs excluding zero. A pre-registered
-disjoint-prompt replication of the apparent verbalized-eval-awareness
-(VEA) mediation channel (DiD +0.222 in the primary sample) returns
-**null** on replication (−0.017 [−0.175, +0.139] at n_flip=100).
-What survives is the non-VEA-mediated, direction-asymmetric refusal
-shift visible in the strict-VEA-stable stratum.
+The main behavioral effect is model-specific rather than uniform. On
+safety/alignment prompts, qwen3-235B refuses more under eval framing,
+while claude-opus-4-7 refuses less; this opposite-signed pattern
+replicates across BeaverTails and Apollo-derived samples. A
+pre-registered disjoint-prompt replication of an apparent qwen3
+verbalized-eval-awareness mediation effect fails, indicating that the
+surviving refusal shifts are not explained by the measured
+verbalization channel. In a 2×2 Apollo factorial, the explicit inject
+has near-zero pooled effect across six models, but Apollo's intrinsic
+eval label predicts higher refusal by 7.5–13.0 percentage points,
+with 5/6 models surviving Holm-Bonferroni correction. Finally, clause
+ablation shows that the inject effect on qwen3 and opus is
+distributed-additive: no individual clause is detectable after
+correction, but the singleton effects sum to the full-inject effect.
 
-**V2** (Apollo eval-awareness corpus, 2×2 factorial; 2,400 rollouts
-on 6 models including a closed-CoT backfill of gpt-5.5 and
-gemini-2.5-pro) crosses the V1 inject with Apollo's intrinsic
-eval/deployment label. The pooled inject effect is ~0 on all six
-models, but Apollo's intrinsic label is itself a robust refusal
-predictor: **+7.5 to +13.0pp across the lineup, with 5 of 6 surviving
-Holm-Bonferroni** at family-wise α=0.05 across two correction
-families.
-
-**V3** (inject-clause ablation, 5 conditions × 6 models on 297
-alignment-eval prompts; 4,970 rollouts) decomposes the V1 inject into
-its three component clauses. The V1+V2 direction asymmetry replicates
-at full magnitude on opus (−0.067 [−0.104, −0.027] p=0.001) and qwen3
-(+0.054 [+0.014, +0.094] p=0.013). **Attribution on both active models
-is ADDITIVE**: sum-of-singletons matches full_inject within CI; 0 of
-18 singleton hypotheses survive Holm. No single clause carries the
-V1 effect — it is the distributed sum of three roughly equal
-per-clause contributions. The verbalization channel and the
-behavioral channel are decoupled at clause resolution: qwen3's
-strict-VEA scales ×3-×22 per clause while opus's stays at baseline
-on singletons and only inflates ×4 on the combined inject, yet both
-models' refusal attribution is identically additive.
-
-> *Inject framing produces direction-asymmetric refusal shifts on
-> safety/alignment prompts in two of six tested frontier models, via
-> a distributed-additive mechanism, through a non-verbalized channel,
-> alongside a separately-detectable intrinsic-eval-label signal that
-> generalizes across the lineup.*
+These results suggest that evaluation awareness affects measured
+refusal behavior through model- and prompt-dependent behavioral
+channels that need not be verbalized in chain-of-thought.
 
 **Keywords:** evaluation awareness, reasoning models, chain-of-thought,
 safety evaluation, benchmark validity, pre-registration,
 cross-model triangulation
-
-### Contributions
-
-This paper makes the following claims that, to our knowledge, are not
-in the existing literature:
-
-1. **Triangulated direction asymmetry across three pre-registered
-   experiments and six frontier models from four labs.** Same
-   asymmetric refusal-shift pattern (opus −, qwen3 +) replicates on
-   BeaverTails (V1), Apollo's alignment-eval stratum (V2 deep-dive),
-   and the V3 inject-clause-ablation sample, at consistent within-model
-   magnitudes. Cross-model triangulation against four null models
-   (deepseek, kimi, gpt-5.5, gemini-2.5-pro) confirms the asymmetric
-   signal is not an artifact of the model selection.
-2. **Distributed-additive attribution of the V1 inject effect.** V3's
-   pre-registered 5-condition clause ablation finds that the V1 inject
-   prompt's effect on opus and qwen3 sums linearly across three
-   component clauses with no single clause individually detectable.
-   This rules out single-clause attribution AND synergistic (gestalt-
-   only) mechanisms. The eval-noticing behavior on these models is a
-   response to the cumulative weight of eval-framing claims, not to
-   any specific propositional content.
-3. **Model-specific verbalization-vs-behavior dissociation at clause
-   resolution.** qwen3's strict-VEA verbalization scales proportionally
-   with each clause (×13 baseline on `eval_only` alone, ×22 on the full
-   inject); opus's stays at baseline on every singleton and only
-   inflates ×4 under the combined inject. The two models' refusal
-   attribution is identically additive across clauses despite these
-   different verbalization patterns. V1's verbalization-vs-behavior
-   dissociation generalizes to V3 and manifests as two distinct
-   model-level mechanisms.
-4. **Cross-laboratory intrinsic-eval-label refusal signal.** Apollo's
-   `metadata.eval_category=true` label predicts +7.5 to +13.0pp higher
-   refusal across all six tested models from four different labs,
-   5 of which survive Holm-Bonferroni in their respective correction
-   families. The signal is encoded in the prompt content itself, not
-   in any framing we added — implying that benchmark prompts carry an
-   eval-recognition signal that shifts behavior even in the absence
-   of explicit framing.
-5. **Pre-registered disjoint-prompt replication failure of an
-   apparent VEA mediation estimate under explicit eval-framing.** The
-   primary V1 within-prompt VEA mediation analysis suggested
-   significant mediation on qwen3 safety prompts (DiD +0.222 at
-   n_flip=63). A pre-registered disjoint-prompt replication at
-   larger n_flip=100 was null (−0.017 [−0.175, +0.139]). We are not
-   aware of a prior published pre-registered disjoint-prompt
-   replication test of a within-prompt VEA mediation estimate under
-   explicit eval-framing; this is the contribution. The result is a
-   boundary condition on positive causal claims about CoT-mediated
-   eval-aware behavior (Aranguri & Bloom 2026; Chaudhary 2026) — the
-   mediation channel we measured did not survive a fresh disjoint
-   sample at our n_flip and design, and §7.5 discusses the conditions
-   under which this null is and is not in tension with those prior
-   positive results.
-
-All three pre-registrations were filed and committed before
-execution. The pre-registration documents, run JSON outputs,
-analyzer scripts, and figure-generation code are released alongside
-this paper (see Appendix A).
 
 ---
 
@@ -230,6 +151,63 @@ their strict and broad cell summaries). Section 5 reports results:
 robustness checks. Section 7 discusses implications (with §7.5
 synthesizing V1+V2+V3). Section 8 lists limitations honestly.
 Section 9 concludes.
+
+### 1.1 Contributions
+
+1. **Triangulated direction asymmetry across three pre-registered
+   experiments and six frontier models from four labs.** The same
+   opposite-signed refusal-shift pattern (opus −, qwen3 +) replicates
+   on BeaverTails (V1), Apollo's alignment-eval stratum (V2
+   deep-dive), and the V3 inject-clause-ablation sample, at
+   consistent within-model magnitudes (qwen3: +0.217 / +0.057 /
+   +0.054; opus: −0.339 / −0.060 / −0.067). Cross-model triangulation
+   against four null models (deepseek, kimi, gpt-5.5, gemini-2.5-pro)
+   confirms the asymmetric signal is not an artifact of model
+   selection.
+2. **Distributed-additive attribution of the V1 inject effect.** V3's
+   pre-registered 5-condition clause ablation finds that the V1 inject
+   prompt's effect on opus and qwen3 sums linearly across three
+   component clauses, with no single clause individually detectable
+   after Holm-Bonferroni correction (0 of 18 singleton hypotheses
+   survive across both correction families). This rules out
+   single-clause attribution AND synergistic (gestalt-only)
+   mechanisms; the eval-noticing behavior on these two models is a
+   response to the cumulative weight of eval-framing claims, not to
+   any specific propositional content.
+3. **Model-specific verbalization-vs-behavior dissociation at clause
+   resolution.** qwen3's strict-VEA verbalization scales
+   proportionally with each clause (×13 baseline on `eval_only` alone,
+   ×22 on the full inject); opus's stays at baseline on every
+   singleton and only inflates ×4 under the combined inject. Yet both
+   models' refusal attribution is identically additive across clauses.
+   V1's verbalization-vs-behavior dissociation generalizes to V3 and
+   manifests as two distinct model-level mechanisms.
+4. **Cross-laboratory intrinsic-eval-label refusal signal.** Apollo's
+   `metadata.eval_category=true` label predicts +7.5 to +13.0pp higher
+   refusal across all six tested models from four different labs;
+   5 of 6 survive Holm-Bonferroni in their respective correction
+   families. The signal is encoded in the prompt content itself, not
+   in any framing we added — implying that benchmark prompts carry an
+   eval-recognition signal that shifts behavior even in the absence
+   of explicit framing.
+5. **Pre-registered disjoint-prompt replication failure of an
+   apparent VEA mediation estimate under explicit eval-framing.** The
+   primary V1 within-prompt VEA mediation analysis suggested
+   significant mediation on qwen3 safety prompts (DiD +0.222
+   [+0.029, +0.430] at n_flip=63 paired). A pre-registered
+   disjoint-prompt replication at n_flip=100 was null
+   (−0.017 [−0.175, +0.139]). The result is a boundary condition on
+   positive causal claims about CoT-mediated eval-aware behavior
+   (Aranguri & Bloom 2026; Chaudhary 2026): the within-prompt
+   VEA-flip mediation channel we measured did not survive a fresh
+   disjoint sample at our n_flip and design. §7.5 discusses the
+   conditions under which this null is and is not in tension with
+   those prior positive results.
+
+All three pre-registrations were filed and committed before
+execution. The pre-registration documents, run JSON outputs,
+analyzer scripts, and figure-generation code are released alongside
+this paper (see Appendix A).
 
 ---
 
@@ -1332,16 +1310,23 @@ triangulation rules out sample-specific or corpus-specific artifacts.
 
 ![](figures/fig8_v3_clause_attribution.png)
 
-**Figure 8.** V3 per-clause attribution decomposition for opus and
-qwen3. For each active model, side-by-side bars show: per-singleton
-Δ refusal (eval_only, reviewer_only, comparison_only) with paired
-bootstrap CIs (red bars = CI excludes zero; grey = CI includes zero —
-note: zero red bars across all 6 singletons confirms the §5.5 Holm
-non-survival), sum-of-singletons (the additive prediction), and the
-full_inject anchor effect. **On both models, sum-of-singletons matches
-full_inject within the additivity residual's CI**, confirming the
-additive attribution. No single clause individually carries a
-detectable share of the effect.
+**Figure 8.** V3 per-clause attribution decomposition for opus (left
+panel) and qwen3 (right panel). Five bars per panel, left to right:
+the three singletons (`eval_only`, `reviewer_only`, `comparison_only`),
+the sum-of-singletons, and the `full_inject` anchor. Color encoding:
+**singleton bars are red if their paired-bootstrap CI excludes zero,
+grey otherwise** (in this run, zero red bars across all 6 singletons,
+consistent with the §5.5 Holm non-survival of all 18 singleton
+hypotheses); **sum-of-singletons is rendered in neutral grey with no
+error caps** (it is a derived point estimate, not a directly
+bootstrapped quantity, so no CI is shown); **the `full_inject` anchor
+is rendered in blue** to distinguish the V1-replication anchor from
+the singleton candidates. Error bars on singleton and full_inject
+bars are paired-bootstrap 95% CIs (B=2000, seed=0). **On both
+models, the sum-of-singletons bar matches the full_inject anchor bar
+within the additivity residual's CI**, confirming the additive
+attribution. No single clause individually carries a detectable
+share of the effect.
 
 #### 5.6.3 What the additive attribution means
 
@@ -2011,91 +1996,75 @@ to firm up the negative-result interpretation.
 
 ## References
 
-Citations are listed alphabetically by first author. Items marked
-**[verify]** are best-effort identifications by the authors for
-which the exact venue or arXiv ID should be confirmed against the
-source before final submission. Items marked **[in-text only]** are
-referenced in the paper body but lack a formal entry here pending
-disambiguation.
+Aranguri, S., & Bloom, A. (2026). *Verbalized Eval Awareness Inflates
+Measured Safety.* Goodfire Research. May 4, 2026.
+https://www.goodfire.ai/research/verbalized-eval-awareness
 
-Anthropic. *Claude Opus 4.7 Model Card.* Anthropic, 2026.
-[verify URL at submission time]
+Chaudhary, V. (2026). *Causal Chain-of-Thought Intervention Shows
+Sandbagging Is Driven by Verbalized Eval-Aware Reasoning.*
+arXiv:2603.03824.
 
 Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L.,
 Plappert, M., Tworek, J., Hilton, J., Nakano, R., Hesse, C., &
 Schulman, J. (2021). *Training Verifiers to Solve Math Word
 Problems.* arXiv:2110.14168.
 
-DeepSeek-AI. *DeepSeek-V3.2 Technical Report.* 2025.
-[verify URL at submission time]
-
-Goodfire Research. *Verbalized Eval-Awareness in Reasoning Models.*
-2024-2025 publication series.
-[verify: this paper's "Goodfire-style" setup follows the spontaneous
-verbalized-eval-awareness operationalization from Goodfire's
-published research; confirm exact title, authors, and venue/URL
-against the Goodfire Research publication index before submission.]
-
-Google DeepMind. *Gemini 2.5 Pro Technical Report.* 2025.
-[verify URL at submission time]
+DeepSeek-AI (2025). *DeepSeek-V3.2 Technical Report.*
+arXiv:2512.02556.
 
 Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D.,
 & Steinhardt, J. (2021). *Measuring Massive Multitask Language
-Understanding (MMLU).* ICLR. arXiv:2009.03300.
+Understanding (MMLU).* International Conference on Learning
+Representations. arXiv:2009.03300.
 
 Holm, S. (1979). A simple sequentially rejective multiple test
 procedure. *Scandinavian Journal of Statistics,* 6(2), 65-70.
 
-Ji, J., Liu, M., Dai, J., Pan, X., Zhang, C., Bian, C., Sun, R.,
-Wang, Y., & Yang, Y. (2023). *BeaverTails: Towards Improved Safety
-Alignment of LLM via a Human-Preference Dataset.* NeurIPS.
-arXiv:2307.04657. **[verify arXiv ID]**
+Ji, J., Liu, M., Dai, J., Pan, X., Zhang, C., Zhang, C., Bian, C.,
+Sun, R., Wang, Y., & Yang, Y. (2023). *BeaverTails: Towards Improved
+Safety Alignment of LLM via a Human-Preference Dataset.* NeurIPS.
+arXiv:2307.04657.
 
 Lin, S., Hilton, J., & Evans, O. (2022). *TruthfulQA: Measuring How
 Models Mimic Human Falsehoods.* ACL. arXiv:2109.07958.
 
-Moonshot AI. *Kimi K2 Thinking.* 2025. [verify URL at submission
-time]
+Needham, J., Edkins, G., Pimpale, G., Bartsch, H., & Hobbhahn, M.
+(2025). *Large Language Models Often Know When They Are Being
+Evaluated.* Apollo Research. arXiv:2505.23836. Dataset:
+`huggingface.co/datasets/jjpn2/eval_awareness`.
 
-Needham, J. J. et al. (2025). *Apollo Research Eval-Awareness
-Corpus.* arXiv:2505.23836. Data:
-`huggingface.co/datasets/jjpn2/eval_awareness`. **[verify exact
-title and full author list at submission time; arXiv ID confirmed
-by V2 pre-reg §3.1]**
-
-OpenAI. *GPT-5 / GPT-5.5 System Card.* 2025.
-[verify URL at submission time]
-
-OpenRouter. *Inference API and model routing service.*
+OpenRouter (2026). *Inference API and model routing service.*
 `https://openrouter.ai/`. Used as the meta-provider for all
-non-Anthropic model calls in V1, V2, and V3 (model IDs in
-§3, §5.5.1, §5.6.1).
+non-Anthropic model calls in V1, V2, and V3.
 
 Park, P. S., Goldstein, S., O'Gara, A., Chen, M., & Hendrycks, D.
 (2024). *AI Deception: A Survey of Examples, Risks, and Potential
-Solutions.* Patterns, 5(5). arXiv:2308.14752. **[verify: the
-in-text "Park et al. (2023)" citation in §2 refers to this work;
-confirm pre-print vs published-year usage.]**
+Solutions.* Patterns 5(5). Preprint: arXiv:2308.14752.
 
-Qwen Team. *Qwen3 Technical Report.* Alibaba Cloud, 2024-2025.
-arXiv:2407.10671. **[verify version targeted at submission time;
-this paper uses `qwen3-235b-a22b-thinking-2507`.]**
+Qwen Team (2025). *Qwen3 Technical Report.* Alibaba Cloud.
+arXiv:2505.09388.
 
-### In-text-only references (need disambiguation)
+### Model technical reports / system cards
 
-The paper body refers to the following at a topical level without a
-precise per-paper citation. Resolve before submission:
+These are vendor-published reports for the closed-source models
+under test. URLs should be re-validated at arXiv submission time as
+vendor pages can move.
 
-- *Sandbagging / strategic deception literature* (§2 "distinct from
-  sandbagging or strategic deception claims"). Candidates include
-  Hagendorff (2024) and the broader AI Deception survey above.
-- *Inspect AI* (UK AISI evaluation framework, referenced indirectly
-  in §3 and §6 as a representative comparison evaluation harness).
-- *Pre-registration practice in ML* — the V1/V2/V3 design follows
-  the pre-registration discipline from psychology/replication-
-  science literature; cite the Wagenmakers et al. (2012) /
-  Nosek et al. (2018) pre-registration framework if discussing
-  methodology background.
+- **Anthropic.** Claude Opus 4 Model Card. https://www.anthropic.com/claude
+- **Google DeepMind.** Gemini 2.5 Pro Technical Report. https://deepmind.google/technologies/gemini/
+- **Moonshot AI.** Kimi K2 Thinking. https://www.moonshot.ai/
+- **OpenAI.** GPT-5 / GPT-5.5 System Card. https://openai.com/research/
+
+### Methodological background
+
+- Sandbagging / strategic deception literature: see Park et al. (2024)
+  for a survey. Specific causal interventions are reviewed in
+  Chaudhary (2026).
+- Pre-registration discipline (filed-before-execution invariant) in
+  ML follows the broader psychology / replication-science pre-
+  registration framework. The three pre-registration documents for
+  V1, V2, and V3 are committed to the project repository before the
+  corresponding experimental run (see Appendix A).
 
 ---
 
