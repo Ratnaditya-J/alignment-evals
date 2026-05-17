@@ -73,25 +73,35 @@ mechanistic foothold: the model is literally writing down "this
 looks like a test" in its reasoning trace, before producing the
 visible response.
 
-This paper asks two complementary empirical questions:
+This paper asks three complementary empirical questions, each
+addressed by a dedicated experimental phase.
 
-**Q1 (the behavioral question):** Does explicit eval-framing in the
-system prompt change visible model behavior — specifically, refusal
-rate on safety prompts and accuracy on capability tasks — on frontier
-models?
+**Q1 (the behavioral question, V1, §5.1):** Does explicit eval-framing
+in the system prompt change visible model behavior — specifically,
+refusal rate on safety prompts and accuracy on capability tasks — on
+frontier models?
 
-**Q2 (the mechanistic question):** Does explicit eval-framing increase
-the rate of verbalized evaluation-awareness (VEA) in reasoning
-traces, and if so, does that verbalization independently predict
-behavioral change beyond the framing's direct effect?
+**Q2 (the mechanistic question, V1, §5.2–§5.4):** Does explicit
+eval-framing increase the rate of verbalized evaluation-awareness
+(VEA) in reasoning traces, and if so, does that verbalization
+independently predict behavioral change beyond the framing's direct
+effect?
+
+**Q5 (the generalization question, V2, §5.5):** Do the V1 effects
+generalize beyond the safety-only BeaverTails corpus, and does the
+behavior of frontier models also depend on the *intrinsic* eval-vs-
+deployment label of the prompt itself (as authored by an external
+research group), independent of any framing we add? *(Numbering
+preserved as Q5 rather than Q3 because Q3/Q4 are subquestions inside
+V1's mechanistic analysis — see §5.3, §5.4.)*
 
 A naive expectation — the one a casual reader of Goodfire's result
-might take — is that both questions resolve positive uniformly across
+might take — is that Q1 and Q2 resolve positive uniformly across
 models and task families: inject framing causes the model to verbalize
 awareness, which in turn causes the model to refuse more, everywhere.
-We find a more nuanced and partially negative picture. The
+The integrated V1+V2 picture is sharper and more partial. The V1
 cross-protocol behavioral analysis returns null on 8/8 frontier
-models at the aggregate level. The Goodfire reasoning-trace analysis
+models at the aggregate level. V1's Goodfire reasoning-trace analysis
 returns large VEA inflation on qwen3, small but CI-excludes-zero on
 deepseek and on claude-opus-4-7, and null on kimi. Within-prompt
 diff-in-diff mediation analysis under the empirically-validated strict
@@ -101,29 +111,37 @@ disjoint-prompt replication at larger n_flip=100 was **null**
 (DiD −0.017 [−0.175, +0.139], §5.3). The primary mediation finding
 failed to replicate; we discuss the interpretation in §5.3.
 
-The combination yields a finding sharper than either question's
-naive answer:
+V2 (the pre-registered Apollo factorial in §5.5) addresses Q5 on a
+broader prompt corpus and finds that the V1 inject effect dilutes to
+~0 across all four models on the mixed corpus, but recovers V1's
+direction asymmetry on the alignment-relevant subset of Apollo's eval
+prompts at proportional magnitude. Apollo's intrinsic eval label is
+itself a strong refusal predictor (+7.5–13.0pp across models;
+3 of 4 survive Holm-Bonferroni).
+
+The combination yields findings sharper than either question's naive
+answer:
 
 > **Inject framing produces direction-asymmetric refusal shifts on
 > safety prompts in at least two reasoning models — qwen3 refuses
-> more under inject (paired Δ +0.217 [+0.098, +0.337] on the
-> replication sample), opus-4.7 refuses less (paired Δ −0.339 [−0.446,
-> −0.231]) — and both effects operate on the `stable_neg` stratum
-> where strict-VEA verbalization did not flip. Strict-VEA
-> verbalization is inflated under inject framing but is not the
-> channel through which inject changes refusal behavior in any cell
-> where we have meaningful n_flip on a fresh sample. The verbal
-> fingerprint of "noticing the eval" visible to explicit VEA
-> monitoring and the behavioral signature visible to refusal
-> measurement are correlated phenomena, not causally linked at the
-> level our within-prompt design can test.**
+> more under inject (V1 paired Δ +0.217 [+0.098, +0.337] on the
+> replication sample; V2 alignment-stratum Δ +0.057 [−0.04, +0.14]),
+> opus-4.7 refuses less (V1 paired Δ −0.339 [−0.446, −0.231]; V2
+> alignment-stratum Δ −0.060 [−0.18, −0.001]). V1's effects operate
+> on the `stable_neg` stratum where strict-VEA verbalization did not
+> flip; V2 shows they dilute to zero when averaged across non-safety
+> prompts. The verbal fingerprint of "noticing the eval" visible to
+> explicit VEA monitoring and the behavioral signature visible to
+> refusal measurement are correlated phenomena, not causally linked
+> at the level our within-prompt design can test.**
 
 Section 2 situates this against prior work. Section 3 describes the
-experimental design. Section 4 specifies the VEA judge. Section 5
-reports results across four research questions. Section 6 reports
-robustness checks (judge swap, strict-vs-broad VEA, per-family
-breakdown). Section 7 discusses implications. Section 8 lists
-limitations honestly. Section 9 concludes.
+experimental design for both V1 and V2. Section 4 specifies the VEA
+judge (used in V1; V2 reuses the same judge unchanged for its strict
+and broad cell summaries). Section 5 reports results: §5.1–§5.4 are
+V1, §5.5 is V2. Section 6 reports V1 robustness checks. Section 7
+discusses implications (with §7.5 synthesizing V1+V2). Section 8
+lists limitations honestly. Section 9 concludes.
 
 ---
 
