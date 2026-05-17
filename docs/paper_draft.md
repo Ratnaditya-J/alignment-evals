@@ -403,12 +403,18 @@ states, evaluation-awareness among them, and shows that steering
 these states modulates verbosity, accuracy, and safety-related
 responses; this places eval-awareness within a broader steerable
 metacognitive landscape rather than treating it as an isolated
-property. A related thread, important for interpreting
-intrinsic-label results like our V2 finding, is the observation
-that apparent eval-awareness evidence in benchmark contexts can
-collapse into format-sensitivity artifacts when the analyzed
-signal correlates with surface features of how eval-prompts are
-written (Devbunova, 2026). We carry this confound into our V2/V3 framing: we report the
+property. Anthropic interpretability work on Natural Language
+Autoencoders (NLA; Anthropic, 2026) reports detection of
+unverbalized eval-awareness signals from model activations,
+including cases where verbalized awareness is near zero, a
+distinction we engage with explicitly in §7.3 when bounding the
+scope of public/explicit VEA text monitors versus privileged
+activation-level monitors. A related thread, important for
+interpreting intrinsic-label results like our V2 finding, is the
+observation that apparent eval-awareness evidence in benchmark
+contexts can collapse into format-sensitivity artifacts when the
+analyzed signal correlates with surface features of how
+eval-prompts are written (Devbunova, 2026). We carry this confound into our V2/V3 framing: we report the
 intrinsic-eval-label refusal effect as an *eval-associated
 prompt-content/format signal*, not as evidence that models
 internally recognize "this is an eval" in the way the
@@ -2239,6 +2245,21 @@ scoring and we do not test it here, so our refusal-rate-based
 conclusions are properly bounded by what a refusal scorer can
 detect (cf. the explicit-VEA-monitor scope note in §7.3).
 
+**Closed-CoT model behavior in other recent evaluations.** Two
+independent lines of evidence indicate that closed-CoT models in
+our lineup show measurable eval-awareness under operationalizations
+different from ours: OpenAI's GPT-5.5 system card (2025) reports
+Apollo found 22.1% moderate-or-higher verbalized
+alignment-eval-awareness on standard probes and 52% under a
+sandbagging-condition probe; Kirk et al. (2026, arXiv:2604.24618)
+report elevated unprompted evaluation-awareness in
+claude-opus-4-7-preview on a safety-research sabotage evaluation.
+Neither result conflicts with our V2/V3 closed-CoT behavioral nulls
+(which apply specifically to refusal under our Apollo intrinsic
+label / clause-ablation prompt sets and our explicit inject); they
+bound those nulls to our prompts, corpora, and outcome variable,
+not to closed-CoT model behavior in general.
+
 **Pre-registration.** The original mixed-corpus findings were
 exploratory; the qwen3 safety mediation cell was followed up with a
 pre-registered disjoint-prompt replication (`docs/pre_registration_
@@ -2392,15 +2413,22 @@ cues exist as behavioral signals; explicit-VEA monitoring of CoT
 does not capture the explicit-framing safety shifts we observe.
 
 This has practical implications for alignment-eval research:
-**explicit-VEA monitors**, those that read CoT specifically for
-eval-awareness language, would miss both models' refusal shifts in
-our lineup. We do not claim CoT is uninformative in general; only
-that the explicit-VEA signal we measured does not track the
-behavioral effect, and a monitor relying on that signal alone would
-be insufficient. The pre-registration discipline that disclosed the
-qwen3-safety non-replication is itself a methodological contribution,
-we recommend the same discipline be applied to other LLM-judge-
-driven exploratory findings before they enter the literature.
+**public/explicit text-level VEA monitors**, those that read CoT
+specifically for eval-awareness language, would miss both models'
+refusal shifts in our lineup. We do not claim CoT is uninformative
+in general; only that the explicit-VEA signal we measured does not
+track the behavioral effect, and a monitor relying on that signal
+alone would be insufficient. **This claim is bounded to text-level
+monitors.** Privileged activation-level interpretability approaches
+(e.g., the Natural Language Autoencoder line of work, Anthropic
+2026) can detect unverbalized eval-awareness signals from
+representations and are out of scope for our judge-based design;
+our null is about text-level VEA monitoring fidelity, not about
+the existence of activation-level eval-awareness signals. The
+pre-registration discipline that disclosed the qwen3-safety
+non-replication is itself a methodological contribution, we
+recommend the same discipline be applied to other LLM-judge-driven
+exploratory findings before they enter the literature.
 
 > **Public-facing takeaway:** *Explicit VEA is not a sufficient
 > behavioral detector. Models can show safety-refusal shifts even
@@ -2448,6 +2476,12 @@ Ahmed, N., Zaman, M. I., Saleem, G., & Hassan, A. (2025). *Do
 LLMs Know They Are Being Tested?
 Evaluation Awareness and Incentive-Sensitive Failures in
 GPT-OSS-20B.* arXiv:2510.08624.
+
+Anthropic Interpretability Team (2026). *Natural Language
+Autoencoders.* Transformer Circuits.
+`https://transformer-circuits.pub/2026/nla/index.html`. [Full
+author list to be expanded from the publication page at submission
+time.]
 
 Aranguri, S., & Bloom, J. (2026). *Verbalized Eval Awareness Inflates
 Measured Safety.* Goodfire Research. May 4, 2026.
@@ -2513,6 +2547,12 @@ Sun, R., Wang, Y., & Yang, Y. (2023). *BeaverTails: Towards Improved
 Safety Alignment of LLM via a Human-Preference Dataset.* NeurIPS.
 arXiv:2307.04657.
 
+Kirk, et al. (2026). *Elevated Unprompted Evaluation Awareness in
+claude-opus-4-7-preview on a Safety-Research Sabotage Evaluation.*
+arXiv:2604.24618. [Title paraphrased from reviewer description;
+full author list and exact title to be filled in from arXiv at
+submission time.]
+
 Knecht, A., Florin, L., & Hagendorff, T. (2026). *Evaluation
 Awareness in Language Models Has Limited Effect on Behaviour.*
 University of Stuttgart. arXiv:2605.05835, May 7, 2026.
@@ -2541,6 +2581,12 @@ Needham, J., Edkins, G., Pimpale, G., Bartsch, H., & Hobbhahn, M.
 (2025). *Large Language Models Often Know When They Are Being
 Evaluated.* Apollo Research. arXiv:2505.23836. Dataset:
 `huggingface.co/datasets/jjpn2/eval_awareness`.
+
+OpenAI (2025). *GPT-5.5 System Card.*
+`https://deploymentsafety.openai.com/gpt-5-5/gpt-5-5.pdf`. Apollo
+Research third-party evaluation reports 22.1% moderate-or-higher
+verbalized alignment-eval-awareness on standard probes and 52%
+under a sandbagging-condition probe.
 
 OpenRouter (2026). *Inference API and model routing service.*
 `https://openrouter.ai/`. Used as the meta-provider for all
