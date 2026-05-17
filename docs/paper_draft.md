@@ -1,6 +1,6 @@
 # Verbalized vs Behavioral Eval-Awareness in Frontier Reasoning Models
 
-*Two pre-registered studies: a non-replication of the apparent verbalized-eval-awareness mediation channel, and a factorial test of an intrinsic eval-label signal against the same extrinsic inject framing.*
+*Three pre-registered studies: a non-replication of an apparent verbalized-eval-awareness mediation channel under explicit inject framing, a 2×2 factorial test of an intrinsic eval-label signal against the same inject across six models from four labs, and a five-condition ablation of the inject prompt into its component clauses.*
 
 **Author:** Ratnaditya Jonnalagadda  
 **Date:** May 2026  
@@ -649,11 +649,19 @@ inflation magnitude (10x lower than qwen3).
 ![](figures/fig2_vea_inflation.png)
 
 **Figure 2.** Per-model inject−neutral VEA+ inflation Δ with
-95% paired-bootstrap CIs (B=200). Bars colored by significance:
-red = CI excludes zero, grey = not significant. Reasoning-trace
-VEA inflation under explicit eval framing is real and
-model-heterogeneous. qwen3 shows a ~4× rate increase; deepseek
-shows a small but CI-excludes-zero effect; kimi shows none.
+95% paired-bootstrap CIs (B=200) on the **open-reasoning trio**
+(qwen3, deepseek, kimi). Bars colored by significance: red = CI
+excludes zero, grey = not significant. *Scope note: the
+claude-opus-4-7 VEA inflation reported in the table above
+(+0.080 [+0.050, +0.113] at n=300) is from a separate Goodfire
+extension run with its own summary file; it is not included as a
+bar in this figure to avoid mixing data from runs with different
+sample sizes and rollout dates. The opus number is reproduced in
+the §5.2 narrative and contributes to the cross-model summary in
+§7.5.* Reasoning-trace VEA inflation under explicit eval framing
+is real and model-heterogeneous on the trio shown: qwen3 shows a
+~4× rate increase; deepseek shows a small but CI-excludes-zero
+effect; kimi shows none.
 
 The qwen3 effect is the largest in the lineup and **replicates across
 four independent runs**: smoke n=50 (+0.36 Wald CI [+0.18, +0.54]),
@@ -836,19 +844,25 @@ when the strict-VEA signal remains absent. The directions differ:
 
 ![](figures/fig5_two_mechanism.png)
 
-**Figure 5.** Per-sample stable_neg paired Δrefusal for safety
-prompts under the validated strict rubric. Bars show the
-within-prompt change in refusal rate (inject − neutral) on prompts
-where VEA verbalization stayed negative under both conditions, with
-95% paired-bootstrap CIs (B=2000). The qwen3 primary sample (n=62)
-underpowered the effect to zero; the pre-registered disjoint
-replication (n=92) reveals a clean +22pp refusal increase. opus-4.7
-on the same kind of safety prompts shows a −34pp refusal decrease.
-Both replication and opus CIs exclude zero; both effects operate
-**without strict-VEA flipping**, so the mediation framing (effect
-routed through verbalized eval-awareness) does not apply. The same
-inject prompt produces opposite-signed strict-VEA-stable refusal
-shifts in the two models.
+**Figure 5.** Stratum-level paired Δrefusal on safety prompts under
+the validated strict rubric. Each panel shows **two bars**: the
+*flip (−→+)* stratum (prompts where strict-VEA verbalization flipped
+from negative under neutral to positive under inject) and the
+*stable_neg* stratum (prompts where strict-VEA stayed negative under
+both conditions). Bars give the within-prompt mean paired Δ refusal
+(inject − neutral) with 95% paired-bootstrap CIs (B=2000). **The
+stable_neg bars are the non-verbalized refusal effect of interest in
+§5.4** — the qwen3 primary stable_neg (n=62) underpowered the effect
+to zero; the pre-registered disjoint replication stable_neg (n=92)
+reveals a clean +22pp refusal increase; opus-4.7 stable_neg on the
+same kind of safety prompts shows a −34pp refusal decrease. Both
+replication and opus stable_neg CIs exclude zero; both effects
+operate **without strict-VEA flipping**, so the mediation framing
+(effect routed through verbalized eval-awareness) does not apply on
+this stratum. The same inject prompt produces opposite-signed
+strict-VEA-stable refusal shifts in the two models. Flip-stratum
+bars are shown alongside for visual contrast but are not the
+headline claim of this figure.
 
 **Why two opposite directions?** V1's inject prompt bundles three
 distinct cues that V1 alone did not factor apart: *eval-context*
@@ -1334,9 +1348,12 @@ the sum-of-singletons, and the `full_inject` anchor. Color encoding:
 **singleton bars are red if their paired-bootstrap CI excludes zero,
 grey otherwise** (in this run, zero red bars across all 6 singletons,
 consistent with the §5.5 Holm non-survival of all 18 singleton
-hypotheses); **sum-of-singletons is rendered in neutral grey with no
-error caps** (it is a derived point estimate, not a directly
-bootstrapped quantity, so no CI is shown); **the `full_inject` anchor
+hypotheses); **sum-of-singletons is rendered in neutral grey, and
+no bootstrap CI is shown for it** (it is a derived point estimate,
+not a directly bootstrapped quantity; any tiny cap mark visible at
+the top of this bar is a matplotlib rendering artifact of the
+zero-length error specification and should be read as "no CI shown"
+rather than a one-sided CI); **the `full_inject` anchor
 is rendered in blue** to distinguish the V1-replication anchor from
 the singleton candidates. Error bars on singleton and full_inject
 bars are paired-bootstrap 95% CIs (B=2000, seed=0). **On both
@@ -1415,16 +1432,16 @@ inject" and could not see the per-clause verbalization profile.
 ![](figures/fig9_v3_vea_dissociation.png)
 
 **Figure 9.** V3 verbalization-vs-behavior dissociation across the
-5 V3 conditions, for qwen3 (left) and opus (right). Each panel uses
-a dual y-axis: refusal rate on the left axis (blue, squares),
-strict-VEA rate on the right axis (red, circles). qwen3's
-strict-VEA scales proportionally across clauses (×13 baseline on
-`eval_only` alone, ×22 on `full_inject`); opus's stays near baseline
-on every singleton and only inflates ×4 on `full_inject`. **Both
-models' refusal behavior is clause-additive (Figure 8), but the
-verbalization channel follows two distinct per-clause profiles.**
-V1's verbalization-vs-behavior dissociation generalizes to V3 and
-manifests as two model-level mechanisms.
+5 V3 conditions, for **opus (panel a, left) and qwen3 (panel b,
+right)**. Each panel uses a dual y-axis: refusal rate on the left
+axis (blue, squares), strict-VEA rate on the right axis (red,
+circles). qwen3's strict-VEA scales proportionally across clauses
+(×13 baseline on `eval_only` alone, ×22 on `full_inject`); opus's
+stays near baseline on every singleton and only inflates ×4 on
+`full_inject`. **Both models' refusal behavior is clause-additive
+(Figure 8), but the verbalization channel follows two distinct
+per-clause profiles.** V1's verbalization-vs-behavior dissociation
+generalizes to V3 and manifests as two model-level mechanisms.
 
 #### 5.6.5 Closed-CoT addition: gpt-5.5 has the cleanest null in the lineup
 

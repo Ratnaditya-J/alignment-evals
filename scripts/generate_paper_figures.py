@@ -130,7 +130,7 @@ def _render_refusal_forest(summary: Dict[str, Any], out_path: Path) -> None:
         LOGGER.warning("fig1: per_model empty, skipping")
         return
     rows.sort(key=lambda r: float(r.get("inject_minus_neutral", 0.0)))
-    labels = [r.get("model_name", "?") for r in rows]
+    labels = [_short_model(r.get("model_name", "?")) for r in rows]
     deltas = [float(r.get("inject_minus_neutral", 0.0)) for r in rows]
     lows = [float((r.get("inject_minus_neutral_ci") or {}).get("low", 0.0)) for r in rows]
     highs = [float((r.get("inject_minus_neutral_ci") or {}).get("high", 0.0)) for r in rows]
@@ -420,10 +420,13 @@ def _render_mediation_panels(
     _panel_did(axes[2], per_family_strict or [], "strict")
 
     fig.suptitle(
-        "Aggregate vs per-family vs validated-strict mediation analysis (qwen3)\n"
-        "validated strict surfaces qwen3 safety strong_mediation; "
-        "capability families are mechanically null (refusal ~0)",
-        fontsize=12,
+        "qwen3 mediation analysis: primary sample surfaces a safety-family "
+        "DiD signal (panel c, strict rubric);\n"
+        "see Figure 5 for the disjoint-prompt replication (null) and §5.3 "
+        "for the headline interpretation.\n"
+        "Capability families are mechanically null on this analysis "
+        "(refusal floor at ~0).",
+        fontsize=11,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.92])
     _save_figure(fig, out_path)
