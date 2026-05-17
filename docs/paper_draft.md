@@ -151,17 +151,17 @@ broader prompt corpus and finds that the V1 inject effect dilutes to
 the main pre-reg plus a 2-model closed-CoT backfill of gpt-5.5 and
 gemini-2.5-pro on the same prompts), but directionally recovers
 V1's direction asymmetry on the alignment-relevant subset of
-Apollo's eval prompts at proportional magnitude. Apollo's intrinsic
-eval label is itself a strong refusal predictor (+7.5–13.0pp across
-models; 5 of 6 survive Holm-Bonferroni across two correction
-families).
+Apollo's eval prompts at attenuated Apollo magnitude. Apollo's
+intrinsic eval label is itself a strong refusal predictor
+(+7.5–13.0pp across models; 5 of 6 survive Holm-Bonferroni across
+two correction families).
 
 V3 (the pre-registered inject-clause ablation in §5.6) addresses Q6
 on the alignment-eval subset using 5 conditions (neutral, the three
 V1 clauses as singletons, and the full V1 inject) on the same 6-model
-lineup. The V1+V2 direction asymmetry on opus and qwen3 replicates
-at full magnitude on V3's fresh sample (opus −0.067, qwen3 +0.054,
-both CIs exclude zero). **Attribution on both active models is
+lineup. The V1+V2 direction asymmetry on opus and qwen3 recurs on
+V3's fresh sample at the same attenuated Apollo magnitude (opus
+−0.067, qwen3 +0.054, both CIs exclude zero). **Attribution on both active models is
 ADDITIVE**: sum-of-singletons matches full_inject within CI; no single
 clause's effect survives Holm. The other four models — including the
 two closed-CoT additions — are flat at clause and full resolution.
@@ -338,11 +338,11 @@ decomposes the explicit-framing effect into per-clause contributions.
 **Probing-side and scaling-side adjacent work.** Two additional
 adjacent results inform the broader eval-awareness literature
 without directly overlapping our prompt-level behavioral design:
-Probe-Rewrite-Evaluate (arXiv:2509.00591) uses prompt-rewriting as
-a method to quantify eval-awareness, and Evaluation Awareness Scales
-Predictably (arXiv:2509.13333) examines representation-side
-eval-awareness scaling across model size. Neither tests the
-prompt-level explicit-framing or intrinsic-label design axes we use.
+Xiong et al. (2025) use prompt-rewriting as a method to quantify
+eval-awareness, and Chaudhary, Su, et al. (2025) examine
+representation-side eval-awareness scaling across model size.
+Neither tests the prompt-level explicit-framing or intrinsic-label
+design axes we use.
 
 **Mechanism-level work and the format-sensitivity confound.**
 Representation-level approaches probe and steer eval-awareness
@@ -1159,8 +1159,8 @@ closed-CoT families and three model labs.** Read across both
 experiments, this is a scope finding: the inject effect operates on
 safety-relevant prompts only and dilutes to zero when averaged across
 a mixed corpus. The alignment-stratum deep-dive in §5.5.4 supports
-this reading by recovering V1's directions at proportional magnitude
-on the safety-relevant subset of Apollo's eval prompts.
+this reading by recovering V1's directions at attenuated Apollo
+magnitude on the safety-relevant subset of Apollo's eval prompts.
 
 **The intrinsic Apollo label is a strong, robust predictor of refusal
 across the entire 6-model lineup.** Every model refuses eval-labeled
@@ -1399,7 +1399,7 @@ observation; discriminating them needs a follow-up.
 | Claim | Status |
 |---|---|
 | The V1 inject effect generalizes to non-safety prompts | **Not supported on any of 6 models.** All inject main effects within ±0.015 of zero; none survive Holm in either family. |
-| The V1 inject effect was specific to safety/alignment-relevant prompts | **Supported (post-hoc).** Stratified deep-dive (§5.5.4) recovers V1's directions on the alignment stratum at proportional magnitude. |
+| The V1 inject effect was specific to safety/alignment-relevant prompts | **Supported (post-hoc).** Stratified deep-dive (§5.5.4) recovers V1's directions on the alignment stratum at attenuated Apollo magnitude. |
 | The V1 qwen3-vs-opus direction asymmetry holds on V2's alignment stratum | **Directionally consistent.** Opus −0.060 (CI excludes zero), qwen3 +0.057 (CI [−0.04, +0.14] includes zero) at ~1/4-1/6 V1 magnitude. V3 (§5.6) finds both at full CI-excluding strength on a larger alignment-eval sample. |
 | Apollo's intrinsic eval label predicts refusal behavior on frontier and frontier-adjacent reasoning models | **Supported across the lineup.** Cross-model main effect +0.075 to +0.130; **5 of 6 models survive Holm** in their respective families (opus / deepseek / qwen3 in Family A; gpt-5.5 / gemini-2.5-pro in Family B; only kimi fails). |
 | The intrinsic-eval-label refusal signal extends to closed-CoT models | **Supported.** gpt-5.5 (+0.110, Family B Holm-survivor) and gemini-2.5-pro (+0.095, Family B Holm-survivor) both reproduce the magnitude V1+V2's reasoning-trio-plus-opus established. |
@@ -1469,9 +1469,10 @@ NOT in the correction family per the V3 main pre-reg's §4.4.
 
 #### 5.6.2 Headline: V1's direction asymmetry survives at 6-model resolution; attribution is additive on the two active models
 
-**The V1 + V2 direction asymmetry on opus and qwen3 replicates on
-V3's fresh alignment-eval sample, at full magnitude, on both active
-models:**
+**The V1 + V2 direction asymmetry on opus and qwen3 recurs on V3's
+fresh alignment-eval sample at the same attenuated Apollo magnitude
+(V3 estimates match V2's alignment-stratum size, not V1's
+BeaverTails-stratum size), on both active models:**
 
 | Model | full_inject Δ refusal | 95% CI | bootstrap p | Attribution |
 |---|---:|---|---:|---|
@@ -1836,11 +1837,10 @@ through which the behavior flows.
 **The right interpretation, in one sentence:**
 
 > Inject framing produces direction-asymmetric refusal shifts on
-> safety prompts in at least two reasoning models; strict-VEA
-> verbalization is inflated under inject but is not the mediating
-> channel for those shifts; the verbal fingerprint visible to
-> explicit VEA monitoring
-> mechanisms is not where the behavioral effect lives.
+> safety/alignment prompts in at least two reasoning models;
+> strict-VEA verbalization is inflated under inject but is not the
+> mediating channel for those shifts; the behavioral effect is not
+> captured by explicit-VEA monitoring.
 
 ### 7.3 The methodological lesson from the validated strict rubric
 
@@ -2318,12 +2318,15 @@ Aranguri, S., & Bloom, J. (2026). *Verbalized Eval Awareness Inflates
 Measured Safety.* Goodfire Research. May 4, 2026.
 https://www.goodfire.ai/research/verbalized-eval-awareness-inflates-measured-safety
 
-Burnat, & Davidson (2026). *Evaluation / Deployment / Neutral
-Framing Effects on Frontier Model Refusal.* arXiv:2605.06327.
-**[verify exact title and full author list at submission time;
-reviewer-supplied citation as the directly-adjacent prior work on
-model-heterogeneous directionality under explicit framing — see
-§2 Related Work and §1.1 Contribution #3.]**
+Burnat, F. A. D., & Davidson, B. I. (2026). *Measuring
+Evaluation-Context Divergence in Open-Weight LLMs: A Paired-Prompt
+Protocol with Pilot Evidence of Alignment-Pipeline-Specific
+Heterogeneity.* arXiv:2605.06327.
+
+Chaudhary, M., Su, I., Hooda, N., Shankar, N., Tan, J., Zhu, K.,
+Lagasse, R., Sharma, V., & Panda, A. (2025). *Evaluation Awareness
+Scales Predictably in Open-Weights Large Language Models.*
+arXiv:2509.13333.
 
 Chaudhary, M. (2026). *In-Context Environments Induce
 Evaluation-Awareness in Language Models.* arXiv:2603.03824.
@@ -2381,19 +2384,12 @@ Park, P. S., Goldstein, S., O'Gara, A., Chen, M., & Hendrycks, D.
 (2024). *AI Deception: A Survey of Examples, Risks, and Potential
 Solutions.* Patterns 5(5). Preprint: arXiv:2308.14752.
 
-*Probe-Rewrite-Evaluate.* (2025). arXiv:2509.00591. **[verify exact
-title and full author list at submission time; reviewer-supplied
-citation as adjacent prior work on prompt-rewriting methodology
-for quantifying eval-awareness — see §2 Related Work.]**
-
 Qwen Team (2025). *Qwen3 Technical Report.* Alibaba Cloud.
 arXiv:2505.09388.
 
-*Evaluation Awareness Scales Predictably.* (2025). arXiv:2509.13333.
-**[verify exact title and full author list at submission time;
-reviewer-supplied citation as adjacent prior work on
-representation-side eval-awareness scaling across model size — see
-§2 Related Work.]**
+Xiong, L., Bhargava, N., Hong, J., Chang, J., Liu, H., Sharma, V.,
+& Zhu, K. (2025). *Probe-Rewrite-Evaluate: A Workflow for Reliable
+Benchmarks and Quantifying Evaluation Awareness.* arXiv:2509.00591.
 
 (Vendor model cards and exact API model identifiers used in this
 paper are listed in Appendix C for reproducibility; we do not cite
