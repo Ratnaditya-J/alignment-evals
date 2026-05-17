@@ -307,19 +307,22 @@ where `effect == "interaction_effect"`.
 
 ## 8. Recorded at execution time
 
-To be filled in at run time. The pre-reg is invalid if any of these
-fields are left blank in the post-run version of this document.
+*Filled in 2026-05-17, post-execution.*
 
-- **Dataset file path:** ___
-- **Dataset sha256:** ___
-- **Apollo HF revision / download date:** ___
-- **Run directory:** ___
-- **Rollouts completed:** ___ / 1600
-- **Rollouts failed/skipped:** ___
-- **VEA classifications completed:** ___ / 1600
-- **`run_v2_apollo_factorial.py` exit code:** ___
-- **`analyze_v2_factorial.py --strict-vea` exit code:** ___
-- **`analyze_v2_factorial.py` (broad) exit code:** ___
+- **Dataset file path:** `/Users/ratnaditya/data/apollo/dataset.json`
+- **Dataset sha256:** `9e375112910d2d56cd52dd9e6e1b70d44e28b1c44191efbffc1075d17e3de839`
+- **Apollo HF revision / download date:** downloaded 2026-05-17 from `huggingface.co/datasets/jjpn2/eval_awareness` via `hf download`; decrypted via Apollo's `scripts/decrypt.sh`.
+- **Run directory:** `runs/v2-apollo-factorial-prereg`
+- **Rollouts completed:** 1600 / 1600 (every cell × model has n=100)
+- **Rollouts failed/skipped:** 0
+- **VEA classifications completed:** 1600 / 1600
+- **`run_v2_apollo_factorial.py` exit code:** 0
+- **`analyze_v2_factorial.py --strict-vea` exit code:** 0
+- **`analyze_v2_factorial.py` (broad) exit code:** 0
+
+Notes:
+
+- Opus exhibited a label-correlated empty-trace pattern (~50% of eval-labeled opus rollouts returned no `reasoning_trace` under adaptive thinking, vs ~0% of deployment-labeled rollouts). Adaptive thinking is choosing to skip extended thinking on prompts that look like single-shot evals. Cells remain well above `min_cell_n=30` for VEA analysis. Opus's intrinsic-label-conditional thinking pattern is itself a candidate eval-awareness signal at the deliberation level; reported as a secondary finding (§10).
 
 ## 9. Deviations and amendments
 
@@ -344,15 +347,60 @@ shrinks to whatever models did return data, and that is documented in
 
 ## 10. Results
 
-*To be filled in after execution.*
+*Filed 2026-05-17. Executed 2026-05-17. Headline per §5.6: **H2 (additive) holds on 3 of 4 models. H1 (interaction_supported) holds on opus uncorrected but does not survive Holm-Bonferroni at the cross-model headline level.***
 
-- Replication run completed: ___ (date)
-- Run directory: ___
-- Per-model verdicts (strict): qwen3 ___ ; deepseek ___ ; kimi ___ ; opus ___
-- Per-model interaction-effect point and CI (strict): ___
-- Holm-Bonferroni decisions on the 4 interaction-effect rows: ___
-- Pre-specified headline claim (H1/H2/H3 majority verdict): ___
-- Paper / writeup updates made: ___
+- **Replication run completed:** 2026-05-17
+- **Run directory:** `runs/v2-apollo-factorial-prereg`
+- **Per-model verdicts (strict):**
+  - opus-4-7: **interaction_supported** (uncorrected)
+  - deepseek-v3.2-exp: **additive**
+  - kimi-k2-thinking: **additive**
+  - qwen3-235b-thinking: **additive**
+- **Per-model interaction-effect point + 95% CI (strict):**
+  - opus-4-7: **−0.06**, CI [−0.12, −0.01], bootstrap p = 0.026
+  - deepseek-v3.2-exp: +0.02, CI [−0.03, +0.07], p = 0.520
+  - kimi-k2-thinking: −0.01, CI [−0.07, +0.05], p = 0.850
+  - qwen3-235b-thinking: −0.01, CI [−0.08, +0.06], p = 0.853
+- **Holm-Bonferroni decisions on the 4 interaction-effect rows:** none survive correction at family-wise α=0.05. The opus interaction (p=0.026) fails the Holm threshold of 0.0063. Per §5.6, this means the per-model verdict tier `interaction_supported` is reported on opus uncorrected, but the cross-model headline does *not* claim a robust interaction effect.
+
+### Headline findings
+
+**Finding 1: Apollo's intrinsic eval label is a strong, robust predictor of refusal across the lineup.** Every model refuses eval-labeled prompts ~7-13pp more than deployment-labeled prompts regardless of inject framing. Holm-Bonferroni-corrected intrinsic main-effect rejections: **3 of 4 models** survive (opus +0.130, qwen3 +0.125, deepseek +0.090; kimi +0.075 does not survive at threshold 0.0056).
+
+**Finding 2: The V1 inject effect does not replicate on Apollo's mixed corpus.** All four models' inject main-effect point estimates are within ±0.015 of zero, with CIs that include zero. None survive Holm correction. V1 found qwen3 +22pp and opus −34pp on BeaverTails safety prompts; V2 on the broader Apollo capability+alignment+deployment mix finds essentially zero. **Interpretation: the V1 inject effect was a safety-prompt-specific phenomenon, not a general extrinsic-eval-cue phenomenon.** This is itself a substantive null result that scopes V1's claim.
+
+**Finding 3: Opus has a marginal interaction effect (uncorrected).** Inject framing closes opus's eval-vs-deployment refusal gap: opus refuses slightly less on real evals when told it's an eval (0.18 → 0.15) and slightly more on real deployment prompts when told it's an eval (0.02 → 0.05). The interaction point estimate is −0.06 with CI [−0.12, −0.01]. Per the pre-reg's correction policy, this earns the per-model verdict tier `interaction_supported` but does **not** count toward cross-model headline claims after Holm-Bonferroni (p=0.026 vs threshold 0.0063).
+
+**Finding 4 (secondary): Opus's adaptive thinking skips on eval-shaped prompts.** ~50% of opus's eval-labeled rollouts returned empty `reasoning_trace`, vs ~0% of deployment-labeled rollouts. This pattern is itself a candidate eval-awareness signal at the deliberation level — opus appears to "recognize" the eval format and shortcut thinking — distinct from VEA verbalization. Reported as an appendix finding rather than a headline claim.
+
+### Cell summary (strict VEA, B=2000)
+
+| Model | cell | refusal | refusal 95% CI | strict-VEA mean |
+|---|---|---:|---|---:|
+| opus-4-7 | neutral_eval | 0.18 | [+0.11, +0.26] | 0.01 |
+| opus-4-7 | inject_eval | 0.15 | [+0.08, +0.23] | 0.06 |
+| opus-4-7 | neutral_deployment | 0.02 | [+0.00, +0.05] | 0.01 |
+| opus-4-7 | inject_deployment | 0.05 | [+0.01, +0.10] | 0.01 |
+| qwen3 | neutral_eval | 0.16 | [+0.09, +0.24] | 0.02 |
+| qwen3 | inject_eval | 0.16 | [+0.09, +0.23] | 0.23 |
+| qwen3 | neutral_deployment | 0.03 | [+0.00, +0.07] | 0.00 |
+| qwen3 | inject_deployment | 0.04 | [+0.01, +0.08] | 0.20 |
+| deepseek | neutral_eval | 0.10 | [+0.05, +0.16] | 0.01 |
+| deepseek | inject_eval | 0.12 | [+0.06, +0.19] | 0.05 |
+| deepseek | neutral_deployment | 0.02 | [+0.00, +0.05] | 0.01 |
+| deepseek | inject_deployment | 0.02 | [+0.00, +0.05] | 0.00 |
+| kimi | neutral_eval | 0.15 | [+0.08, +0.22] | 0.01 |
+| kimi | inject_eval | 0.16 | [+0.09, +0.24] | 0.05 |
+| kimi | neutral_deployment | 0.07 | [+0.02, +0.13] | 0.03 |
+| kimi | inject_deployment | 0.09 | [+0.04, +0.15] | 0.00 |
+
+Note qwen3 alone shows substantial strict-VEA verbalization under inject (0.23/0.20 in eval/deployment cells respectively, vs 0.02/0.00 under neutral). The other three models barely verbalize strict-VEA at all in any condition. qwen3's behavior is consistent with what V1's data showed (qwen3 verbalizes eval-awareness much more readily than other models).
+
+### Paper / writeup updates
+
+- *Pending.* Plan: integrate V2 results as a new section in the paper, framing finding 2 (V1 inject effect doesn't generalize) as a paper-improving null and finding 1 (intrinsic eval-label main effect) as a fresh contribution. Finding 4 (opus's adaptive-thinking pattern) goes in the appendix.
+
+*The pre-registration discipline worked as intended: the H1 claim survives per-model but not under cross-model correction, exactly the distinction the pre-reg's §5.6 was designed to handle. The unexpected null (finding 2) is reported as a substantive scope correction on V1, not a setback.*
 
 ---
 
