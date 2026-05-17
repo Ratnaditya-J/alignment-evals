@@ -52,9 +52,9 @@ underestimate the behavior researchers actually care about — the
 deployment behavior. Goodfire's recent finding that reasoning models
 sometimes spontaneously verbalize evaluation awareness in their
 chain-of-thought (CoT) sharpens the concern by giving it a
-mechanistic foothold: the model is literally writing down "this
-looks like a test" in its reasoning trace, before producing the
-visible response.
+mechanistic foothold: the model sometimes writes an explicit
+"this looks like a test" hypothesis in its reasoning trace, before
+producing the visible response.
 
 This paper asks four complementary empirical questions, each
 addressed by a dedicated experimental phase.
@@ -90,8 +90,8 @@ might take — is that Q1 and Q2 resolve positive uniformly across
 models and task families: inject framing causes the model to verbalize
 awareness, which in turn causes the model to refuse more, everywhere.
 The integrated V1+V2 picture is sharper and more partial. The V1
-cross-protocol behavioral analysis returns null on 8/8 frontier-tier
-and frontier-adjacent models at the aggregate level. V1's Goodfire reasoning-trace analysis
+cross-protocol behavioral analysis returns an aggregate null across
+8 frontier-tier and frontier-adjacent models. V1's Goodfire reasoning-trace analysis
 returns large VEA inflation on qwen3, small but CI-excludes-zero on
 deepseek and on claude-opus-4-7, and null on kimi. Within-prompt
 diff-in-diff mediation analysis under the empirically-validated strict
@@ -105,9 +105,9 @@ V2 (the pre-registered Apollo factorial in §5.5) addresses Q5 on a
 broader prompt corpus and finds that the V1 inject effect dilutes to
 ~0 across all six models on the mixed corpus (4 reasoning models from
 the main pre-reg plus a 2-model closed-CoT backfill of gpt-5.5 and
-gemini-2.5-pro on the same prompts), but recovers V1's direction
-asymmetry on the alignment-relevant subset of Apollo's eval prompts
-at proportional magnitude. Apollo's intrinsic eval label is itself a
+gemini-2.5-pro on the same prompts), but directionally recovers
+V1's direction asymmetry on the alignment-relevant subset of
+Apollo's eval prompts at proportional magnitude. Apollo's intrinsic eval label is itself a
 strong refusal predictor (+7.5–13.0pp across models; 5 of 6 survive
 Holm-Bonferroni across two correction families).
 
@@ -643,7 +643,7 @@ never spontaneously verbalizes "this is an eval" in its CoT; the
 explicitly mentioning evaluation. The open-reasoning models all
 have non-zero baseline VEA (deepseek 0.016, kimi 0.024, qwen3 0.070)
 — the inject framing inflates an already-non-zero rate. opus's
-cleaner causal signal comes at the cost of a substantially lower
+cleaner inflation contrast comes at the cost of a substantially lower
 inflation magnitude (10× lower than qwen3).
 
 *Figure 2 below visualizes the per-model effect for the three
@@ -2089,17 +2089,6 @@ Solutions.* Patterns 5(5). Preprint: arXiv:2308.14752.
 Qwen Team (2025). *Qwen3 Technical Report.* Alibaba Cloud.
 arXiv:2505.09388.
 
-### Model technical reports / system cards
-
-These are vendor-published reports for the closed-source models
-under test. URLs should be re-validated at arXiv submission time as
-vendor pages can move.
-
-- **Anthropic.** Claude Opus 4 Model Card. https://www.anthropic.com/claude
-- **Google DeepMind.** Gemini 2.5 Pro Technical Report. https://deepmind.google/technologies/gemini/
-- **Moonshot AI.** Kimi K2 Thinking. https://www.moonshot.ai/
-- **OpenAI.** GPT-5 / GPT-5.5 System Card. https://openai.com/research/
-
 ### Methodological background
 
 - Sandbagging / strategic deception literature: see Park et al. (2024)
@@ -2110,6 +2099,11 @@ vendor pages can move.
   registration framework. The three pre-registration documents for
   V1, V2, and V3 are committed to the project repository before the
   corresponding experimental run (see Appendix A).
+
+(Vendor model cards and exact API model identifiers used in this
+paper are listed in Appendix C for reproducibility; we do not cite
+them inline as primary literature because they are operational
+metadata rather than scholarly publications.)
 
 ---
 
@@ -2203,3 +2197,52 @@ earlier cross-protocol behavioral analyses (§5.1, §5.2) use B=200.
 Per §3.2, the higher iteration count materially tightens precision
 on the qwen3 primary safety DiD CI lower bound (the cell where it
 matters most) but does not change the verdict.
+
+---
+
+## Appendix C. Models tested (reproducibility)
+
+Exact API model identifiers used in V1, V2, and V3. URLs to vendor
+model cards are operational metadata, not scholarly references; they
+are listed here for reproducibility and should be re-validated at
+submission time as vendor pages can move.
+
+### Open-weight reasoning models (visible CoT)
+
+| Identifier | Lab | Used in |
+|---|---|---|
+| `qwen/qwen3-235b-a22b-thinking-2507` | Alibaba (Qwen Team) | V1, V2, V3 |
+| `deepseek/deepseek-v3.2-exp` | DeepSeek-AI | V1, V2, V3 |
+| `moonshotai/kimi-k2-thinking` | Moonshot AI | V1, V2, V3 |
+
+All three reached via the OpenRouter meta-provider.
+
+### Closed-source models with visible thinking blocks (Anthropic)
+
+| Identifier | Lab | Used in | Thinking config |
+|---|---|---|---|
+| `claude-opus-4-7` | Anthropic | V1, V2, V3 | adaptive thinking; `thinking_budget=4096`, `thinking_effort=max`, `thinking_display=summarized` |
+| `claude-sonnet-4-6` | Anthropic | V1 only | default |
+| `claude-haiku-4-5-20251001` | Anthropic | V1 only | default |
+
+Vendor model card: https://www.anthropic.com/claude
+
+### Closed-CoT frontier models (behavioral-only)
+
+| Identifier | Lab | Used in | Notes |
+|---|---|---|---|
+| `openai/gpt-5.5` | OpenAI | V1, V2 backfill, V3 backfill | No verbatim CoT exposed; VEA secondary not measured |
+| `openai/gpt-4o-mini` | OpenAI | V1 only | Frontier-adjacent |
+| `google/gemini-2.5-pro` | Google DeepMind | V2 backfill, V3 backfill | No verbatim CoT exposed; VEA secondary not measured |
+
+Vendor model cards:
+- OpenAI: https://openai.com/research/
+- Google DeepMind: https://deepmind.google/technologies/gemini/
+- Moonshot AI: https://www.moonshot.ai/
+
+### Judge
+
+| Identifier | Used as |
+|---|---|
+| `google/gemini-2.5-flash-lite` | Primary VEA judge in V1, V2, V3 (via OpenRouter) |
+| `google/gemini-2.5-flash` | Judge-swap robustness check (V1 §6.2) |

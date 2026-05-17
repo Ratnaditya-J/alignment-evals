@@ -200,7 +200,7 @@ def _render_vea_inflation(summary: Dict[str, Any], out_path: Path) -> None:
     ax.set_xticklabels(labels, rotation=15, ha="right")
     ax.set_ylabel("Δ inject − neutral VEA+ rate")
     ax.set_title(
-        "Reasoning-trace VEA inflation per model\n"
+        "Reasoning-trace VEA inflation (open-reasoning trio)\n"
         "(red = CI excludes zero, grey = not significant)"
     )
     ax.grid(axis="y", alpha=0.25)
