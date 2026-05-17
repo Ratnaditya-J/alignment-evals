@@ -78,8 +78,8 @@ mechanistic foothold: the model sometimes writes an explicit
 "this looks like a test" hypothesis in its reasoning trace, before
 producing the visible response.
 
-Recent prior work by Knecht, Florin, & Hagendorff (2026) provides the
-first large-scale causal test of whether VEA in CoT actually drives
+Recent prior work by Knecht, Florin, & Hagendorff (2026) provides a
+large-scale causal test of whether VEA in CoT actually drives
 behavior. Using CoT-level sentence prefilling to inject or remove
 eval-aware sentences mid-trace across 8 open-weight reasoning models
 and 4 benchmarks, they find that VEA has **limited behavioral
@@ -268,7 +268,7 @@ first-discovery.
    dissociation Knecht et al. established at the rollout level.
 5. **V1 mediation null as independent convergent evidence with
    Knecht et al. (2026), under a different operationalization.**
-   Knecht et al. provide the first large-scale causal test that VEA
+   Knecht et al. provide a large-scale causal test that VEA
    has limited behavioral effect (CoT-level sentence-prefilling
    intervention; 8 open-weight models; 4 benchmarks). Our V1 result
    is convergent evidence from a different operationalization: a
@@ -309,7 +309,7 @@ study a closely related "evaluation scent" framing using paired
 eval-vs-real-world prompts and measure resulting changes in CoT,
 refusal, and compliance on GPT-OSS-20B — methodologically adjacent
 to our V2 design point of using a corpus-level eval/deployment
-contrast as the manipulation rather than a CoT-level intervention.
+contrast as the design axis rather than a CoT-level intervention.
 
 **Mechanism-level work and the format-sensitivity confound.**
 Representation-level approaches probe and steer eval-awareness
@@ -341,7 +341,7 @@ context-induced — are associated with behavioral change.
 
 **Recent prior null finding on VEA's behavioral effect.** Knecht,
 Florin, & Hagendorff (2026; arXiv:2605.05835, posted May 7, 2026)
-provide the first large-scale causal test of whether VEA influences
+provide a large-scale causal test of whether VEA influences
 model behavior. They test 8 open-weight reasoning models across
 safety, alignment, dilemmas, and political-opinion benchmarks
 (N=500 prompts each). Using CoT-level sentence prefilling to inject
@@ -2267,7 +2267,8 @@ negative-result interpretation.
 
 ## References
 
-Ahmed, et al. (2025). *Do LLMs Know They Are Being Tested?
+Ahmed, N., Zaman, M. I., Saleem, G., & Hassan, A. (2025). *Do
+LLMs Know They Are Being Tested?
 Evaluation Awareness and Incentive-Sensitive Failures in
 GPT-OSS-20B.* arXiv:2510.08624.
 
