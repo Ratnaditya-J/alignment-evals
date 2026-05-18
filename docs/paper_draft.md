@@ -2762,9 +2762,9 @@ Vendor model cards:
 
 ---
 
-## Supplementary Material (treat as not core reading; main text §1-§9 is self-contained)
+## Supplementary Material
 
-The blocks below collect per-model verdict tables, secondary
+**Treat as not core reading; main text §1-§9 is self-contained.** The blocks below collect per-model verdict tables, secondary
 findings, and "what survives" claim grids that were moved out of
 §5.5 and §5.6 to keep the main text focused on the three headline
 claims (V2 intrinsic-eval-label refusal signal, V3
