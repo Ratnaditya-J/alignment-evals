@@ -44,7 +44,7 @@ But the replication also surfaced something the V1 mediation result had hidden. 
 
 ## V2: the central finding
 
-V1 manufactured eval-awareness by adding an "this is an evaluation" line to the system prompt. A more interesting question: do benchmark prompts already carry eval signals that move models, without any added framing?
+V1 added explicit eval framing by adding an "this is an evaluation" line to the system prompt. A more interesting question: do benchmark prompts already carry eval signals that move models, without any added framing?
 
 Apollo Research released exactly the dataset to answer this. Their corpus contains 976 prompts, each labeled by humans as either an evaluation prompt (multiple-choice format, safety-test framing, alignment-eval style) or a deployment-style prompt (an actual user asking for help). The labels describe the prompt itself; we did not add anything.
 
@@ -98,7 +98,7 @@ This direction asymmetry is now concurrent prior work, not first-discovery. [Bur
 
 ## What "trace isn't the tell" now means
 
-V1 said: text-level reasoning-trace monitoring missed both Opus's and qwen3's safety refusal shifts because the shifts happened on prompts where neither model verbalized eval-awareness. V2 extended that: even on the broader Apollo corpus, the intrinsic-label refusal shift was a behavioral signal you could measure on closed-source models without access to their reasoning trace at all.
+V1 said: text-level reasoning-trace monitoring missed both Opus's and qwen3's safety refusal shifts because the shifts happened on prompts where neither model verbalized eval-awareness. V2 extended that: even on the broader Apollo corpus, the intrinsic-label refusal shift was a behavioral signal you could measure on closed-CoT models without access to their reasoning trace at all.
 
 But this claim needs a scope.
 
