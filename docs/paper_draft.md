@@ -172,9 +172,12 @@ V1 clauses as singletons, and the full V1 inject) on the same 6-model
 lineup. The V1+V2 direction asymmetry on opus and qwen3 recurs on
 V3's fresh sample at the same attenuated Apollo magnitude (opus
 −0.067, qwen3 +0.054, both CIs exclude zero).
-**Attribution on both active models is ADDITIVE**: sum-of-singletons
-matches full_inject within CI; no single clause's effect survives
-Holm. The other four models, including the two closed-CoT additions,
+**Attribution on both active models is ADDITIVE-COMPATIBLE under
+the pre-registered decision tree**: sum-of-singletons matches
+full_inject within the additivity residual's CI; no singleton
+clause is detected after Holm-Bonferroni correction; no synergy
+term is detected. This is a non-rejection of additivity, not an
+equivalence test for additivity. The other four models, including the two closed-CoT additions,
 are flat at clause and full resolution.
 
 The combination yields findings sharper than any single question's
@@ -189,10 +192,12 @@ naive answer:
 > (V1 paired Δ −0.339 [−0.446, −0.231];
 > V2 alignment-stratum Δ −0.060 [−0.18, −0.001]; V3 alignment
 > full_inject Δ −0.067 [−0.104, −0.030]). The effects are
-> distributed-additive across three V1 inject clauses, no single
-> clause's effect is detectable in isolation, but the three sum to
-> the `full_inject` anchor (V3's attenuated Apollo magnitude, not
-> V1's larger BeaverTails magnitude) on both active models. V1's effects operate on the
+> additive-compatible under the pre-registered V3 decision tree
+> across three V1 inject clauses, no singleton clause is detected
+> after Holm correction, and sum-of-singletons matches the
+> `full_inject` anchor within the additivity residual's CI (V3's
+> attenuated Apollo magnitude, not V1's larger BeaverTails
+> magnitude) on both active models. V1's effects operate on the
 > `stable_neg` stratum where strict-VEA verbalization did not flip; V2
 > shows they dilute to zero when averaged across non-safety prompts;
 > V3 finds no detectable single-clause attribution. The verbal
@@ -692,15 +697,18 @@ summary JSON schema, judge prompts, pre-registration documents,
 and committed-figure PNGs/PDFs are all released in the project
 GitHub repository (Appendix A). Per-run rollout JSONLs and the
 derived summary JSONs they're computed from (the contents of
-`runs/`, gitignored because of size) are **not** committed to the
-GitHub repo; they are available on request from the corresponding
-author and the released scripts re-derive them from raw API calls
-under documented seeds, prompt-template hashes, and judge model
-identifiers (each summary JSON's manifest records these). The
-"Judge-only reproduction" path in Appendix A (~$10-$20 in
-OpenRouter API fees, ~30 minutes wall time) is the practical entry
-point for verifying classification numbers and mediation verdicts
-without rerunning the full rollout pipeline.
+`runs/`, gitignored because of size) are released as a GitHub
+release artifact at
+`https://github.com/Ratnaditya-J/alignment-evals/releases/tag/v1.0-rollouts`
+(`alignment-evals-rollouts.tar.gz`, namespaced `v1/`, `v2/`, `v3/`
+matching the paper's experiment partitioning) and re-derivable
+from raw API calls by the released scripts under documented seeds,
+prompt-template hashes, and judge model identifiers (each summary
+JSON's manifest records these). The "Judge-only reproduction" path
+in Appendix A (~$10-$20 in OpenRouter API fees, ~30 minutes wall
+time) is the practical entry point for verifying classification
+numbers and mediation verdicts without rerunning the full rollout
+pipeline.
 
 The pre-registration discipline used here (filed-before-execution
 invariant) follows the broader psychology and replication-science
@@ -1600,7 +1608,7 @@ the closed-CoT backfill supplement's §5.2. Family A (V3 main):
 each model is reported separately as the V1-replication anchor and is
 NOT in the correction family per the V3 main pre-reg's §4.4.
 
-#### 5.6.2 Headline: V1's direction asymmetry survives at 6-model resolution; attribution is additive on the two active models
+#### 5.6.2 Headline: V1's direction asymmetry survives at 6-model resolution; attribution is additive-compatible on the two active models
 
 **The V1 + V2 direction asymmetry on opus and qwen3 recurs on V3's
 fresh alignment-eval sample at the same attenuated Apollo magnitude
@@ -1625,14 +1633,19 @@ cross-model direction comparison on `full_inject` is **asymmetric**
 finding under a fresh-sample, 5-condition design with two new
 closed-CoT models in the lineup.
 
-**No single clause carries the effect on any model.**
-0 of 18 singleton hypotheses survive Holm-Bonferroni across the two
-correction families. Individual clause point estimates are small
-(≤ 0.04 absolute on any model) and CIs uniformly include zero.
+**No singleton clause is detected after Holm correction on any
+model.** 0 of 18 singleton hypotheses survive Holm-Bonferroni across
+the two correction families. Individual clause point estimates are
+small (≤ 0.04 absolute on any model) and CIs uniformly include
+zero. This is the non-detection of singleton clauses at our n; it
+is not evidence of absence of any per-clause contribution.
 
-**Attribution on the two active models is ADDITIVE.** The sum of the
-three singleton effects matches the full_inject effect within the
-additivity residual's CI on both opus and qwen3:
+**Attribution on the two active models is ADDITIVE-COMPATIBLE under
+the pre-registered decision tree.** The sum of the three singleton
+effects matches the full_inject effect within the additivity
+residual's CI on both opus and qwen3 (non-rejection of additivity
+combined with non-detection of singletons, not positive proof of
+additivity):
 
 | Model | sum-of-singletons | full_inject | additivity residual | residual 95% CI | Attribution |
 |---|---:|---:|---:|---|---|
@@ -1642,9 +1655,12 @@ additivity residual's CI on both opus and qwen3:
 The singleton point estimates are compatible with roughly distributed
 contributions across the three clauses, but individual per-clause
 magnitudes are not resolved at this n (no singleton survives Holm
-correction). The aggregate additivity is what the data support:
+correction). The aggregate additivity classification is what the
+pre-registered decision tree supports:
 **sum-of-singletons matches the full_inject anchor within the
-additivity residual's CI on both opus and qwen3.** No single clause's
+additivity residual's CI on both opus and qwen3**, a non-rejection
+of additivity combined with non-detection of singletons (rather
+than positive proof of additivity). No singleton clause's
 effect is detectable in isolation.
 
 ![](figures/fig7_triangulation.png)
@@ -1695,8 +1711,9 @@ candidates. Error bars on singleton and full_inject bars are
 paired-bootstrap 95% CIs (B=2000, seed=0). **On both models, the
 sum-of-singletons bar matches the full_inject anchor bar within the
 additivity residual's CI**, consistent with the additive-compatible
-classification. No single clause individually carries a detectable
-share of the effect. The pre-registered classification
+classification. No singleton clause is individually detected after
+Holm correction; this is non-detection at our n, not proof of
+absence of a per-clause contribution. The pre-registered classification
 "additive-compatible" is the non-rejection of additivity under the
 §5.5 decision tree (residual CI contains zero) combined with the
 positive rejection of single-clause attribution (no Holm survivor);
@@ -2675,9 +2692,23 @@ summary JSON schema, judge prompts, pre-registration documents,
 and committed-figure PNGs/PDFs are all released in the project
 GitHub repository. Per-run rollout JSONLs and the derived summary
 JSONs they're computed from (the `runs/` directory tree,
-gitignored because of cumulative size) are **not** in the GitHub
-repo; they are available on request from the corresponding
-author. Each summary JSON manifest records the seeds, judge model
+gitignored because of cumulative size) are released as a GitHub
+release artifact at
+`https://github.com/Ratnaditya-J/alignment-evals/releases/tag/v1.0-rollouts`
+(`alignment-evals-rollouts.tar.gz`). The bundle is namespaced
+`v1/`, `v2/`, `v3/` matching the paper's experiment partitioning;
+V1 contains `cross-protocol-v6`, `goodfire-mixed-n500`,
+`goodfire-opus-mixed-n300`, and `goodfire-replication-qwen3-safety`
+subdirectories; V2 contains `v2-apollo-factorial-prereg`; V3
+contains `v3-clause-ablation-prereg`. Download with:
+
+```bash
+curl -L -o alignment-evals-rollouts.tar.gz \
+  https://github.com/Ratnaditya-J/alignment-evals/releases/download/v1.0-rollouts/alignment-evals-rollouts.tar.gz
+tar -xzf alignment-evals-rollouts.tar.gz
+```
+
+Each summary JSON manifest records the seeds, judge model
 identifiers, and prompt-template hashes used in its production so
 that re-derivation from raw API calls is deterministic.
 
@@ -2698,9 +2729,9 @@ Two reproduction costs are worth distinguishing:
   OpenRouter) contributes roughly $10–$20 of the total.
 
 * **Judge-only reproduction** (rerun only the VEA judge against the
-  author-provided rollout bundle, available on request per the
-  Appendix A wording above): approximately **$10–$20 in OpenRouter
-  API fees** at ~30 minutes wall time. The trace-bearing JSON is
+  released rollout bundle at the GitHub release URL above):
+  approximately **$10–$20 in OpenRouter API fees** at ~30 minutes
+  wall time. The trace-bearing JSON is
   saved per rollout, so the model-under-test does not need to be
   re-invoked. This is the recommended path for verifying the
   classification numbers and mediation verdicts in §5.2–§5.4
