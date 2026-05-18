@@ -441,8 +441,9 @@ different operationalization, not as first-discovery.
   proportionally with each inject clause (×13 baseline on
   \texttt{eval\_only} alone, ×22 on the full inject); opus's stays at
   baseline on every singleton and only inflates ×4 under the combined
-  inject. Yet both models' refusal attribution is identically additive
-  across clauses. Two distinct model-level verbalization profiles
+  inject. Yet both models' refusal attribution is identically
+  additive-compatible across clauses under the pre-registered §5.5
+  decision tree. Two distinct model-level verbalization profiles
   co-occur with the same refusal-attribution pattern, providing a
   clause-resolution variant of the broader dissociation Knecht et
   al.~established at the rollout level.
@@ -2452,14 +2453,16 @@ the effect in the V1-asymmetric direction (with the individual
 per-clause magnitudes not CI-resolvable at this n), and the three
 contributions sum within the additivity residual's CI to the V3
 \texttt{full\_inject} anchor (V3's attenuated Apollo magnitude, not V1's
-larger BeaverTails magnitude). Removing any single clause from V1's
-inject text would, under the additive interpretation, reduce the effect
-by some fraction rather than eliminate it, though V3 does not directly
-test this counterfactual (it tests singletons, not pairwise
-combinations). \textbf{The eval-noticing behavior on these models
-appears not localized to any specific propositional content of the V1
-inject; the data are more consistent with a response to the cumulative
-weight of eval-framing claims than with single-clause attribution.}
+larger BeaverTails magnitude).
+
+Under this distributed-additive interpretation, removing any single
+clause from V1's inject text would reduce the effect by some fraction
+rather than eliminate it, though V3 does not directly test this
+counterfactual (it tests singletons, not pairwise combinations).
+\textbf{The eval-noticing behavior on these models appears not localized
+to any specific propositional content of the V1 inject; the data are
+more consistent with a response to the cumulative weight of eval-framing
+claims than with single-clause attribution.}
 
 \paragraph{5.6.4 qwen3's per-clause VEA pattern is proportional, opus's
 is
@@ -2506,9 +2509,10 @@ alone ×13 baseline). Opus's strict-VEA rate barely moves on any
 individual clause, then jumps ×4 only under the combined
 \texttt{full\_inject}. \textbf{The verbalization channel is
 clause-additive on qwen3 and gestalt-only on opus, even though both
-models' refusal behavior is clause-additive.} This is a new finding V3
-could produce because of its 5-condition design; V1 and V2 only
-contrasted ``full inject vs no inject'' and could not see the per-clause
+models' refusal behavior is clause-additive-compatible under the
+pre-registered §5.5 decision tree.} This is a new finding V3 could
+produce because of its 5-condition design; V1 and V2 only contrasted
+``full inject vs no inject'' and could not see the per-clause
 verbalization profile.
 
 \pandocbounded{\includegraphics[keepaspectratio]{figures/fig9_v3_vea_dissociation.png}}
@@ -2887,27 +2891,30 @@ for this even in the ``neutral'' condition, regardless of whether the
 underlying driver is internal eval-recognition or surface-feature
 responsiveness.
 
-\textbf{(iii) The V1 inject's effect on opus and qwen3 is distributed-
-additive across three clauses, not localized to any single clause.} V3's
-5-condition design tests whether the V1 effect attributes to (a) the
-``this is an evaluation'' claim, (b) the ``reviewed by safety
-researchers'' claim, (c) the ``compared against deployment'' claim, or
-(d) the combined frame. The pre-registered §4.3 decision tree returns
-\textbf{ADDITIVE-COMPATIBLE on both opus and qwen3}: sum-of-singletons
-(−0.077 on opus; +0.051 on qwen3) matches full\_inject (−0.067; +0.054)
-within the additivity residual's CI (a non-rejection of additivity
-combined with non-detection of singletons; not an equivalence test for
-additivity). No single clause's effect is detectable in isolation; the
-singleton point estimates are compatible with roughly distributed
-contributions across the three clauses, but individual per-clause
-magnitudes are not resolved at this n.~V3 does not directly test the
-counterfactual of removing a single clause (it tests singletons against
-neutral, not pairwise combinations), so the per-clause-removal
-prediction is the additive model's extrapolation rather than a measured
-result. \textbf{The eval-noticing behavior on these models appears not
-localized to any specific propositional content of the V1 inject, the
-data are more consistent with a response to the cumulative weight of
-eval-framing claims than with single-clause attribution.}
+\textbf{(iii) The V1 inject's effect on opus and qwen3 is
+additive-compatible across three clauses under the pre-registered §5.5
+decision tree, not localized to any single clause; the interpretation
+most consistent with this classification is a distributed-additive cue
+response.} V3's 5-condition design tests whether the V1 effect
+attributes to (a) the ``this is an evaluation'' claim, (b) the
+``reviewed by safety researchers'' claim, (c) the ``compared against
+deployment'' claim, or (d) the combined frame. The pre-registered §4.3
+decision tree returns \textbf{ADDITIVE-COMPATIBLE on both opus and
+qwen3}: sum-of-singletons (−0.077 on opus; +0.051 on qwen3) matches
+full\_inject (−0.067; +0.054) within the additivity residual's CI (a
+non-rejection of additivity combined with non-detection of singletons;
+not an equivalence test for additivity). No single clause's effect is
+detectable in isolation; the singleton point estimates are compatible
+with roughly distributed contributions across the three clauses, but
+individual per-clause magnitudes are not resolved at this n.~V3 does not
+directly test the counterfactual of removing a single clause (it tests
+singletons against neutral, not pairwise combinations), so the
+per-clause-removal prediction is the additive model's extrapolation
+rather than a measured result. \textbf{The eval-noticing behavior on
+these models appears not localized to any specific propositional content
+of the V1 inject, the data are more consistent with a response to the
+cumulative weight of eval-framing claims than with single-clause
+attribution.}
 
 \textbf{(iv) The verbalization channel and the behavioral channel are
 decoupled at clause resolution, and the decoupling is model-specific.}
@@ -2916,11 +2923,12 @@ individual clause (eval\_only alone ×13 baseline) and accumulates to ×22
 baseline under full\_inject, but refusal moves only +5.4pp under
 full\_inject and is null on every singleton. On opus, strict-VEA stays
 at baseline (\textasciitilde0.03) on every singleton and only inflates
-×4 under combined full\_inject, but refusal moves additively across all
-three clauses. \textbf{Two different per-clause patterns produce the
-same distributed-additive refusal attribution on the same kind of
-prompts.} V1's verbalization-vs-behavior dissociation generalizes to V3
-and shows up at clause resolution as two distinct model-level profiles.
+×4 under combined full\_inject, but refusal moves additive-compatibly
+across all three clauses. \textbf{Two different per-clause patterns
+produce the same distributed-additive refusal attribution on the same
+kind of prompts.} V1's verbalization-vs-behavior dissociation
+generalizes to V3 and shows up at clause resolution as two distinct
+model-level profiles.
 
 \textbf{(v) qwen3 has a direction-asymmetric inject response across
 prompt types.} V1 saw qwen3 +22pp on safety. V2 sees qwen3 +5.7pp on
