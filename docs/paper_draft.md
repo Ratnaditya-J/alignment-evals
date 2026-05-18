@@ -1445,20 +1445,23 @@ CIs are wide and none cleanly excludes zero, but the V1-pair sign
 preservation is the cohering signal.
 
 **Integrated V1 + V2 reading.** The two experiments together support
-**"on safety/alignment-relevant prompts only, opus and qwen3 exhibit
-opposite-signed refusal shifts under inject framing, at magnitudes
-proportional to the density of safety content in the prompt corpus."**
+**"on safety/alignment-relevant prompts, opus and qwen3 exhibit
+opposite-signed refusal shifts under inject framing, attenuated as
+the corpus broadens beyond pure safety prompts."**
 V1 measured this on a pure-safety corpus (BeaverTails) and saw the
 effect at headline magnitude (qwen3 +22pp, opus −34pp). V2 measured
 it on a mixed corpus and saw the same directions at ~1/4-1/6
 magnitude on the safety-relevant subset, with the pooled
-cross-corpus effect diluting to ~0. The behavioral signature is
-real, localizable to safety prompts, and does not extend to
-capability evals or deployment-shaped prompts.
+cross-corpus effect diluting to ~0. The V1-like safety/alignment
+refusal-increase/decrease pattern does not extend unchanged to
+capability evals or deployment-shaped prompts; on capability evals
+in particular, qwen3 shows a distinct *inject-suppresses-refusal*
+pattern (§5.5.5 / Supplementary S.2) rather than the V1-direction
+pattern.
 
 #### 5.5.5 Secondary V2 findings (summary)
 
-Three V2 secondary findings detailed in the appendix:
+Three V2 secondary findings detailed in the Supplementary Material:
 **(a) qwen3 capability-eval inject-suppresses-refusal**
 (Δ−0.064, CI [−0.16, −0.001], p=0.046; the qwen3 alignment +5.7pp
 and capability −6.4pp cancel in the pooled cross-corpus mean,
@@ -2221,8 +2224,8 @@ chosen ex ante (see § verdict-tier definitions in §3.2 and the
 released code), but the dozens of per-(model, family, condition)
 cells reported are not Holm-Bonferroni or BH-FDR corrected. We
 recommend treating individual cell-level verdicts with multiple-
-comparison-corrected interpretation when reading the appendix
-tables. The V2 factorial (§5.5) is the exception: V2 *is*
+comparison-corrected interpretation when reading the Supplementary
+Material tables. The V2 factorial (§5.5) is the exception: V2 *is*
 Holm-Bonferroni corrected across its 4-model × 3-effect family per
 the pre-registration (`docs/pre_registration_v2_apollo_2x2.md`
 §5.6), and headline V2 claims are restricted to corrected
