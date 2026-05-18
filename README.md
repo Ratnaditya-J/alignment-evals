@@ -11,7 +11,7 @@ Empirical alignment-eval research and the shared infrastructure that supports it
   - Blog (long-form): [`docs/blog_draft.md`](docs/blog_draft.md)
   - Blog (~800-word version): [`docs/blog_draft_short.md`](docs/blog_draft_short.md)
   - Pre-registration document (filed before the replication ran; see git history for proof of timing): [`docs/pre_registration_qwen3_safety_mediation.md`](docs/pre_registration_qwen3_safety_mediation.md)
-- **V2 In progress.** Extending to Apollo Research's released 1,000-prompt evaluation-awareness benchmark for a labeled-ground-truth analysis.
+- **V2 (completed) ** Extending to Apollo Research's released 1,000-prompt evaluation-awareness benchmark for a labeled-ground-truth analysis.
 - **Future Roadmap** for sandbagging / scheming-style probes and honesty evals: docs/v2_research_synthesis.md, docs/v2_architecture.md, docs/eval_awareness_sota_roadmap.md.
 
 ## V1 takeways
