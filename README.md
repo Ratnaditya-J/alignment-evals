@@ -2,7 +2,7 @@
 
 Empirical alignment-eval research and the shared infrastructure that supports it. Topics: evaluation awareness, sandbagging, scheming-style behavior, honesty evals — measured directly, with pre-registered designs and replication discipline.
 
-**NOTE: Refer to V2 below for the complete picutre on eval-awareness work.**
+**NOTE: Refer to V2 [below](https://github.com/Ratnaditya-J/alignment-evals/blob/main/README.md#v2) for the complete picutre on eval-awareness work.**
 
 ## What's in here
 
