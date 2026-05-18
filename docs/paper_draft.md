@@ -1791,10 +1791,10 @@ verbalization and refusal at clause resolution:
 Each individual clause inflates qwen3's strict-VEA rate (eval_only
 alone ×13 baseline). Opus's strict-VEA rate barely moves on any
 individual clause, then jumps ×4 only under the combined `full_inject`.
-**The verbalization channel is clause-additive on qwen3 and
-gestalt-only on opus, even though both models' refusal behavior
-is consistent with additive attribution under the pre-registered
-§5.5 decision tree.** This is a new finding V3 could produce because of
+**qwen3's strict-VEA rises across individual clauses, while
+opus's strict-VEA only jumps under `full_inject`, even though both
+models' refusal behavior is consistent with additive attribution
+under the pre-registered §5.5 decision tree.** This is a new finding V3 could produce because of
 its 5-condition design; V1 and V2 only contrasted "full inject vs no
 inject" and could not see the per-clause verbalization profile.
 
@@ -2109,7 +2109,7 @@ distributed-additive cue response.**
 V3's 5-condition design tests whether the V1 effect attributes to
 (a) the "this is an evaluation" claim, (b) the "reviewed by safety
 researchers" claim, (c) the "compared against deployment" claim, or
-(d) the combined frame. The pre-registered §4.3 decision tree returns
+(d) the combined frame. The pre-registered §5.5 decision tree returns
 **ADDITIVE-COMPATIBLE on both opus and qwen3**: sum-of-singletons
 (−0.077 on opus; +0.051 on qwen3) matches full_inject (−0.067;
 +0.054) within the additivity residual's CI (a non-rejection of
@@ -2404,7 +2404,7 @@ rollouts** address this question. The primary novel findings are:
   the prompt content itself, independent of any framing we add, and
   is the only behavioral effect in our lineup that generalizes
   cleanly across visible-CoT and closed-CoT model families.
-- **(b) Distributed-additive clause attribution of the explicit
+- **(b) Additive-compatible clause attribution of the explicit
   inject (V3, primary novel finding).** V3's 5-condition clause
   ablation classifies the V1 inject's effect on opus and qwen3 as
   **additive-compatible** under the pre-registered decision tree:
