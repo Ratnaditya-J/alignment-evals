@@ -2,6 +2,8 @@
 
 Empirical alignment-eval research and the shared infrastructure that supports it. Topics: evaluation awareness, sandbagging, scheming-style behavior, honesty evals — measured directly, with pre-registered designs and replication discipline.
 
+**NOTE: Refer to V2 below for the complete picutre on eval-awareness work.**
+
 ## What's in here
 
 - **V1 Evaluation Awareness (complete).** A cross-protocol behavioral study of 8 frontier models + a Goodfire-style reasoning-trace analysis on the open-reasoning trio + a closed-source extension on `claude-opus-4-7` + a pre-registered disjoint-prompt replication on `qwen3-235B`.
@@ -29,7 +31,7 @@ Each summary JSON records the seeds, judge model identifiers, and prompt-templat
 
 ## V2 
 
-- **V2 (in progress):** integrate Apollo Research's [eval-awareness benchmark](https://github.com/jjpn97/eval_awareness) (1,000 labeled eval-vs-deployment transcripts) as a new corpus. Run the existing 4-condition arxiv protocol on top to study intrinsic eval signal × extrinsic eval cue interactions.
+- **V2 (Completed):** integrate Apollo Research's [eval-awareness benchmark](https://github.com/jjpn97/eval_awareness) (1,000 labeled eval-vs-deployment transcripts) as a new corpus. Run the existing 4-condition arxiv protocol on top to study intrinsic eval signal × extrinsic eval cue interactions. Paper: [`docs/paper.pdf`](docs/paper.pdf)
 - **Sandbagging probes (upcoming)** behavioral measurements designed to detect strategic under-performance during evaluation.
 - **Honesty evals (upcoming):** measuring whether model self-reports about reasoning, beliefs, and capabilities track ground truth.
 - **Scheming-style behavioral probes (upcoming)** following Apollo Research's lead.
