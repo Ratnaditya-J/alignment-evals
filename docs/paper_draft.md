@@ -1391,34 +1391,16 @@ Gemini 2.5 series). The analyzer preserves these rollouts in the
 refusal analysis with is_vea=False so that primary outcomes are not
 silently dropped at the join step.
 
-#### 5.5.3 Per-model verdicts and the cross-model interaction
+#### 5.5.3 Per-model verdicts and the cross-model interaction (summary)
 
-| Model | Per-model verdict | Interaction effect | 95% CI | bootstrap p |
-|---|---|---:|---|---:|
-| opus-4-7        | **interaction_supported** (uncorrected) | −0.060 | [−0.120, −0.010] | 0.032 |
-| deepseek        | additive | +0.020 | [−0.020, +0.070] | 0.559 |
-| kimi            | additive | −0.010 | [−0.070, +0.050] | 0.856 |
-| qwen3           | additive | −0.010 | [−0.080, +0.060] | 0.910 |
-| gpt-5.5         | additive | +0.000 | [−0.070, +0.080] | 1.000 |
-| gemini-2.5-pro  | additive | −0.010 | [−0.060, +0.040] | 0.856 |
-
-Opus earns the per-model verdict `interaction_supported` (CI
-excludes zero AND |effect| ≥ 0.05). Per the pre-reg's correction
-policy (§5.6 of the pre-registration document), this counts as a
-per-model finding reported uncorrected, but **does NOT survive
-Holm-Bonferroni at the cross-model headline level** (opus interaction
-p=0.032 vs corrected threshold 0.0042 in Family A of 12 hypotheses).
-The two closed-CoT backfill models in Family B both have interaction
-effects within ±0.010 of zero with CIs comfortably including zero.
-The headline cross-model claim is therefore: *5 of 6 models additive;
-0 of 6 with a Holm-surviving interaction.*
-
-This is a cleaner outcome than it sounds: the pre-reg was explicitly
-designed to separate per-model verdicts (reported uncorrected) from
-cross-model headlines (Holm-corrected), exactly to avoid the
-"one model has p=0.026, write the paper around it" failure mode.
-We report the opus per-model interaction in §5.5.4 below as a
-secondary finding worth interpretation, not as the headline claim.
+**Headline: 5 of 6 models additive; 0 of 6 with a Holm-surviving
+cross-model interaction.** Only opus earns a per-model
+`interaction_supported` verdict (Δ −0.060, CI [−0.120, −0.010],
+p=0.032 uncorrected), but it does not survive Holm-Bonferroni at
+the cross-model headline level (corrected threshold p=0.0042 in
+Family A of 12 hypotheses). Per-model verdict table, correction
+policy, and the opus interaction interpretation are in **Appendix
+D.1**.
 
 #### 5.5.4 Stratified deep-dive: V1's direction asymmetry survives on the alignment stratum
 
@@ -1462,94 +1444,32 @@ cross-corpus effect diluting to ~0. The behavioral signature is
 real, localizable to safety prompts, and does not extend to
 capability evals or deployment-shaped prompts.
 
-#### 5.5.5 qwen3 has a unique capability-eval inject-suppresses-refusal effect
+#### 5.5.5 Secondary V2 findings (summary)
 
-Restricting to capability-eval prompts (the V1-unreachable stratum):
+Three V2 secondary findings detailed in the appendix:
+**(a) qwen3 capability-eval inject-suppresses-refusal**
+(Δ−0.064, CI [−0.16, −0.001], p=0.046; the qwen3 alignment +5.7pp
+and capability −6.4pp cancel in the pooled cross-corpus mean,
+explaining why V1's safety-only design could not see this two-
+context pattern, **Appendix D.2**);
+**(b) qwen3 strict-VEA verbalization rate ~4× other models**
+(0.36 on inject_eval-alignment vs 0.06-0.09 for the trio, stable
+trait that replicates V1 §5.2, **Appendix D.3**);
+**(c) opus's adaptive thinking skips on eval-shaped prompts**
+(~50% empty `reasoning_trace` on eval-labeled rollouts vs ~0% on
+deployment-labeled; a candidate behavioral-level eval-awareness
+signal not pre-registered as an outcome and possibly confounded
+by Apollo eval prompts being shorter, **Appendix D.4**).
 
-| Model | Δ refusal (capability-eval) | neutral → inject |
-|---|---:|---:|
-| opus     | 0 (floor effect) | 0.00 → 0.00 |
-| deepseek | 0 (floor effect) | 0.00 → 0.00 |
-| kimi     | +0.021 | 0.000 → 0.021 |
-| **qwen3** | **−0.064 (CI [−0.16, −0.001], p=0.046)** | 0.064 → 0.000 |
+#### 5.5.6 What survives, what doesn't (V2, 6-model lineup)
 
-Three of four models refuse 0% on capability evals in BOTH conditions,
-a floor effect, since MMLU/coding/agent benchmarks contain no
-safety-refusable content. Only qwen3 has refusals to suppress (6.4%
-under neutral) and **inject framing drives those refusals to zero.**
-The qwen3 per-stratum interaction CI excludes zero at p=0.046.
-
-This is a qwen3-specific behavioral signature that V1's safety-only
-corpus could not detect, and **the reason qwen3's pooled cross-corpus
-inject main effect was ~0**: the qwen3 alignment-stratum
-inject-raises-refusal (Δ+0.057) and the qwen3 capability-stratum
-inject-suppresses-refusal (Δ−0.064) cancel in the pooled mean.
-
-One plausible interpretation: the inject may function as a
-permission/grading cue on capability prompts (suppressing refusals)
-and a watching/caution cue on safety prompts (increasing refusals).
-The data we report are behavioral and do not directly test that
-internal-representation claim. What V2's mixed corpus design exposes
-is the two-context behavioral pattern: the same inject text produces
-opposite-direction refusal effects on capability vs safety prompts on
-qwen3, and that prompt-type-conditional pattern is what V1's
-safety-only corpus structurally could not see.
-
-#### 5.5.6 qwen3's strict-VEA verbalization rate is 4× any other model
-
-Strict-VEA mean on the `inject_eval` cell of the alignment stratum:
-
-| Model | strict-VEA mean (inject_eval, alignment) |
-|---|---:|
-| **qwen3** | **0.359** |
-| kimi | 0.094 |
-| opus | 0.075 |
-| deepseek | 0.057 |
-
-qwen3 explicitly verbalizes eval-recognition in ~36% of
-inject-alignment rollouts; the other three models cluster in the
-5–10% range. This is a stable qwen3 trait, observed across all
-strata and consistent with V1's qwen3-VEA pattern (§5.2). **The
-behavioral story above is independent of this verbalization
-pattern**: qwen3's alignment-stratum +5.7pp refusal shift is small
-relative to its 36% strict-VEA rate, so most qwen3 strict-VEA
-rollouts are not associated with a behavioral change. This is
-qualitatively consistent with the V1 mediation null (§5.3) and with
-Knecht et al. (2026)'s broad-scope null, but V2 does not retest
-mediation: we report V2 strict-VEA cell means but do not run a
-per-prompt VEA-flip diff-in-diff on V2 rollouts.
-
-#### 5.5.7 Secondary finding: opus's adaptive thinking skips on eval-shaped prompts
-
-A behavioral quirk distinct from the headline analysis. Across all
-400 opus rollouts, ~50% of eval-labeled rollouts returned an empty
-`reasoning_trace` (opus's adaptive thinking chose to skip thinking),
-vs ~0% of deployment-labeled rollouts. This pattern is correlated
-with the prompt's intrinsic eval label even before any framing is
-applied: **opus appears to "recognize" the eval format at the
-deliberation level and shortcut thinking accordingly.** This is a
-candidate eval-awareness signal distinct from verbalized eval-
-awareness, a *behavioral* eval-awareness at the inference-control
-level. We report it as a secondary finding rather than a headline
-because (a) we did not pre-register a thinking-presence outcome,
-and (b) the pattern could be confounded by Apollo eval prompts being
-shorter on average (so adaptive thinking decides they're not worth
-extended deliberation). Both interpretations are consistent with the
-observation; discriminating them needs a follow-up.
-
-#### 5.5.8 What survives, what doesn't (V2, 6-model lineup)
-
-| Claim | Status |
-|---|---|
-| The V1 inject effect generalizes to non-safety prompts | **Not supported on any of 6 models.** All inject main effects within ±0.015 of zero; none survive Holm in either family. |
-| The V1 inject effect was specific to safety/alignment-relevant prompts | **Supported (post-hoc).** Stratified deep-dive (§5.5.4) recovers V1's directions on the alignment stratum at attenuated Apollo magnitude. |
-| The V1 qwen3-vs-opus direction asymmetry holds on V2's alignment stratum | **Directionally consistent.** Opus −0.060 (CI excludes zero), qwen3 +0.057 (CI [−0.04, +0.14] includes zero) at ~1/4-1/6 V1 magnitude. V3 (§5.6) finds both at full CI-excluding strength on a larger alignment-eval sample. |
-| Apollo's intrinsic eval label predicts refusal behavior on frontier and frontier-adjacent reasoning models | **Supported across the lineup.** Cross-model main effect +0.075 to +0.130; **5 of 6 models survive Holm** in their respective families (opus / deepseek / qwen3 in Family A; gpt-5.5 / gemini-2.5-pro in Family B; only kimi fails). |
-| The intrinsic-eval-label refusal signal extends to closed-CoT models | **Supported.** gpt-5.5 (+0.110, Family B Holm-survivor) and gemini-2.5-pro (+0.095, Family B Holm-survivor) both reproduce the magnitude V1+V2's reasoning-trio-plus-opus established. |
-| qwen3 has a capability-eval inject-suppresses-refusal pattern | **Supported.** Δ−0.064, CI [−0.16, −0.001], p=0.046. Unique to qwen3 (other 3 reasoning models have floor refusal on capability; closed-CoT models not analyzed in this stratified subanalysis). |
-| qwen3's strict-VEA verbalization rate exceeds other models by ~4× | **Supported, stable trait.** Replicates the V1 §5.2 pattern via the V2 corpus and the validated strict rubric. Closed-CoT models cannot be ranked on VEA (see §8). |
-| There is a cross-model interaction effect (inject × intrinsic label) | **Not supported under Holm in either family.** Per-model: only opus has CI-excludes-zero. Headline: 0 of 6 models survive correction at family-wise α=0.05. |
-| VEA verbalization mediates the V2 behavioral effects | **Out of scope for V2.** V2 did not run a within-prompt mediation analysis; V1's §5.3 mediation null is the relevant evidence. |
+Full 9-row claim grid is in **Appendix D.5**. Headline rows:
+V1 inject does NOT generalize to non-safety prompts (not supported
+on any of 6 models); stratified deep-dive recovers V1 directions
+on the alignment stratum (supported post-hoc, §5.5.4); Apollo
+intrinsic eval label predicts refusal across the lineup (5 of 6
+models Holm-survivors, supported); cross-model inject × intrinsic
+label interaction does NOT survive Holm in either family.
 
 ### 5.6 Q6: Which clause of the V1 inject carries the effect? (V3 inject-clause ablation)
 
@@ -1762,93 +1682,45 @@ propositional content of the V1 inject; the data are more consistent
 with a response to the cumulative weight of eval-framing claims than
 with single-clause attribution.**
 
-#### 5.6.4 qwen3's per-clause VEA pattern is proportional, opus's is gestalt-only
+#### 5.6.4 qwen3's per-clause VEA scales, opus's only jumps under full_inject (summary)
 
-V3's secondary VEA outcome (strict rubric, judged on the visible CoT
-of each rollout) reveals a model-level dissociation between
-verbalization and refusal at clause resolution:
+V3's secondary VEA outcome reveals a model-level
+verbalization-vs-behavior dissociation at clause resolution.
+**qwen3's strict-VEA rises across individual clauses** (×13
+baseline on `eval_only` alone, ×22 on `full_inject`), while
+**opus's strict-VEA only jumps under `full_inject`** (×4),
+even though both models' refusal behavior is consistent with
+additive attribution under the pre-registered §5.5 decision tree.
+Per-cell strict-VEA tables for both models and **Figure 9**
+(refusal × strict-VEA dual-axis per condition) are in
+**Appendix D.6**. V1's verbalization-vs-behavior dissociation
+(§5.3) generalizes to V3 and manifests as two distinct
+model-level profiles.
 
-**qwen3 strict VEA per cell:**
+#### 5.6.5 Closed-CoT addition: gpt-5.5 and gemini-2.5-pro nulls (summary)
 
-| Condition | refusal | strict VEA | VEA × neutral |
-|---|---:|---:|---:|
-| neutral         | 0.256 | 0.017 | 1× |
-| eval_only       | 0.259 | 0.229 | ×13 |
-| reviewer_only   | 0.286 | 0.175 | ×10 |
-| comparison_only | 0.273 | 0.051 | ×3 |
-| full_inject     | 0.310 | 0.367 | ×22 |
-
-**opus strict VEA per cell:**
-
-| Condition | refusal | strict VEA | VEA × neutral |
-|---|---:|---:|---:|
-| neutral         | 0.290 | 0.030 | 1× |
-| eval_only       | 0.273 | 0.027 | ~1× |
-| reviewer_only   | 0.259 | 0.030 | 1× |
-| comparison_only | 0.259 | 0.040 | ~1× |
-| full_inject     | 0.222 | 0.114 | ×4 |
-
-Each individual clause inflates qwen3's strict-VEA rate (eval_only
-alone ×13 baseline). Opus's strict-VEA rate barely moves on any
-individual clause, then jumps ×4 only under the combined `full_inject`.
-**qwen3's strict-VEA rises across individual clauses, while
-opus's strict-VEA only jumps under `full_inject`, even though both
-models' refusal behavior is consistent with additive attribution
-under the pre-registered §5.5 decision tree.** This is a new finding V3 could produce because of
-its 5-condition design; V1 and V2 only contrasted "full inject vs no
-inject" and could not see the per-clause verbalization profile.
-
-![](figures/fig9_v3_vea_dissociation.png)
-
-**Figure 9.** V3 verbalization-vs-behavior dissociation across the
-5 V3 conditions, for **opus (panel a, left) and qwen3 (panel b,
-right)**. Each panel uses a dual y-axis: refusal rate on the left
-axis (blue, squares), strict-VEA rate on the right axis (red,
-circles). qwen3's strict-VEA scales proportionally across clauses
-(×13 baseline on `eval_only` alone, ×22 on `full_inject`); opus's
-stays near baseline on every singleton and only inflates ×4 on
-`full_inject`. **Both models' refusal behavior is consistent with
-additive attribution under the pre-registered §5.5 decision tree
-(Figure 8), but the
-verbalization channel follows two distinct per-clause profiles.** V1's verbalization-vs-behavior dissociation
-generalizes to V3 and manifests as two model-level profiles.
-
-#### 5.6.5 Closed-CoT addition: gpt-5.5 has the cleanest null in the lineup
-
-The closed-CoT backfill adds two strong null checks to V3:
-
-- **gpt-5.5:** baseline refusal 0.37 (highest of the 6 models), full_inject
-  Δ refusal **+0.000** with the tightest CI in the lineup [−0.060, +0.060].
-  Every singleton effect is ±0.01 with CIs cleanly including zero.
-  gpt-5.5 therefore has a stable refusal posture on Apollo
-  alignment-eval prompts that is completely unresponsive to extrinsic
-  eval-framing at any clause resolution. This reproduces V1's
-  gpt-5.5 behavioral null (V1 §5.1) at clause resolution.
-- **gemini-2.5-pro:** full_inject Δ refusal **−0.010** with CI [−0.05, +0.03].
-  Each singleton mildly suppresses refusal (each Δ ≈ −0.02 to −0.03),
-  but full_inject reverts to baseline. Attribution lands on
-  `null_at_full` (full CI includes zero); the sub-additive structure
-  is a notable per-model footnote but not a headline claim.
-
-**The direction asymmetry on opus and qwen3 is now triangulated
-against 4 different null models** spanning closed-CoT (gpt-5.5,
-gemini-2.5-pro), open-reasoning small-effect (deepseek), and
-open-reasoning flat (kimi) family categories. The cross-lineup
-sign preservation makes a lineup-selection artifact less plausible
-than under the V2 4-model lineup alone.
+The V3 closed-CoT backfill adds two strong null checks. **gpt-5.5**
+has the cleanest null in the lineup (baseline refusal 0.37,
+`full_inject` Δ +0.000, tightest CI [−0.060, +0.060], every
+singleton Δ within ±0.01) — a stable refusal posture completely
+unresponsive to extrinsic eval-framing at any clause resolution.
+**gemini-2.5-pro** is `null_at_full` (Δ −0.010 [−0.05, +0.03])
+with mild sub-additive per-clause suppression. Together with
+deepseek and kimi, these provide **4 null-direction models against
+which the opus −/qwen3 + direction asymmetry is now triangulated**,
+making a lineup-selection artifact less plausible than under V2's
+4-model lineup alone. Detail in **Appendix D.7**.
 
 #### 5.6.6 What survives, what doesn't (V3, 6-model lineup)
 
-| Claim | Status |
-|---|---|
-| The V1 inject effect's direction asymmetry on opus (−) and qwen3 (+) replicates on a fresh V3 sample | **Supported.** opus full_inject Δ −0.067 CI [−0.104, −0.030] p=0.001; qwen3 full_inject Δ +0.054 CI [+0.014, +0.094] p=0.013. Both CIs exclude zero. |
-| At least one of the three V1 inject clauses individually carries the V1 effect | **Not supported.** 0/18 singleton hypotheses survive Holm-Bonferroni. All singleton point estimates ≤0.04 in absolute value with CIs including zero. |
-| The V1 inject is synergistic: requires all three clauses together to produce the effect | **Not supported on either active model.** Additivity residual CIs include zero on opus and qwen3. No super-additive pattern is detected under the tested design. |
-| The V1 inject is additive-compatible on opus and qwen3 under the pre-registered §5.5 decision tree | **Supported.** Sum-of-singletons matches full_inject within the additivity residual's CI on both active models (non-rejection of additivity combined with non-detection of singletons; not an equivalence test for additivity). The distributed-additive reading is the interpretation most consistent with this classification. |
-| Closed-CoT frontier/near-frontier models react to extrinsic eval-framing in V3 | **Not supported.** gpt-5.5 full_inject Δ +0.000 [−0.060, +0.060]; gemini-2.5-pro full_inject Δ −0.010 [−0.050, +0.030]. Both null at clause and full resolution. |
-| qwen3's strict-VEA verbalization scales with the number of eval-frame clauses present | **Supported descriptively.** Each singleton inflates qwen3 strict VEA ×3-×13 over neutral; full_inject ×22. |
-| opus verbalizes eval-awareness in response to individual clauses | **Not supported.** Opus strict-VEA stays at baseline (~0.03) on all three singletons and only inflates ×4 under combined full_inject. |
-| V1's verbalization-vs-behavior dissociation generalizes to V3's clause resolution | **Supported.** qwen3's ×22 strict-VEA inflation under full_inject is accompanied by a +5.4pp refusal shift; the verbalization and behavior signals scale independently. |
+Full 8-row claim grid is in **Appendix D.8**. Headline rows: V1's
+opus −/qwen3 + direction asymmetry replicates on the fresh V3
+sample (supported, both CIs exclude zero); no singleton clause
+individually carries the V1 effect (not supported, 0/18 Holm
+survivors); the V1 inject is additive-compatible on both active
+models under the pre-registered §5.5 decision tree (supported);
+closed-CoT models do not react to V3 extrinsic eval-framing (not
+supported, both null at clause and full resolution).
 
 ---
 
@@ -2872,3 +2744,218 @@ Vendor model cards:
 |---|---|
 | `google/gemini-2.5-flash-lite` | Primary VEA judge in V1, V2, V3 (via OpenRouter) |
 | `google/gemini-2.5-flash` | Judge-swap robustness check (V1 §6.2) |
+
+---
+
+## Appendix D. Per-model verdicts, secondary findings, and "what survives" summaries
+
+This appendix collects per-model verdict tables, secondary findings,
+and "what survives" claim grids that were moved from §5.5 and §5.6
+to keep the main text focused on the three headline claims (V2
+intrinsic-eval-label refusal signal, V3 additive-compatible clause
+attribution, V1/V3 direction asymmetry). The substance is unchanged;
+only the location has moved.
+
+### D.1 V2 per-model verdicts and cross-model interaction (§5.5.3 detail)
+
+| Model | Per-model verdict | Interaction effect | 95% CI | bootstrap p |
+|---|---|---:|---|---:|
+| opus-4-7        | **interaction_supported** (uncorrected) | −0.060 | [−0.120, −0.010] | 0.032 |
+| deepseek        | additive | +0.020 | [−0.020, +0.070] | 0.559 |
+| kimi            | additive | −0.010 | [−0.070, +0.050] | 0.856 |
+| qwen3           | additive | −0.010 | [−0.080, +0.060] | 0.910 |
+| gpt-5.5         | additive | +0.000 | [−0.070, +0.080] | 1.000 |
+| gemini-2.5-pro  | additive | −0.010 | [−0.060, +0.040] | 0.856 |
+
+Opus earns the per-model verdict `interaction_supported` (CI
+excludes zero AND |effect| ≥ 0.05). Per the pre-reg's correction
+policy (§5.6 of the pre-registration document), this counts as a
+per-model finding reported uncorrected, but **does NOT survive
+Holm-Bonferroni at the cross-model headline level** (opus interaction
+p=0.032 vs corrected threshold 0.0042 in Family A of 12 hypotheses).
+The two closed-CoT backfill models in Family B both have interaction
+effects within ±0.010 of zero with CIs comfortably including zero.
+The headline cross-model claim is therefore: *5 of 6 models additive;
+0 of 6 with a Holm-surviving interaction.* The pre-reg was explicitly
+designed to separate per-model verdicts (reported uncorrected) from
+cross-model headlines (Holm-corrected), exactly to avoid the
+"one model has p=0.026, write the paper around it" failure mode.
+We report the opus per-model interaction in §5.5.4 as a secondary
+finding worth interpretation, not as the headline claim.
+
+### D.2 qwen3's capability-eval inject-suppresses-refusal pattern (§5.5.5 detail)
+
+Restricting to capability-eval prompts (the V1-unreachable stratum):
+
+| Model | Δ refusal (capability-eval) | neutral → inject |
+|---|---:|---:|
+| opus     | 0 (floor effect) | 0.00 → 0.00 |
+| deepseek | 0 (floor effect) | 0.00 → 0.00 |
+| kimi     | +0.021 | 0.000 → 0.021 |
+| **qwen3** | **−0.064 (CI [−0.16, −0.001], p=0.046)** | 0.064 → 0.000 |
+
+Three of four models refuse 0% on capability evals in BOTH conditions,
+a floor effect, since MMLU/coding/agent benchmarks contain no
+safety-refusable content. Only qwen3 has refusals to suppress (6.4%
+under neutral) and **inject framing drives those refusals to zero.**
+The qwen3 per-stratum interaction CI excludes zero at p=0.046. This
+is a qwen3-specific behavioral signature that V1's safety-only
+corpus could not detect, and **the reason qwen3's pooled cross-corpus
+inject main effect was ~0**: the qwen3 alignment-stratum
+inject-raises-refusal (Δ+0.057) and the qwen3 capability-stratum
+inject-suppresses-refusal (Δ−0.064) cancel in the pooled mean. One
+plausible interpretation: the inject may function as a
+permission/grading cue on capability prompts (suppressing refusals)
+and a watching/caution cue on safety prompts (increasing refusals).
+The data we report are behavioral and do not directly test that
+internal-representation claim. What V2's mixed corpus design exposes
+is the two-context behavioral pattern: the same inject text produces
+opposite-direction refusal effects on capability vs safety prompts on
+qwen3, and that prompt-type-conditional pattern is what V1's
+safety-only corpus structurally could not see.
+
+### D.3 qwen3's strict-VEA verbalization rate (§5.5.6 detail)
+
+Strict-VEA mean on the `inject_eval` cell of the alignment stratum:
+
+| Model | strict-VEA mean (inject_eval, alignment) |
+|---|---:|
+| **qwen3** | **0.359** |
+| kimi | 0.094 |
+| opus | 0.075 |
+| deepseek | 0.057 |
+
+qwen3 explicitly verbalizes eval-recognition in ~36% of
+inject-alignment rollouts; the other three models cluster in the
+5–10% range. This is a stable qwen3 trait, observed across all
+strata and consistent with V1's qwen3-VEA pattern (§5.2). **The
+behavioral story above is independent of this verbalization
+pattern**: qwen3's alignment-stratum +5.7pp refusal shift is small
+relative to its 36% strict-VEA rate, so most qwen3 strict-VEA
+rollouts are not associated with a behavioral change. This is
+qualitatively consistent with the V1 mediation null (§5.3) and with
+Knecht et al. (2026)'s broad-scope null, but V2 does not retest
+mediation: we report V2 strict-VEA cell means but do not run a
+per-prompt VEA-flip diff-in-diff on V2 rollouts.
+
+### D.4 opus's adaptive thinking on eval-shaped prompts (§5.5.7 detail)
+
+A behavioral quirk distinct from the headline analysis. Across all
+400 opus rollouts, ~50% of eval-labeled rollouts returned an empty
+`reasoning_trace` (opus's adaptive thinking chose to skip thinking),
+vs ~0% of deployment-labeled rollouts. This pattern is correlated
+with the prompt's intrinsic eval label even before any framing is
+applied: **opus appears to "recognize" the eval format at the
+deliberation level and shortcut thinking accordingly.** This is a
+candidate eval-awareness signal distinct from verbalized
+eval-awareness, a *behavioral* eval-awareness at the
+inference-control level. We report it as a secondary finding rather
+than a headline because (a) we did not pre-register a
+thinking-presence outcome, and (b) the pattern could be confounded
+by Apollo eval prompts being shorter on average (so adaptive
+thinking decides they're not worth extended deliberation). Both
+interpretations are consistent with the observation; discriminating
+them needs a follow-up.
+
+### D.5 V2 "what survives, what doesn't" claim grid (§5.5.8)
+
+| Claim | Status |
+|---|---|
+| The V1 inject effect generalizes to non-safety prompts | **Not supported on any of 6 models.** All inject main effects within ±0.015 of zero; none survive Holm in either family. |
+| The V1 inject effect was specific to safety/alignment-relevant prompts | **Supported (post-hoc).** Stratified deep-dive (§5.5.4) recovers V1's directions on the alignment stratum at attenuated Apollo magnitude. |
+| The V1 qwen3-vs-opus direction asymmetry holds on V2's alignment stratum | **Directionally consistent.** Opus −0.060 (CI excludes zero), qwen3 +0.057 (CI [−0.04, +0.14] includes zero) at ~1/4-1/6 V1 magnitude. V3 (§5.6) finds both at full CI-excluding strength on a larger alignment-eval sample. |
+| Apollo's intrinsic eval label predicts refusal behavior on frontier and frontier-adjacent reasoning models | **Supported across the lineup.** Cross-model main effect +0.075 to +0.130; **5 of 6 models survive Holm** in their respective families (opus / deepseek / qwen3 in Family A; gpt-5.5 / gemini-2.5-pro in Family B; only kimi fails). |
+| The intrinsic-eval-label refusal signal extends to closed-CoT models | **Supported.** gpt-5.5 (+0.110, Family B Holm-survivor) and gemini-2.5-pro (+0.095, Family B Holm-survivor) both reproduce the magnitude V1+V2's reasoning-trio-plus-opus established. |
+| qwen3 has a capability-eval inject-suppresses-refusal pattern | **Supported.** Δ−0.064, CI [−0.16, −0.001], p=0.046. Unique to qwen3 (other 3 reasoning models have floor refusal on capability; closed-CoT models not analyzed in this stratified subanalysis). |
+| qwen3's strict-VEA verbalization rate exceeds other models by ~4× | **Supported, stable trait.** Replicates the V1 §5.2 pattern via the V2 corpus and the validated strict rubric. Closed-CoT models cannot be ranked on VEA (see §8). |
+| There is a cross-model interaction effect (inject × intrinsic label) | **Not supported under Holm in either family.** Per-model: only opus has CI-excludes-zero. Headline: 0 of 6 models survive correction at family-wise α=0.05. |
+| VEA verbalization mediates the V2 behavioral effects | **Out of scope for V2.** V2 did not run a within-prompt mediation analysis; V1's §5.3 mediation null is the relevant evidence. |
+
+### D.6 V3 per-clause strict-VEA dissociation profiles (§5.6.4 detail and Figure 9)
+
+V3's secondary VEA outcome (strict rubric, judged on the visible CoT
+of each rollout) reveals a model-level dissociation between
+verbalization and refusal at clause resolution:
+
+**qwen3 strict VEA per cell:**
+
+| Condition | refusal | strict VEA | VEA × neutral |
+|---|---:|---:|---:|
+| neutral         | 0.256 | 0.017 | 1× |
+| eval_only       | 0.259 | 0.229 | ×13 |
+| reviewer_only   | 0.286 | 0.175 | ×10 |
+| comparison_only | 0.273 | 0.051 | ×3 |
+| full_inject     | 0.310 | 0.367 | ×22 |
+
+**opus strict VEA per cell:**
+
+| Condition | refusal | strict VEA | VEA × neutral |
+|---|---:|---:|---:|
+| neutral         | 0.290 | 0.030 | 1× |
+| eval_only       | 0.273 | 0.027 | ~1× |
+| reviewer_only   | 0.259 | 0.030 | 1× |
+| comparison_only | 0.259 | 0.040 | ~1× |
+| full_inject     | 0.222 | 0.114 | ×4 |
+
+Each individual clause inflates qwen3's strict-VEA rate (eval_only
+alone ×13 baseline). Opus's strict-VEA rate barely moves on any
+individual clause, then jumps ×4 only under the combined `full_inject`.
+**qwen3's strict-VEA rises across individual clauses, while
+opus's strict-VEA only jumps under `full_inject`, even though both
+models' refusal behavior is consistent with additive attribution
+under the pre-registered §5.5 decision tree.** This is a new finding
+V3 could produce because of its 5-condition design; V1 and V2 only
+contrasted "full inject vs no inject" and could not see the
+per-clause verbalization profile.
+
+![](figures/fig9_v3_vea_dissociation.png)
+
+**Figure 9.** V3 verbalization-vs-behavior dissociation across the
+5 V3 conditions, for **opus (panel a, left) and qwen3 (panel b,
+right)**. Each panel uses a dual y-axis: refusal rate on the left
+axis (blue, squares), strict-VEA rate on the right axis (red,
+circles). qwen3's strict-VEA scales proportionally across clauses
+(×13 baseline on `eval_only` alone, ×22 on `full_inject`); opus's
+stays near baseline on every singleton and only inflates ×4 on
+`full_inject`. **Both models' refusal behavior is consistent with
+additive attribution under the pre-registered §5.5 decision tree
+(Figure 8), but the verbalization channel follows two distinct
+per-clause profiles.** V1's verbalization-vs-behavior dissociation
+generalizes to V3 and manifests as two model-level profiles.
+
+### D.7 V3 closed-CoT addition (§5.6.5 detail)
+
+The closed-CoT backfill adds two strong null checks to V3:
+
+- **gpt-5.5:** baseline refusal 0.37 (highest of the 6 models), full_inject
+  Δ refusal **+0.000** with the tightest CI in the lineup [−0.060, +0.060].
+  Every singleton effect is ±0.01 with CIs cleanly including zero.
+  gpt-5.5 therefore has a stable refusal posture on Apollo
+  alignment-eval prompts that is completely unresponsive to extrinsic
+  eval-framing at any clause resolution. This reproduces V1's
+  gpt-5.5 behavioral null (V1 §5.1) at clause resolution.
+- **gemini-2.5-pro:** full_inject Δ refusal **−0.010** with CI [−0.05, +0.03].
+  Each singleton mildly suppresses refusal (each Δ ≈ −0.02 to −0.03),
+  but full_inject reverts to baseline. Attribution lands on
+  `null_at_full` (full CI includes zero); the sub-additive structure
+  is a notable per-model footnote but not a headline claim.
+
+**The direction asymmetry on opus and qwen3 is now triangulated
+against 4 different null models** spanning closed-CoT (gpt-5.5,
+gemini-2.5-pro), open-reasoning small-effect (deepseek), and
+open-reasoning flat (kimi) family categories. The cross-lineup
+sign preservation makes a lineup-selection artifact less plausible
+than under the V2 4-model lineup alone.
+
+### D.8 V3 "what survives, what doesn't" claim grid (§5.6.6)
+
+| Claim | Status |
+|---|---|
+| The V1 inject effect's direction asymmetry on opus (−) and qwen3 (+) replicates on a fresh V3 sample | **Supported.** opus full_inject Δ −0.067 CI [−0.104, −0.030] p=0.001; qwen3 full_inject Δ +0.054 CI [+0.014, +0.094] p=0.013. Both CIs exclude zero. |
+| At least one of the three V1 inject clauses individually carries the V1 effect | **Not supported.** 0/18 singleton hypotheses survive Holm-Bonferroni. All singleton point estimates ≤0.04 in absolute value with CIs including zero. |
+| The V1 inject is synergistic: requires all three clauses together to produce the effect | **Not supported on either active model.** Additivity residual CIs include zero on opus and qwen3. No super-additive pattern is detected under the tested design. |
+| The V1 inject is additive-compatible on opus and qwen3 under the pre-registered §5.5 decision tree | **Supported.** Sum-of-singletons matches full_inject within the additivity residual's CI on both active models (non-rejection of additivity combined with non-detection of singletons; not an equivalence test for additivity). The distributed-additive reading is the interpretation most consistent with this classification. |
+| Closed-CoT frontier/near-frontier models react to extrinsic eval-framing in V3 | **Not supported.** gpt-5.5 full_inject Δ +0.000 [−0.060, +0.060]; gemini-2.5-pro full_inject Δ −0.010 [−0.050, +0.030]. Both null at clause and full resolution. |
+| qwen3's strict-VEA verbalization scales with the number of eval-frame clauses present | **Supported descriptively.** Each singleton inflates qwen3 strict VEA ×3-×13 over neutral; full_inject ×22. |
+| opus verbalizes eval-awareness in response to individual clauses | **Not supported.** Opus strict-VEA stays at baseline (~0.03) on all three singletons and only inflates ×4 under combined full_inject. |
+| V1's verbalization-vs-behavior dissociation generalizes to V3's clause resolution | **Supported.** qwen3's ×22 strict-VEA inflation under full_inject is accompanied by a +5.4pp refusal shift; the verbalization and behavior signals scale independently. |
