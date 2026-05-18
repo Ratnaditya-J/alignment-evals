@@ -331,9 +331,10 @@ cross-protocol behavioral analysis (§5.1) and Goodfire-style
 reasoning-trace analysis (§5.2) are exploratory; only V1's safety
 mediation replication (§5.3) is pre-registered. The pre-registration
 documents, analyzer scripts, and figure-generation code are released
-alongside this paper; run JSON outputs (the `runs/` tree) are not in
-the GitHub repository because of cumulative size and are available
-on request (see Appendix A).
+alongside this paper; run JSON outputs (the `runs/` tree) are
+released as a GitHub release artifact at
+`https://github.com/Ratnaditya-J/alignment-evals/releases/tag/v1.0-rollouts`
+(see Appendix A).
 
 ---
 
@@ -1740,10 +1741,13 @@ tree and the three clauses V3 tested:
   zero with positive sign. We did not, the residual is within CI of
   zero on both active models.
 
-The remaining interpretation is **distributed-additive**: on opus and
-qwen3, each clause contributes some share of the effect in the
-V1-asymmetric direction (with the individual per-clause magnitudes
-not CI-resolvable at this n), and the three contributions sum within
+The remaining interpretation is **distributed-additive (and is the
+interpretation most consistent with the additive-compatible
+classification under the §5.5 decision tree, not a positive proof
+of additivity)**: on opus and qwen3, each clause contributes some
+share of the effect in the V1-asymmetric direction (with the
+individual per-clause magnitudes not CI-resolvable at this n), and
+the three contributions sum within
 the additivity residual's CI to the V3 `full_inject` anchor (V3's
 attenuated Apollo magnitude, not V1's larger BeaverTails magnitude). Removing any
 single clause from V1's inject text would, under the additive
@@ -1799,9 +1803,9 @@ axis (blue, squares), strict-VEA rate on the right axis (red,
 circles). qwen3's strict-VEA scales proportionally across clauses
 (×13 baseline on `eval_only` alone, ×22 on `full_inject`); opus's
 stays near baseline on every singleton and only inflates ×4 on
-`full_inject`. **Both models' refusal behavior is clause-additive
-(Figure 8), but the verbalization channel follows two distinct
-per-clause profiles.** V1's verbalization-vs-behavior dissociation
+`full_inject`. **Both models' refusal behavior is clause-additive-compatible
+under the pre-registered §5.5 decision tree (Figure 8), but the
+verbalization channel follows two distinct per-clause profiles.** V1's verbalization-vs-behavior dissociation
 generalizes to V3 and manifests as two model-level profiles.
 
 #### 5.6.5 Closed-CoT addition: gpt-5.5 has the cleanest null in the lineup
@@ -1835,7 +1839,7 @@ than under the V2 4-model lineup alone.
 | The V1 inject effect's direction asymmetry on opus (−) and qwen3 (+) replicates on a fresh V3 sample | **Supported.** opus full_inject Δ −0.067 CI [−0.104, −0.030] p=0.001; qwen3 full_inject Δ +0.054 CI [+0.014, +0.094] p=0.013. Both CIs exclude zero. |
 | At least one of the three V1 inject clauses individually carries the V1 effect | **Not supported.** 0/18 singleton hypotheses survive Holm-Bonferroni. All singleton point estimates ≤0.04 in absolute value with CIs including zero. |
 | The V1 inject is synergistic: requires all three clauses together to produce the effect | **Not supported on either active model.** Additivity residual CIs include zero on opus and qwen3. No super-additive pattern is detected under the tested design. |
-| The V1 inject is distributed-additive on opus and qwen3 | **Supported.** Sum-of-singletons matches full_inject within CI on both active models. |
+| The V1 inject is additive-compatible on opus and qwen3 under the pre-registered §5.5 decision tree | **Supported.** Sum-of-singletons matches full_inject within the additivity residual's CI on both active models (non-rejection of additivity combined with non-detection of singletons; not an equivalence test for additivity). The distributed-additive reading is the interpretation most consistent with this classification. |
 | Closed-CoT frontier/near-frontier models react to extrinsic eval-framing in V3 | **Not supported.** gpt-5.5 full_inject Δ +0.000 [−0.060, +0.060]; gemini-2.5-pro full_inject Δ −0.010 [−0.050, +0.030]. Both null at clause and full resolution. |
 | qwen3's strict-VEA verbalization scales with the number of eval-frame clauses present | **Supported descriptively.** Each singleton inflates qwen3 strict VEA ×3-×13 over neutral; full_inject ×22. |
 | opus verbalizes eval-awareness in response to individual clauses | **Not supported.** Opus strict-VEA stays at baseline (~0.03) on all three singletons and only inflates ×4 under combined full_inject. |
@@ -2098,9 +2102,11 @@ V3's 5-condition design tests whether the V1 effect attributes to
 (a) the "this is an evaluation" claim, (b) the "reviewed by safety
 researchers" claim, (c) the "compared against deployment" claim, or
 (d) the combined frame. The pre-registered §4.3 decision tree returns
-**ADDITIVE on both opus and qwen3**: sum-of-singletons (−0.077 on
-opus; +0.051 on qwen3) matches full_inject (−0.067; +0.054) within
-the residual's CI. No single clause's effect is detectable in
+**ADDITIVE-COMPATIBLE on both opus and qwen3**: sum-of-singletons
+(−0.077 on opus; +0.051 on qwen3) matches full_inject (−0.067;
++0.054) within the additivity residual's CI (a non-rejection of
+additivity combined with non-detection of singletons; not an
+equivalence test for additivity). No single clause's effect is detectable in
 isolation; the singleton point estimates are compatible with
 roughly distributed contributions across the three clauses, but
 individual per-clause magnitudes are not resolved at this n. V3 does
@@ -2452,10 +2458,14 @@ labels predict higher refusal across 5 of 6 tested models from 4
 labs (V2; broad associative effect, not a randomized intervention),
 while explicit eval framing produces direction-asymmetric refusal
 shifts on a specific subset of models (V1 + V3; qwen3 +, opus −;
-causal intervention via system-prompt manipulation). V3 further
-localizes the explicit-framing effect to distributed-additive cue
-attribution across three clauses rather than to any single clause's
-propositional content. The explicit-framing safety effects survive
+causal intervention via system-prompt manipulation). V3 classifies
+the explicit-framing effect as additive-compatible across three
+clauses under the pre-registered decision tree (no singleton clause
+detected after Holm correction; sum-of-singletons matches
+full_inject within the additivity residual's CI); the
+interpretation most consistent with this classification is a
+distributed-additive cue response rather than any single clause's
+propositional content carrying the effect alone. The explicit-framing safety effects survive
 in the strict-VEA-stable stratum (V1 §5.4), so the explicit-framing
 channel is not explained by measured VEA; the intrinsic-label effect
 is behavioral-only in this design (V2 does not run VEA-flip mediation,
