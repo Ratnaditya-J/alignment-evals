@@ -36,11 +36,16 @@ shifts on safety/alignment prompts in two of six models,
 qwen3-235B refuses more, claude-opus-4-7 refuses less.** The pattern
 is CI-excluding in V1 (BeaverTails) and V3 (Apollo alignment-eval),
 directionally consistent in V2 (Apollo alignment-stratum deep-dive).
-On the two active models, V3's 5-condition clause ablation finds
-the inject's effect attributes additively across three component
-clauses with no single clause detectable after correction,
-distributed-additive cue attribution rather than single-clause
-attribution.
+On the two active models, V3's pre-registered 5-condition clause
+ablation classifies the inject's effect as **additive-compatible**:
+sum-of-singletons matches the `full_inject` point estimate within
+the additivity residual's CI, no singleton clause is detectable
+after Holm-Bonferroni correction, and no synergy term is detected.
+This is a non-rejection of additivity and a rejection of
+single-clause attribution under the pre-registered decision tree;
+it is not an equivalence test for additivity, and we frame the
+finding as "additive-compatible, no detected singleton or synergy"
+rather than as positive proof of additivity throughout.
 
 **A pre-registered disjoint-prompt replication of an apparent
 qwen3-safety VEA mediation effect (DiD +0.222 at n_flip=63 in the
@@ -234,20 +239,26 @@ first-discovery.
    model families and the only one with an *intrinsic* (not
    author-constructed) cue, addressing a methodological gap that
    Knecht et al.'s CoT-intervention design does not cover.
-2. **Distributed-additive attribution of the explicit inject (V3,
+2. **Additive-compatible attribution of the explicit inject (V3,
    primary novel finding).** V3's pre-registered 5-condition clause
-   ablation finds that the V1 inject prompt's effect on opus and
-   qwen3 sums linearly across three component clauses
-   (`eval_only`, `reviewer_only`, `comparison_only`), with no single
-   clause individually detectable after Holm-Bonferroni correction
-   (0 of 18 singleton hypotheses survive across both correction
-   families). Under the pre-registered §5.5 decision tree and the
-   three clauses tested, the data argue against single-clause
-   attribution and a gestalt-only mechanism in this design; the
-   evidence is more consistent with a distributed-additive response
-   to the cumulative weight of eval-framing claims. No prior work
-   we are aware of ablates the inject prompt into its component
-   clauses.
+   ablation classifies the V1 inject prompt's effect on opus and
+   qwen3 as **additive-compatible** under the pre-registered §5.5
+   decision tree: sum-of-singletons matches the `full_inject` point
+   estimate within the additivity residual's CI on both active
+   models; no singleton clause (`eval_only`, `reviewer_only`,
+   `comparison_only`) is individually detectable after
+   Holm-Bonferroni correction (0 of 18 singleton hypotheses
+   survive across both correction families); and no synergy term is
+   detected. This is a non-rejection of additivity and a rejection
+   of single-clause attribution; it is not an equivalence test for
+   additivity, so we frame the result as additive-compatible (point
+   estimates sum to full_inject, no detected singleton or synergy)
+   rather than as positive proof of additivity. The interpretation
+   the data are most consistent with under this decision tree is a
+   distributed-additive response to the cumulative weight of
+   eval-framing claims rather than any single propositional content
+   carrying the effect alone. No prior work we are aware of ablates
+   the inject prompt into its component clauses.
 3. **Triangulation of model-heterogeneous direction-asymmetric
    refusal shifts on safety/alignment prompts across three
    independent samples (extends Burnat & Davidson 2026; complements
@@ -1683,14 +1694,21 @@ blue** to distinguish the V1-replication anchor from the singleton
 candidates. Error bars on singleton and full_inject bars are
 paired-bootstrap 95% CIs (B=2000, seed=0). **On both models, the
 sum-of-singletons bar matches the full_inject anchor bar within the
-additivity residual's CI**, supporting the additive attribution. No
-single clause individually carries a detectable share of the effect.
+additivity residual's CI**, consistent with the additive-compatible
+classification. No single clause individually carries a detectable
+share of the effect. The pre-registered classification
+"additive-compatible" is the non-rejection of additivity under the
+§5.5 decision tree (residual CI contains zero) combined with the
+positive rejection of single-clause attribution (no Holm survivor);
+it is not an equivalence test for additivity, so we report the
+result as "additive-compatible, no detected singleton or synergy"
+rather than as positive proof that the effect is exactly additive.
 
-#### 5.6.3 What the additive attribution means
+#### 5.6.3 What the additive-compatible classification means
 
-The additive attribution argues against two competing interpretations
-of V1+V2, under the pre-registered §5.5 decision tree and the three
-clauses V3 tested:
+The additive-compatible classification argues against two competing
+interpretations of V1+V2, under the pre-registered §5.5 decision
+tree and the three clauses V3 tested:
 
 - *Not single-clause attribution.* If the V1 inject worked because
   models specifically react to "this is an evaluation," we would have
@@ -2356,14 +2374,20 @@ rollouts** address this question. The primary novel findings are:
   cleanly across visible-CoT and closed-CoT model families.
 - **(b) Distributed-additive clause attribution of the explicit
   inject (V3, primary novel finding).** V3's 5-condition clause
-  ablation finds the V1 inject's effect on opus and qwen3 sums
-  linearly across three component clauses (sum-of-singletons
-  matches full_inject within CI on both models). 0 of 18 singleton
-  hypotheses survive Holm. The data favor distributed-additive
-  attribution over single-clause attribution; the eval-noticing
-  behavior is more consistent with a response to the cumulative
-  weight of eval-framing claims than with any specific propositional
-  content carrying the effect alone.
+  ablation classifies the V1 inject's effect on opus and qwen3 as
+  **additive-compatible** under the pre-registered decision tree:
+  sum-of-singletons matches `full_inject` point estimate within the
+  additivity residual's CI on both models, no singleton clause is
+  detectable after Holm-Bonferroni correction (0 of 18 singleton
+  hypotheses survive), and no synergy term is detected. This is a
+  non-rejection of additivity and a rejection of single-clause
+  attribution; not an equivalence test for additivity. We frame
+  this as additive-compatible (no detected singleton or synergy)
+  rather than positive proof of additivity. Under this decision
+  tree, the result is most consistent with a distributed-additive
+  response to the cumulative weight of eval-framing claims than
+  with any specific propositional content carrying the effect
+  alone.
 - **(c) Direction-asymmetric refusal effects on safety/alignment
   prompts, triangulated across V1's pre-registered safety
   replication and the fully-pre-registered V2 and V3.**
