@@ -454,13 +454,29 @@ def _render_two_mechanism(
     """
     import matplotlib.pyplot as plt
 
-    def _safety_row(summary: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _safety_row(
+        summary: Dict[str, Any],
+        model_substring: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Return the safety-family row from per_model_family.
+
+        ``per_model_family`` in primary summaries contains one row per
+        (model, task_family) cell, so multiple ``task_family=='safety'``
+        rows exist (one per model). When ``model_substring`` is supplied,
+        filter to the row whose ``model_name`` contains that substring.
+        Single-model summaries (opus n=300, qwen3 replication) have only
+        one safety row and don't need the filter.
+        """
         for row in summary.get("per_model_family", []) or []:
-            if row.get("task_family") == "safety":
+            if row.get("task_family") != "safety":
+                continue
+            if model_substring is None:
+                return row
+            if model_substring in str(row.get("model_name") or ""):
                 return row
         return None
 
-    qwen3_row = _safety_row(qwen3_strict)
+    qwen3_row = _safety_row(qwen3_strict, model_substring="qwen3")
     opus_row = _safety_row(opus_strict)
     if not qwen3_row or not opus_row:
         LOGGER.warning("fig5: missing safety row in qwen3 or opus summary")
