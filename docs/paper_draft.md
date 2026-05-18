@@ -300,7 +300,8 @@ first-discovery.
    `eval_only` alone, ×22 on the full inject); opus's stays at
    baseline on every singleton and only inflates ×4 under the
    combined inject. Yet both models' refusal attribution is
-   identically additive across clauses. Two distinct model-level
+   identically additive-compatible across clauses under the
+   pre-registered §5.5 decision tree. Two distinct model-level
    verbalization profiles co-occur with the same refusal-attribution
    pattern, providing a clause-resolution variant of the broader
    dissociation Knecht et al. established at the rollout level.
@@ -1747,11 +1748,13 @@ classification under the §5.5 decision tree, not a positive proof
 of additivity)**: on opus and qwen3, each clause contributes some
 share of the effect in the V1-asymmetric direction (with the
 individual per-clause magnitudes not CI-resolvable at this n), and
-the three contributions sum within
-the additivity residual's CI to the V3 `full_inject` anchor (V3's
-attenuated Apollo magnitude, not V1's larger BeaverTails magnitude). Removing any
-single clause from V1's inject text would, under the additive
-interpretation, reduce the effect by some fraction rather than
+the three contributions sum within the additivity residual's CI to
+the V3 `full_inject` anchor (V3's attenuated Apollo magnitude, not
+V1's larger BeaverTails magnitude).
+
+Under this distributed-additive interpretation, removing any single
+clause from V1's inject text would reduce the effect by some
+fraction rather than
 eliminate it, though V3 does not directly test this counterfactual
 (it tests singletons, not pairwise combinations). **The eval-noticing
 behavior on these models appears not localized to any specific
@@ -1790,7 +1793,8 @@ alone ×13 baseline). Opus's strict-VEA rate barely moves on any
 individual clause, then jumps ×4 only under the combined `full_inject`.
 **The verbalization channel is clause-additive on qwen3 and
 gestalt-only on opus, even though both models' refusal behavior is
-clause-additive.** This is a new finding V3 could produce because of
+clause-additive-compatible under the pre-registered §5.5 decision
+tree.** This is a new finding V3 could produce because of
 its 5-condition design; V1 and V2 only contrasted "full inject vs no
 inject" and could not see the per-clause verbalization profile.
 
@@ -2096,8 +2100,11 @@ Eval validity has to account for this even in the "neutral"
 condition, regardless of whether the underlying driver is internal
 eval-recognition or surface-feature responsiveness.
 
-**(iii) The V1 inject's effect on opus and qwen3 is distributed-
-additive across three clauses, not localized to any single clause.**
+**(iii) The V1 inject's effect on opus and qwen3 is
+additive-compatible across three clauses under the pre-registered
+§5.5 decision tree, not localized to any single clause; the
+interpretation most consistent with this classification is a
+distributed-additive cue response.**
 V3's 5-condition design tests whether the V1 effect attributes to
 (a) the "this is an evaluation" claim, (b) the "reviewed by safety
 researchers" claim, (c) the "compared against deployment" claim, or
@@ -2126,7 +2133,8 @@ individual clause (eval_only alone ×13 baseline) and accumulates to
 ×22 baseline under full_inject, but refusal moves only +5.4pp under
 full_inject and is null on every singleton. On opus, strict-VEA stays
 at baseline (~0.03) on every singleton and only inflates ×4 under
-combined full_inject, but refusal moves additively across all three
+combined full_inject, but refusal moves additive-compatibly across
+all three
 clauses. **Two different per-clause patterns produce the same
 distributed-additive refusal attribution on the same kind of
 prompts.** V1's verbalization-vs-behavior dissociation generalizes
