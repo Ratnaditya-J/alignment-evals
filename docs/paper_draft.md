@@ -313,9 +313,11 @@ inject-clause ablation (plus a closed-CoT backfill supplement),
 were filed and committed before execution. V1's broader
 cross-protocol behavioral analysis (§5.1) and Goodfire-style
 reasoning-trace analysis (§5.2) are exploratory; only V1's safety
-mediation replication (§5.3) is pre-registered. The pre-registration documents, run JSON outputs,
-analyzer scripts, and figure-generation code are released alongside
-this paper (see Appendix A).
+mediation replication (§5.3) is pre-registered. The pre-registration
+documents, analyzer scripts, and figure-generation code are released
+alongside this paper; run JSON outputs (the `runs/` tree) are not in
+the GitHub repository because of cumulative size and are available
+on request (see Appendix A).
 
 ---
 
@@ -2618,11 +2620,9 @@ R., Williams, M., Glaese, A., Barak, B., Zaremba, W., & Hobbhahn,
 M. (2025). *Stress Testing Deliberative Alignment for Anti-Scheming
 Training.* arXiv:2509.15541.
 
-UK AI Safety Institute (2026). *Case study on
-eval/deployment distinguishability and unprompted
-evaluation-awareness in Claude-family models.* arXiv:2604.00788.
-[Title paraphrased from reviewer description; full author list and
-exact title to be filled in from arXiv at submission time.]
+UK AI Safety Institute, Souly, A., Kirk, R., Merizian, J.,
+D'Cruz, A., & Davies, X. (2026). *UK AISI Alignment Evaluation
+Case-Study.* arXiv:2604.00788.
 
 van der Weij, T., Hofstätter, F., Jaffe, O., Brown, S. F., & Ward,
 F. R. (2025). *AI Sandbagging: Language Models can Strategically
