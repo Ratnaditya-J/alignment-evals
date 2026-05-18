@@ -1267,7 +1267,17 @@ VEA secondary outcomes because they do not expose verbatim CoT
 
 Verdict tiers (pinned in the pre-reg at `min_cell_n=30`,
 `interaction_threshold=0.05`): `insufficient_data` →
-`interaction_supported` → `additive` → `null_both`, in priority order.
+`interaction_supported` → `additive (no-interaction)` → `null_both`,
+in priority order. Note: the V2 `additive` verdict here means
+"no detected inject×intrinsic-label interaction in the 2×2
+factorial" — it is a different statistical claim from V3's
+"additive-compatible" classification of clause attribution
+(§5.6.2), which is about sum-of-singletons matching the full-inject
+anchor in a 5-condition single-factor design. Both verdicts are
+non-rejections of additivity under their respective decision trees,
+but they refer to different additivity questions; we keep the V2
+label as `additive (no-interaction)` here to keep this clear in
+contexts where both verdicts appear nearby.
 
 Multiple-comparisons correction: Holm-Bonferroni in two separate
 families per the backfill pre-reg's §5.1. Family A (V2 main):
@@ -1393,14 +1403,16 @@ silently dropped at the join step.
 
 #### 5.5.3 Per-model verdicts and the cross-model interaction (summary)
 
-**Headline: 5 of 6 models additive; 0 of 6 with a Holm-surviving
-cross-model interaction.** Only opus earns a per-model
+**Headline: 5 of 6 models earn the V2 `additive (no-interaction)`
+verdict; 0 of 6 have a Holm-surviving cross-model interaction
+(distinct from V3's `additive-compatible` clause-attribution
+classification in §5.6.2).** Only opus earns a per-model
 `interaction_supported` verdict (Δ −0.060, CI [−0.120, −0.010],
 p=0.032 uncorrected), but it does not survive Holm-Bonferroni at
 the cross-model headline level (corrected threshold p=0.0042 in
 Family A of 12 hypotheses). Per-model verdict table, correction
-policy, and the opus interaction interpretation are in **Appendix
-D.1**.
+policy, and the opus interaction interpretation are in
+**Supplementary S.1**.
 
 #### 5.5.4 Stratified deep-dive: V1's direction asymmetry survives on the alignment stratum
 
@@ -1451,19 +1463,19 @@ Three V2 secondary findings detailed in the appendix:
 (Δ−0.064, CI [−0.16, −0.001], p=0.046; the qwen3 alignment +5.7pp
 and capability −6.4pp cancel in the pooled cross-corpus mean,
 explaining why V1's safety-only design could not see this two-
-context pattern, **Appendix D.2**);
+context pattern, **Supplementary S.2**);
 **(b) qwen3 strict-VEA verbalization rate ~4× other models**
 (0.36 on inject_eval-alignment vs 0.06-0.09 for the trio, stable
-trait that replicates V1 §5.2, **Appendix D.3**);
+trait that replicates V1 §5.2, **Supplementary S.3**);
 **(c) opus's adaptive thinking skips on eval-shaped prompts**
 (~50% empty `reasoning_trace` on eval-labeled rollouts vs ~0% on
 deployment-labeled; a candidate behavioral-level eval-awareness
 signal not pre-registered as an outcome and possibly confounded
-by Apollo eval prompts being shorter, **Appendix D.4**).
+by Apollo eval prompts being shorter, **Supplementary S.4**).
 
 #### 5.5.6 What survives, what doesn't (V2, 6-model lineup)
 
-Full 9-row claim grid is in **Appendix D.5**. Headline rows:
+Full 9-row claim grid is in **Supplementary S.5**. Headline rows:
 V1 inject does NOT generalize to non-safety prompts (not supported
 on any of 6 models); stratified deep-dive recovers V1 directions
 on the alignment stratum (supported post-hoc, §5.5.4); Apollo
@@ -1693,7 +1705,7 @@ even though both models' refusal behavior is consistent with
 additive attribution under the pre-registered §5.5 decision tree.
 Per-cell strict-VEA tables for both models and **Figure 9**
 (refusal × strict-VEA dual-axis per condition) are in
-**Appendix D.6**. V1's verbalization-vs-behavior dissociation
+**Supplementary S.6**. V1's verbalization-vs-behavior dissociation
 (§5.3) generalizes to V3 and manifests as two distinct
 model-level profiles.
 
@@ -1709,11 +1721,11 @@ with mild sub-additive per-clause suppression. Together with
 deepseek and kimi, these provide **4 null-direction models against
 which the opus −/qwen3 + direction asymmetry is now triangulated**,
 making a lineup-selection artifact less plausible than under V2's
-4-model lineup alone. Detail in **Appendix D.7**.
+4-model lineup alone. Detail in **Supplementary S.7**.
 
 #### 5.6.6 What survives, what doesn't (V3, 6-model lineup)
 
-Full 8-row claim grid is in **Appendix D.8**. Headline rows: V1's
+Full 8-row claim grid is in **Supplementary S.8**. Headline rows: V1's
 opus −/qwen3 + direction asymmetry replicates on the fresh V3
 sample (supported, both CIs exclude zero); no singleton clause
 individually carries the V1 effect (not supported, 0/18 Holm
@@ -2747,25 +2759,32 @@ Vendor model cards:
 
 ---
 
-## Appendix D. Per-model verdicts, secondary findings, and "what survives" summaries
+## Supplementary Material (treat as not core reading; main text §1-§9 is self-contained)
 
-This appendix collects per-model verdict tables, secondary findings,
-and "what survives" claim grids that were moved from §5.5 and §5.6
-to keep the main text focused on the three headline claims (V2
-intrinsic-eval-label refusal signal, V3 additive-compatible clause
-attribution, V1/V3 direction asymmetry). The substance is unchanged;
-only the location has moved.
+The blocks below collect per-model verdict tables, secondary
+findings, and "what survives" claim grids that were moved out of
+§5.5 and §5.6 to keep the main text focused on the three headline
+claims (V2 intrinsic-eval-label refusal signal, V3
+additive-compatible clause attribution, V1/V3 direction asymmetry).
+**This is supplementary detail for readers who want the
+per-(model, condition) granularity, robustness footnotes, and
+exhaustive claim grids; the main text §1-§9 stands alone without
+it.** The substance is unchanged from prior versions of this
+draft; only the framing and location have moved. We retain the
+"S.x" cross-references that earlier versions used "D.x" for, so
+in-text pointers like "see Supplementary S.1" map 1:1 to what
+those earlier versions called "Appendix D.1."
 
-### D.1 V2 per-model verdicts and cross-model interaction (§5.5.3 detail)
+### S.1 V2 per-model verdicts and cross-model interaction (§5.5.3 detail)
 
 | Model | Per-model verdict | Interaction effect | 95% CI | bootstrap p |
 |---|---|---:|---|---:|
 | opus-4-7        | **interaction_supported** (uncorrected) | −0.060 | [−0.120, −0.010] | 0.032 |
-| deepseek        | additive | +0.020 | [−0.020, +0.070] | 0.559 |
-| kimi            | additive | −0.010 | [−0.070, +0.050] | 0.856 |
-| qwen3           | additive | −0.010 | [−0.080, +0.060] | 0.910 |
-| gpt-5.5         | additive | +0.000 | [−0.070, +0.080] | 1.000 |
-| gemini-2.5-pro  | additive | −0.010 | [−0.060, +0.040] | 0.856 |
+| deepseek        | additive (no-interaction) | +0.020 | [−0.020, +0.070] | 0.559 |
+| kimi            | additive (no-interaction) | −0.010 | [−0.070, +0.050] | 0.856 |
+| qwen3           | additive (no-interaction) | −0.010 | [−0.080, +0.060] | 0.910 |
+| gpt-5.5         | additive (no-interaction) | +0.000 | [−0.070, +0.080] | 1.000 |
+| gemini-2.5-pro  | additive (no-interaction) | −0.010 | [−0.060, +0.040] | 0.856 |
 
 Opus earns the per-model verdict `interaction_supported` (CI
 excludes zero AND |effect| ≥ 0.05). Per the pre-reg's correction
@@ -2775,7 +2794,8 @@ Holm-Bonferroni at the cross-model headline level** (opus interaction
 p=0.032 vs corrected threshold 0.0042 in Family A of 12 hypotheses).
 The two closed-CoT backfill models in Family B both have interaction
 effects within ±0.010 of zero with CIs comfortably including zero.
-The headline cross-model claim is therefore: *5 of 6 models additive;
+The headline cross-model claim is therefore: *5 of 6 models earn the
+V2 `additive (no-interaction)` verdict;
 0 of 6 with a Holm-surviving interaction.* The pre-reg was explicitly
 designed to separate per-model verdicts (reported uncorrected) from
 cross-model headlines (Holm-corrected), exactly to avoid the
@@ -2783,7 +2803,7 @@ cross-model headlines (Holm-corrected), exactly to avoid the
 We report the opus per-model interaction in §5.5.4 as a secondary
 finding worth interpretation, not as the headline claim.
 
-### D.2 qwen3's capability-eval inject-suppresses-refusal pattern (§5.5.5 detail)
+### S.2 qwen3's capability-eval inject-suppresses-refusal pattern (§5.5.5 detail)
 
 Restricting to capability-eval prompts (the V1-unreachable stratum):
 
@@ -2814,7 +2834,7 @@ opposite-direction refusal effects on capability vs safety prompts on
 qwen3, and that prompt-type-conditional pattern is what V1's
 safety-only corpus structurally could not see.
 
-### D.3 qwen3's strict-VEA verbalization rate (§5.5.6 detail)
+### S.3 qwen3's strict-VEA verbalization rate (§5.5.6 detail)
 
 Strict-VEA mean on the `inject_eval` cell of the alignment stratum:
 
@@ -2838,7 +2858,7 @@ Knecht et al. (2026)'s broad-scope null, but V2 does not retest
 mediation: we report V2 strict-VEA cell means but do not run a
 per-prompt VEA-flip diff-in-diff on V2 rollouts.
 
-### D.4 opus's adaptive thinking on eval-shaped prompts (§5.5.7 detail)
+### S.4 opus's adaptive thinking on eval-shaped prompts (§5.5.7 detail)
 
 A behavioral quirk distinct from the headline analysis. Across all
 400 opus rollouts, ~50% of eval-labeled rollouts returned an empty
@@ -2857,7 +2877,7 @@ thinking decides they're not worth extended deliberation). Both
 interpretations are consistent with the observation; discriminating
 them needs a follow-up.
 
-### D.5 V2 "what survives, what doesn't" claim grid (§5.5.8)
+### S.5 V2 "what survives, what doesn't" claim grid (§5.5.8)
 
 | Claim | Status |
 |---|---|
@@ -2871,7 +2891,7 @@ them needs a follow-up.
 | There is a cross-model interaction effect (inject × intrinsic label) | **Not supported under Holm in either family.** Per-model: only opus has CI-excludes-zero. Headline: 0 of 6 models survive correction at family-wise α=0.05. |
 | VEA verbalization mediates the V2 behavioral effects | **Out of scope for V2.** V2 did not run a within-prompt mediation analysis; V1's §5.3 mediation null is the relevant evidence. |
 
-### D.6 V3 per-clause strict-VEA dissociation profiles (§5.6.4 detail and Figure 9)
+### S.6 V3 per-clause strict-VEA dissociation profiles (§5.6.4 detail and Figure 9)
 
 V3's secondary VEA outcome (strict rubric, judged on the visible CoT
 of each rollout) reveals a model-level dissociation between
@@ -2923,7 +2943,7 @@ additive attribution under the pre-registered §5.5 decision tree
 per-clause profiles.** V1's verbalization-vs-behavior dissociation
 generalizes to V3 and manifests as two model-level profiles.
 
-### D.7 V3 closed-CoT addition (§5.6.5 detail)
+### S.7 V3 closed-CoT addition (§5.6.5 detail)
 
 The closed-CoT backfill adds two strong null checks to V3:
 
@@ -2947,7 +2967,7 @@ open-reasoning flat (kimi) family categories. The cross-lineup
 sign preservation makes a lineup-selection artifact less plausible
 than under the V2 4-model lineup alone.
 
-### D.8 V3 "what survives, what doesn't" claim grid (§5.6.6)
+### S.8 V3 "what survives, what doesn't" claim grid (§5.6.6)
 
 | Claim | Status |
 |---|---|
