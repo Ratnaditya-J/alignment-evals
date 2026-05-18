@@ -145,7 +145,7 @@ but CI-excludes-zero on deepseek and on claude-opus-4-7, and null on
 kimi. Within-prompt
 diff-in-diff mediation analysis under the empirically-validated strict
 VEA rubric (§4.5) suggested mediation on qwen3 safety prompts (DiD
-+0.222 [+0.029, +0.430], n_flip=63 paired), but a pre-registered
++0.222 [+0.014, +0.429], n_flip=63 paired), but a pre-registered
 disjoint-prompt replication at larger n_flip=100 was **null**
 (DiD −0.017 [−0.175, +0.139], §5.3). The primary mediation finding
 failed to replicate; we discuss the interpretation in §5.3.
@@ -295,8 +295,8 @@ first-discovery.
    intervention; 8 open-weight models; 4 benchmarks). Our V1 result
    is convergent evidence from a different operationalization: a
    pre-registered disjoint-prompt replication of an apparent
-   positive mediation finding (qwen3 safety DiD +0.222 [+0.029,
-   +0.430] at n_flip=63 paired in the primary sample) returned null
+   positive mediation finding (qwen3 safety DiD +0.222 [+0.014,
+   +0.429] at n_flip=63 paired in the primary sample) returned null
    on replication (−0.017 [−0.175, +0.139] at n_flip=100) under a
    system-prompt-level explicit inject and a within-prompt VEA-flip
    diff-in-diff estimator. Our specific methodological contribution
@@ -656,7 +656,7 @@ the Goodfire VEA-inflation analysis (§5.2) use B=200 resamples; the
 mediation analyses (§5.3, §5.4) and the pre-registered safety
 replication use B=2000 resamples, where the CI lower-bound precision
 matters more (we noticed at B=200 the qwen3 primary safety DiD CI
-lower bound of +0.029 could shift by ±~0.02 across reseeds; at
+lower bound of +0.014 could shift by ±~0.02 across reseeds; at
 B=2000 it is stable to the third decimal). For two-sample
 comparisons (VEA+ vs VEA− cohort refusal rates) we use independent-
 resampling bootstrap. Percentile indices auto-scale with iterations
@@ -1010,7 +1010,7 @@ corpus, paired):**
 **The qwen3 safety mediation finding does not replicate.**
 
 The primary analysis on the n=500 mixed corpus returned a `strong_
-mediation` verdict for qwen3 safety (DiD +0.222 [+0.029, +0.430],
+mediation` verdict for qwen3 safety (DiD +0.222 [+0.014, +0.429],
 n_flip=63 paired). Per §4.5, this was sensitive to the strict-rubric
 refinement: the same primary-analysis data returned `epiphenomenal`
 under the original (pre-validation) strict set. To test whether the
@@ -1021,7 +1021,7 @@ executed, see git log for proof of timing):
 
 | qwen3 safety, strict rubric | n_flip | n_stable_neg | DiD | 95% CI | Verdict |
 |---|---:|---:|---:|---|---|
-| Primary (n=500 mixed, prompts 1–500) | 63 | 62 | **+0.222** | **[+0.029, +0.430]** | strong_mediation |
+| Primary (n=500 mixed, prompts 1–500) | 63 | 62 | **+0.222** | **[+0.014, +0.429]** | strong_mediation |
 | Pre-registered replication (n=200 safety, prompts 501–700) | 100 | 92 | **−0.017** | **[−0.175, +0.139]** | **epiphenomenal** |
 
 The replication has *larger* n_flip (100 vs 63), a point estimate near
@@ -1051,7 +1051,7 @@ zero at n_flip=10.
 |---|---|---:|---|---:|---:|
 | knowledge | epiphenomenal | +0.000 | [0, 0] | 28 | 97 |
 | math | epiphenomenal | +0.000 | [0, 0] | 1 | 124 |
-| safety (primary) | strong_mediation | +0.222 | [+0.029, +0.430] | 63 | 62 |
+| safety (primary) | strong_mediation | +0.222 | [+0.014, +0.429] | 63 | 62 |
 | **safety (replication)** | **epiphenomenal** | **−0.017** | **[−0.175, +0.139]** | **100** | **92** |
 | truthfulness | epiphenomenal | +0.024 | [−0.058, +0.087] | 92 | 33 |
 
@@ -1817,7 +1817,7 @@ weak_mediation cell from §5.3 on the broad rubric (qwen3
 truthfulness, broad DiD +0.057 [+0.011, +0.114]) does not survive
 strict. The strict-vs-broad behavior of the qwen3 *primary* safety
 cell, broad epiphenomenal (DiD +0.116 [−0.105, +0.349]) vs strict
-strong_mediation (DiD +0.222 [+0.029, +0.430]), is itself one of the
+strong_mediation (DiD +0.222 [+0.014, +0.429]), is itself one of the
 methodological observations the §7.3 lesson is built on; under the
 pre-registered replication (§5.3) the strict positive does not
 replicate, which **also** does not support broad-rubric reading.
@@ -1879,7 +1879,7 @@ missing data; capture is solid for the open-reasoning routes.
 
 3. **VEA verbalization does not mediate refusal behavior on a fresh
    sample.** The primary analysis flagged qwen3 safety mediation (DiD
-   +0.222 [+0.029, +0.430], n_flip=63), but a pre-registered
+   +0.222 [+0.014, +0.429], n_flip=63), but a pre-registered
    disjoint-prompt replication at n_flip=100 returned null (DiD
    −0.017 [−0.175, +0.139]). opus-4.7 mediation is also null
    (DiD −0.061 [−0.392, +0.246], n_flip=10). Per the pre-registration
@@ -2382,7 +2382,7 @@ operationalization, were not independent discoveries:
 
 - **(d) V1 mediation null on a fresh disjoint sample (convergent
   with Knecht et al. 2026).** The primary V1 analysis flagged a
-  qwen3 safety mediation signal (DiD +0.222 [+0.029, +0.430],
+  qwen3 safety mediation signal (DiD +0.222 [+0.014, +0.429],
   n_flip=63 paired); pre-registered disjoint-prompt replication at
   n_flip=100 returned null (DiD −0.017 [−0.175, +0.139]). Knecht
   et al. (2026) had previously established a broad-scope null on
