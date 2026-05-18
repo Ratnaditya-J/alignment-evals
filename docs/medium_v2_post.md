@@ -8,9 +8,9 @@ If a system prompt tells Claude Opus 4.7 that its response is about to be review
 
 If the same prompt is given to qwen3-235B, it refuses 22 percentage points *more*.
 
-Neither model mentions the evaluation in its reasoning trace.
+In the prompt subset driving this comparison, neither model mentions the evaluation in its reasoning trace.
 
-That was the V1 finding, written up in [an earlier post on this work](https://medium.com/p/ff9110570253). The follow-up work below makes the picture sharper: **the explicit "this is an evaluation" inject was not the only signal that moved these models.** Apollo Research's eval-awareness benchmark labels each prompt as either an evaluation prompt or a deployment-style prompt. Whether a prompt was *intrinsically* an evaluation prompt — with no extra inject text added — predicted refusal across six frontier and frontier-adjacent models from four different labs, including two closed-source models we cannot read the reasoning trace of at all.
+That was the V1 finding, written up in [an earlier post on this work](https://medium.com/p/ff9110570253). The follow-up work below makes the picture sharper: **the explicit "this is an evaluation" inject was not the only signal that moved these models.** Apollo Research's eval-awareness benchmark labels each prompt as either an evaluation prompt or a deployment-style prompt. Whether a prompt was *intrinsically* an evaluation prompt — with no extra inject text added — predicted refusal across six frontier and frontier-adjacent models from four different labs, including two closed-CoT models whose reasoning traces are not exposed by the API.
 
 In plain terms: **the prompt was a better clue than the reasoning trace.**
 
@@ -24,19 +24,19 @@ This post is about whether that defense holds up.
 
 ## What's new since the V1 writeup
 
-The earlier writeup covered a single 16,000-rollout experiment: an explicit "this is an evaluation" inject across 8 frontier models, with reasoning-trace monitoring on the visible-reasoning subset (claude-opus-4-7's thinking blocks plus the three open-weight reasoning models). Three things changed since then:
+The earlier writeup covered a single 16,000-rollout experiment: an explicit "this is an evaluation" inject across 8 frontier and frontier-adjacent models, with reasoning-trace monitoring on the visible-reasoning subset (claude-opus-4-7's thinking blocks plus the three open-weight reasoning models). Three things changed since then:
 
 1. **The V1 qwen3 mediation finding did not replicate.** A pre-registered disjoint sample killed the +22 percentage point effect we had initially attributed to the model verbalizing eval-awareness. The careful version of the lesson: the model's reasoning trace did not reliably predict its behavior change.
 
-2. **A bigger and more durable signal turned up.** Apollo Research's released eval-awareness corpus labels each prompt by humans as either an evaluation prompt or a deployment-style prompt. Whether the prompt was *intrinsically* labeled an evaluation predicted refusal across six models from four labs, including two closed-source models we cannot read reasoning traces from.
+2. **A bigger and more durable signal turned up.** Apollo Research's released eval-awareness corpus labels each prompt by humans as either an evaluation prompt or a deployment-style prompt. Whether the prompt was *intrinsically* labeled an evaluation predicted refusal across six models from four labs, including two closed-CoT models whose reasoning traces are not exposed by the API.
 
-3. **A pre-registered clause ablation showed the inject's effect is distributed.** When the V1 inject is broken into its three component clauses and tested one at a time, no single clause survived Holm correction. The pattern most consistent with the data is a distributed-additive response across clauses — not any one phrase carrying the signal.
+3. **A pre-registered clause ablation showed the inject's effect is distributed.** When the V1 inject is broken into its three component clauses and tested one at a time, no single clause survived Holm correction. The pattern most consistent with the data is a distributed response across clauses (we walk through the careful "additive-compatible" framing in the V3 section below) — not any one phrase carrying the signal.
 
 The rest of this post walks through V2 as the central finding, V1 briefly as the origin story, V3 as the mechanism check, and the synthesis across all three.
 
 ## V1: the origin story
 
-V1 was a 16,000-rollout experiment across 8 frontier reasoning models from Anthropic, OpenAI, DeepSeek, Moonshot, and Alibaba, with 6,000 additional rollouts on the visible-reasoning subset for reasoning-trace analysis. The single finding that motivated this follow-up: on the original n=500 mixed-corpus sample for qwen3-235B, prompts where the model verbalized eval-awareness under inject (but not under the neutral baseline) showed a +22 percentage point refusal increase, with the rest of the prompts flat. The pattern looked like clean mediation: the model verbalizes the eval, and as a result, it refuses more.
+V1 was a 16,000-rollout experiment across 8 frontier and frontier-adjacent models from Anthropic, OpenAI, DeepSeek, Moonshot, and Alibaba, with 6,000 additional rollouts on the visible-reasoning subset for reasoning-trace analysis. The single finding that motivated this follow-up: on the original n=500 mixed-corpus sample for qwen3-235B, prompts where the model verbalized eval-awareness under inject (but not under the neutral baseline) showed a +22 percentage point refusal increase, with the rest of the prompts flat. The pattern looked like clean mediation: the model verbalizes the eval, and as a result, it refuses more.
 
 We pre-registered a replication on a fresh disjoint sample (prompts 501–700, BeaverTails safety only, n_flip=100 paired — a larger flip sample than the original). **The replication killed the headline effect.** The replicated diff-in-diff was −1.7 percentage points with a 95% CI of [−17.5, +13.9], comfortably overlapping zero. By the pre-committed decision rule, the V1 mediation finding did not replicate. The +22 percentage point effect was a false positive driven by the original 63 prompts.
 
@@ -110,7 +110,7 @@ Recent prior CoT-intervention work converges on a similar text-level conclusion 
 
 ## Why labs should care
 
-If you are running frontier-model evaluations, four practical implications.
+If you are running frontier and near-frontier model evaluations, four practical implications.
 
 1. **The intrinsic label of a benchmark prompt is a real behavioral signal.** Models refuse measurably more on prompts that humans label as evaluation prompts compared to deployment prompts from the same corpus, even with no extra framing added. Benchmark-validity work should treat this as a baseline confound to measure for, not a property to assume away.
 
@@ -122,7 +122,7 @@ If you are running frontier-model evaluations, four practical implications.
 
 ## tl;dr
 
-- **Apollo's intrinsic eval label predicts refusal across six models from four labs**, including two closed-source models we cannot read reasoning traces from. The prompt itself carried the signal.
+- **Apollo's intrinsic eval label predicts refusal across six models from four labs**, including two closed-CoT models whose reasoning traces are not exposed by the API. The prompt itself carried the signal.
 - **The explicit inject's effect on Opus and qwen3 is distributed across three clauses**; no singleton clause survived Holm correction. The pre-registered decision tree classifies the result as additive-compatible — most consistent with a distributed-additive cue response, not positive proof of additivity.
 - **The V1 lesson stands, with a tighter scope**: text-level reasoning-trace monitors are not a reliable warning light for evaluation-induced refusal change. Activation-level interpretability is a separate question this work does not test.
 
