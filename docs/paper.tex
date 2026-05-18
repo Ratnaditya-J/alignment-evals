@@ -312,10 +312,12 @@ clauses as singletons, and the full V1 inject) on the same 6-model
 lineup. The V1+V2 direction asymmetry on opus and qwen3 recurs on V3's
 fresh sample at the same attenuated Apollo magnitude (opus −0.067, qwen3
 +0.054, both CIs exclude zero). \textbf{Attribution on both active
-models is ADDITIVE}: sum-of-singletons matches full\_inject within CI;
-no single clause's effect survives Holm. The other four models,
-including the two closed-CoT additions, are flat at clause and full
-resolution.
+models is ADDITIVE-COMPATIBLE under the pre-registered decision tree}:
+sum-of-singletons matches full\_inject within the additivity residual's
+CI; no singleton clause is detected after Holm-Bonferroni correction; no
+synergy term is detected. This is a non-rejection of additivity, not an
+equivalence test for additivity. The other four models, including the
+two closed-CoT additions, are flat at clause and full resolution.
 
 The combination yields findings sharper than any single question's naive
 answer:
@@ -329,17 +331,19 @@ alignment-stratum Δ +0.057 {[}−0.04, +0.14{]}; V3 alignment full\_inject
 Δ +0.054 {[}+0.014, +0.094{]}), opus-4.7 refuses less (V1 paired Δ
 −0.339 {[}−0.446, −0.231{]}; V2 alignment-stratum Δ −0.060 {[}−0.18,
 −0.001{]}; V3 alignment full\_inject Δ −0.067 {[}−0.104, −0.030{]}). The
-effects are distributed-additive across three V1 inject clauses, no
-single clause's effect is detectable in isolation, but the three sum to
-the \texttt{full\_inject} anchor (V3's attenuated Apollo magnitude, not
-V1's larger BeaverTails magnitude) on both active models. V1's effects
-operate on the \texttt{stable\_neg} stratum where strict-VEA
-verbalization did not flip; V2 shows they dilute to zero when averaged
-across non-safety prompts; V3 finds no detectable single-clause
-attribution. The verbal fingerprint of ``noticing the eval'' visible to
-explicit VEA monitoring and the behavioral signature visible to refusal
-measurement are correlated phenomena, not causally linked at the level
-our within-prompt design can test.}
+effects are additive-compatible under the pre-registered V3 decision
+tree across three V1 inject clauses, no singleton clause is detected
+after Holm correction, and sum-of-singletons matches the
+\texttt{full\_inject} anchor within the additivity residual's CI (V3's
+attenuated Apollo magnitude, not V1's larger BeaverTails magnitude) on
+both active models. V1's effects operate on the \texttt{stable\_neg}
+stratum where strict-VEA verbalization did not flip; V2 shows they
+dilute to zero when averaged across non-safety prompts; V3 finds no
+detectable single-clause attribution. The verbal fingerprint of
+``noticing the eval'' visible to explicit VEA monitoring and the
+behavioral signature visible to refusal measurement are correlated
+phenomena, not causally linked at the level our within-prompt design can
+test.}
 \end{quote}
 
 Section 2 situates this against prior work. Section 3 describes the
@@ -852,15 +856,17 @@ JSON schema, judge prompts, pre-registration documents, and
 committed-figure PNGs/PDFs are all released in the project GitHub
 repository (Appendix A). Per-run rollout JSONLs and the derived summary
 JSONs they're computed from (the contents of \texttt{runs/}, gitignored
-because of size) are \textbf{not} committed to the GitHub repo; they are
-available on request from the corresponding author and the released
-scripts re-derive them from raw API calls under documented seeds,
-prompt-template hashes, and judge model identifiers (each summary JSON's
-manifest records these). The ``Judge-only reproduction'' path in
-Appendix A (\textasciitilde\$10-\$20 in OpenRouter API fees,
-\textasciitilde30 minutes wall time) is the practical entry point for
-verifying classification numbers and mediation verdicts without
-rerunning the full rollout pipeline.
+because of size) are released as a GitHub release artifact at
+\texttt{https://github.com/Ratnaditya-J/alignment-evals/releases/tag/v1.0-rollouts}
+(\texttt{alignment-evals-rollouts.tar.gz}, namespaced \texttt{v1/},
+\texttt{v2/}, \texttt{v3/} matching the paper's experiment partitioning)
+and re-derivable from raw API calls by the released scripts under
+documented seeds, prompt-template hashes, and judge model identifiers
+(each summary JSON's manifest records these). The ``Judge-only
+reproduction'' path in Appendix A (\textasciitilde\$10-\$20 in
+OpenRouter API fees, \textasciitilde30 minutes wall time) is the
+practical entry point for verifying classification numbers and mediation
+verdicts without rerunning the full rollout pipeline.
 
 The pre-registration discipline used here (filed-before-execution
 invariant) follows the broader psychology and replication-science
@@ -2250,8 +2256,8 @@ reported separately as the V1-replication anchor and is NOT in the
 correction family per the V3 main pre-reg's §4.4.
 
 \paragraph{5.6.2 Headline: V1's direction asymmetry survives at 6-model
-resolution; attribution is additive on the two active
-models}\label{headline-v1s-direction-asymmetry-survives-at-6-model-resolution-attribution-is-additive-on-the-two-active-models}
+resolution; attribution is additive-compatible on the two active
+models}\label{headline-v1s-direction-asymmetry-survives-at-6-model-resolution-attribution-is-additive-compatible-on-the-two-active-models}
 
 \textbf{The V1 + V2 direction asymmetry on opus and qwen3 recurs on V3's
 fresh alignment-eval sample at the same attenuated Apollo magnitude (V3
@@ -2300,14 +2306,18 @@ is \textbf{asymmetric} (opus −, qwen3 +; all four others null),
 reproducing the V1 + V2 finding under a fresh-sample, 5-condition design
 with two new closed-CoT models in the lineup.
 
-\textbf{No single clause carries the effect on any model.} 0 of 18
-singleton hypotheses survive Holm-Bonferroni across the two correction
-families. Individual clause point estimates are small (≤ 0.04 absolute
-on any model) and CIs uniformly include zero.
+\textbf{No singleton clause is detected after Holm correction on any
+model.} 0 of 18 singleton hypotheses survive Holm-Bonferroni across the
+two correction families. Individual clause point estimates are small (≤
+0.04 absolute on any model) and CIs uniformly include zero. This is the
+non-detection of singleton clauses at our n; it is not evidence of
+absence of any per-clause contribution.
 
-\textbf{Attribution on the two active models is ADDITIVE.} The sum of
-the three singleton effects matches the full\_inject effect within the
-additivity residual's CI on both opus and qwen3:
+\textbf{Attribution on the two active models is ADDITIVE-COMPATIBLE
+under the pre-registered decision tree.} The sum of the three singleton
+effects matches the full\_inject effect within the additivity residual's
+CI on both opus and qwen3 (non-rejection of additivity combined with
+non-detection of singletons, not positive proof of additivity):
 
 \begin{longtable}[]{@{}
   >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1429}}
@@ -2343,10 +2353,12 @@ qwen3 & +0.051 & +0.054 & +0.003 & {[}−0.067, +0.074{]} (incl.~0) &
 The singleton point estimates are compatible with roughly distributed
 contributions across the three clauses, but individual per-clause
 magnitudes are not resolved at this n (no singleton survives Holm
-correction). The aggregate additivity is what the data support:
-\textbf{sum-of-singletons matches the full\_inject anchor within the
-additivity residual's CI on both opus and qwen3.} No single clause's
-effect is detectable in isolation.
+correction). The aggregate additivity classification is what the
+pre-registered decision tree supports: \textbf{sum-of-singletons matches
+the full\_inject anchor within the additivity residual's CI on both opus
+and qwen3}, a non-rejection of additivity combined with non-detection of
+singletons (rather than positive proof of additivity). No singleton
+clause's effect is detectable in isolation.
 
 \pandocbounded{\includegraphics[keepaspectratio]{figures/fig7_triangulation.png}}
 
@@ -2396,14 +2408,15 @@ singleton candidates. Error bars on singleton and full\_inject bars are
 paired-bootstrap 95\% CIs (B=2000, seed=0). \textbf{On both models, the
 sum-of-singletons bar matches the full\_inject anchor bar within the
 additivity residual's CI}, consistent with the additive-compatible
-classification. No single clause individually carries a detectable share
-of the effect. The pre-registered classification ``additive-compatible''
-is the non-rejection of additivity under the §5.5 decision tree
-(residual CI contains zero) combined with the positive rejection of
-single-clause attribution (no Holm survivor); it is not an equivalence
-test for additivity, so we report the result as ``additive-compatible,
-no detected singleton or synergy'' rather than as positive proof that
-the effect is exactly additive.
+classification. No singleton clause is individually detected after Holm
+correction; this is non-detection at our n, not proof of absence of a
+per-clause contribution. The pre-registered classification
+``additive-compatible'' is the non-rejection of additivity under the
+§5.5 decision tree (residual CI contains zero) combined with the
+positive rejection of single-clause attribution (no Holm survivor); it
+is not an equivalence test for additivity, so we report the result as
+``additive-compatible, no detected singleton or synergy'' rather than as
+positive proof that the effect is exactly additive.
 
 \paragraph{5.6.3 What the additive-compatible classification
 means}\label{what-the-additive-compatible-classification-means}
@@ -3478,11 +3491,27 @@ JSON schema, judge prompts, pre-registration documents, and
 committed-figure PNGs/PDFs are all released in the project GitHub
 repository. Per-run rollout JSONLs and the derived summary JSONs they're
 computed from (the \texttt{runs/} directory tree, gitignored because of
-cumulative size) are \textbf{not} in the GitHub repo; they are available
-on request from the corresponding author. Each summary JSON manifest
-records the seeds, judge model identifiers, and prompt-template hashes
-used in its production so that re-derivation from raw API calls is
-deterministic.
+cumulative size) are released as a GitHub release artifact at
+\texttt{https://github.com/Ratnaditya-J/alignment-evals/releases/tag/v1.0-rollouts}
+(\texttt{alignment-evals-rollouts.tar.gz}). The bundle is namespaced
+\texttt{v1/}, \texttt{v2/}, \texttt{v3/} matching the paper's experiment
+partitioning; V1 contains \texttt{cross-protocol-v6},
+\texttt{goodfire-mixed-n500}, \texttt{goodfire-opus-mixed-n300}, and
+\texttt{goodfire-replication-qwen3-safety} subdirectories; V2 contains
+\texttt{v2-apollo-factorial-prereg}; V3 contains
+\texttt{v3-clause-ablation-prereg}. Download with:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{curl} \AttributeTok{{-}L} \AttributeTok{{-}o}\NormalTok{ alignment{-}evals{-}rollouts.tar.gz }\DataTypeTok{\textbackslash{}}
+\NormalTok{  https://github.com/Ratnaditya{-}J/alignment{-}evals/releases/download/v1.0{-}rollouts/alignment{-}evals{-}rollouts.tar.gz}
+\FunctionTok{tar} \AttributeTok{{-}xzf}\NormalTok{ alignment{-}evals{-}rollouts.tar.gz}
+\end{Highlighting}
+\end{Shaded}
+
+Each summary JSON manifest records the seeds, judge model identifiers,
+and prompt-template hashes used in its production so that re-derivation
+from raw API calls is deterministic.
 
 Two reproduction costs are worth distinguishing:
 
@@ -3503,13 +3532,13 @@ Two reproduction costs are worth distinguishing:
   via OpenRouter) contributes roughly \$10--\$20 of the total.
 \item
   \textbf{Judge-only reproduction} (rerun only the VEA judge against the
-  author-provided rollout bundle, available on request per the Appendix
-  A wording above): approximately \textbf{\$10--\$20 in OpenRouter API
-  fees} at \textasciitilde30 minutes wall time. The trace-bearing JSON
-  is saved per rollout, so the model-under-test does not need to be
-  re-invoked. This is the recommended path for verifying the
-  classification numbers and mediation verdicts in §5.2--§5.4 without
-  rerunning the rollout pipeline.
+  released rollout bundle at the GitHub release URL above):
+  approximately \textbf{\$10--\$20 in OpenRouter API fees} at
+  \textasciitilde30 minutes wall time. The trace-bearing JSON is saved
+  per rollout, so the model-under-test does not need to be re-invoked.
+  This is the recommended path for verifying the classification numbers
+  and mediation verdicts in §5.2--§5.4 without rerunning the rollout
+  pipeline.
 \end{itemize}
 
 \subsubsection{Figure generation}\label{figure-generation}
