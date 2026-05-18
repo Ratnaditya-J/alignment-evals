@@ -48,7 +48,7 @@ tests/                        # 275 tests covering the library + analysis
 
 Two reproduction paths:
 
-- **Judge-only** (~$10-$20, ~30 min wall time). Re-run only the VEA judge against released raw rollouts; the trace JSON is saved per rollout so the model-under-test does not need to be re-invoked. Recommended for verifying §5.2-§5.4 numbers.
+- **Judge-only** (~$10-$20, ~30 min wall time). Re-run only the VEA judge against the author-provided rollout bundle (the `runs/` tree is not committed to this repo because of cumulative size and is available on request); the trace JSON is saved per rollout so the model-under-test does not need to be re-invoked. Recommended for verifying §5.2-§5.4 numbers.
 - **Full** (~$500 in API fees). Re-run every model + judge call from scratch across the cross-protocol experiment (8 models × 4 conditions × n=2,000), the Goodfire open-reasoning trio (n=500), the opus-4.7 extension (n=300), the pre-registered qwen3 replication (n=200), and the judge passes over all of them.
 
 Each summary JSON records the seeds, judge model identifiers, and prompt-template hashes used in its production.

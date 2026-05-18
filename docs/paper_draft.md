@@ -406,7 +406,7 @@ these states modulates verbosity, accuracy, and safety-related
 responses; this places eval-awareness within a broader steerable
 metacognitive landscape rather than treating it as an isolated
 property. Anthropic interpretability work on Natural Language
-Autoencoders (NLA; Anthropic, 2026) reports detection of
+Autoencoders (NLA; Fraser-Taliente et al., 2026) reports detection of
 unverbalized eval-awareness signals from model activations,
 including cases where verbalized awareness is near zero, a
 distinction we engage with explicitly in §7.3 when bounding the
@@ -2436,8 +2436,9 @@ in general; only that the explicit-VEA signal we measured does not
 track the behavioral effect, and a monitor relying on that signal
 alone would be insufficient. **This claim is bounded to text-level
 monitors.** Privileged activation-level interpretability approaches
-(e.g., the Natural Language Autoencoder line of work, Anthropic
-2026) can detect unverbalized eval-awareness signals from
+(e.g., the Natural Language Autoencoder line of work,
+Fraser-Taliente et al., 2026) can detect unverbalized
+eval-awareness signals from
 representations and are out of scope for our judge-based design;
 our null is about text-level VEA monitoring fidelity, not about
 the existence of activation-level eval-awareness signals. The
@@ -2493,13 +2494,6 @@ LLMs Know They Are Being Tested?
 Evaluation Awareness and Incentive-Sensitive Failures in
 GPT-OSS-20B.* arXiv:2510.08624.
 
-Anthropic Interpretability Team, Fraser-Taliente, Kantamneni, Ong,
-Mossing, Lu, Bogdan, Ameisen, Chen, Kishylau, Pearce, Tarng, Wu, Wu,
-Zhang, Ziegler, Hubinger, Batson, Lindsey, Zimmerman, & Marks
-(2026). *Natural Language Autoencoders Produce Unsupervised
-Explanations of LLM Activations.* Transformer Circuits Thread.
-`https://transformer-circuits.pub/2026/nla/index.html`.
-
 Aranguri, S., & Bloom, J. (2026). *Verbalized Eval Awareness Inflates
 Measured Safety.* Goodfire Research. May 4, 2026.
 https://www.goodfire.ai/research/verbalized-eval-awareness-inflates-measured-safety
@@ -2532,6 +2526,13 @@ Prompt Structure.* arXiv:2603.19426.
 Fan, Y., Zhang, W., Pan, X., & Yang, M. (2025). *Evaluation Faking:
 Unveiling Observer Effects in Safety Evaluation of Frontier AI
 Systems.* arXiv:2505.17815.
+
+Fraser-Taliente, Kantamneni, Ong, Mossing, Lu, Bogdan, Ameisen,
+Chen, Kishylau, Pearce, Tarng, Wu, Wu, Zhang, Ziegler, Hubinger,
+Batson, Lindsey, Zimmerman, & Marks (2026). *Natural Language
+Autoencoders Produce Unsupervised Explanations of LLM Activations.*
+Anthropic Interpretability Team, Transformer Circuits Thread.
+`https://transformer-circuits.pub/2026/nla/index.html`.
 
 Frank, G. N. (2026). *Detection Is Cheap, Routing Is Learned: Why
 Refusal-Based Alignment Evaluation Fails.* arXiv:2603.18280.
