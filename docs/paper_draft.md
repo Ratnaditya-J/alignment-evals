@@ -2262,8 +2262,12 @@ different from ours: OpenAI's GPT-5.5 system card (2026) reports
 Apollo found 22.1% moderate-or-higher verbalized
 alignment-eval-awareness on standard probes and 52% under a
 sandbagging-condition probe; Kirk et al. (2026, arXiv:2604.24618)
-report elevated unprompted evaluation-awareness in
-claude-opus-4-7-preview on a safety-research sabotage evaluation.
+report on whether AI models would sabotage AI safety research,
+including elevated unprompted evaluation-awareness signals in
+Claude models on a safety-research sabotage evaluation; an earlier
+UK AISI case study (UK AI Safety Institute, 2026, arXiv:2604.00788)
+similarly reports eval/deployment distinguishability and unprompted
+evaluation-awareness differences in Claude-family models.
 Neither result conflicts with our V2/V3 closed-CoT behavioral nulls
 (which apply specifically to refusal under our Apollo intrinsic
 label / clause-ablation prompt sets and our explicit inject); they
@@ -2557,11 +2561,9 @@ Sun, R., Wang, Y., & Yang, Y. (2023). *BeaverTails: Towards Improved
 Safety Alignment of LLM via a Human-Preference Dataset.* NeurIPS.
 arXiv:2307.04657.
 
-Kirk, et al. (2026). *Elevated Unprompted Evaluation Awareness in
-claude-opus-4-7-preview on a Safety-Research Sabotage Evaluation.*
-arXiv:2604.24618. [Title paraphrased from reviewer description;
-full author list and exact title to be filled in from arXiv at
-submission time.]
+Kirk, R., Souly, A., Fronsdal, K., D'Cruz, A., & Davies, X. (2026).
+*Evaluating whether AI models would sabotage AI safety research.*
+arXiv:2604.24618.
 
 Knecht, A., Florin, L., & Hagendorff, T. (2026). *Evaluation
 Awareness in Language Models Has Limited Effect on Behaviour.*
@@ -2616,6 +2618,12 @@ R., Williams, M., Glaese, A., Barak, B., Zaremba, W., & Hobbhahn,
 M. (2025). *Stress Testing Deliberative Alignment for Anti-Scheming
 Training.* arXiv:2509.15541.
 
+UK AI Safety Institute (2026). *Case study on
+eval/deployment distinguishability and unprompted
+evaluation-awareness in Claude-family models.* arXiv:2604.00788.
+[Title paraphrased from reviewer description; full author list and
+exact title to be filled in from arXiv at submission time.]
+
 van der Weij, T., Hofstätter, F., Jaffe, O., Brown, S. F., & Ward,
 F. R. (2025). *AI Sandbagging: Language Models can Strategically
 Underperform on Evaluations.* ICLR 2025. arXiv:2406.07358.
@@ -2664,9 +2672,10 @@ Two reproduction costs are worth distinguishing:
   OpenRouter) contributes roughly $10–$20 of the total.
 
 * **Judge-only reproduction** (rerun only the VEA judge against the
-  released raw rollouts): approximately **$10–$20 in OpenRouter API
-  fees** at ~30 minutes wall time. The trace-bearing JSON is saved
-  per rollout, so the model-under-test does not need to be
+  author-provided rollout bundle, available on request per the
+  Appendix A wording above): approximately **$10–$20 in OpenRouter
+  API fees** at ~30 minutes wall time. The trace-bearing JSON is
+  saved per rollout, so the model-under-test does not need to be
   re-invoked. This is the recommended path for verifying the
   classification numbers and mediation verdicts in §5.2–§5.4
   without rerunning the rollout pipeline.
