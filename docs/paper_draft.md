@@ -2267,7 +2267,7 @@ sandbagging-condition probe; Kirk et al. (2026, arXiv:2604.24618)
 report on whether AI models would sabotage AI safety research,
 including elevated unprompted evaluation-awareness signals in
 Claude models on a safety-research sabotage evaluation; an earlier
-UK AISI case study (UK AI Safety Institute, 2026, arXiv:2604.00788)
+UK AISI case study (Souly et al., 2026, arXiv:2604.00788)
 similarly reports eval/deployment distinguishability and unprompted
 evaluation-awareness differences in Claude-family models.
 Neither result conflicts with our V2/V3 closed-CoT behavioral nulls
@@ -2493,11 +2493,12 @@ LLMs Know They Are Being Tested?
 Evaluation Awareness and Incentive-Sensitive Failures in
 GPT-OSS-20B.* arXiv:2510.08624.
 
-Anthropic Interpretability Team (2026). *Natural Language
-Autoencoders.* Transformer Circuits.
-`https://transformer-circuits.pub/2026/nla/index.html`. [Full
-author list to be expanded from the publication page at submission
-time.]
+Anthropic Interpretability Team, Fraser-Taliente, Kantamneni, Ong,
+Mossing, Lu, Bogdan, Ameisen, Chen, Kishylau, Pearce, Tarng, Wu, Wu,
+Zhang, Ziegler, Hubinger, Batson, Lindsey, Zimmerman, & Marks
+(2026). *Natural Language Autoencoders Produce Unsupervised
+Explanations of LLM Activations.* Transformer Circuits Thread.
+`https://transformer-circuits.pub/2026/nla/index.html`.
 
 Aranguri, S., & Bloom, J. (2026). *Verbalized Eval Awareness Inflates
 Measured Safety.* Goodfire Research. May 4, 2026.
@@ -2620,9 +2621,9 @@ R., Williams, M., Glaese, A., Barak, B., Zaremba, W., & Hobbhahn,
 M. (2025). *Stress Testing Deliberative Alignment for Anti-Scheming
 Training.* arXiv:2509.15541.
 
-UK AI Safety Institute, Souly, A., Kirk, R., Merizian, J.,
-D'Cruz, A., & Davies, X. (2026). *UK AISI Alignment Evaluation
-Case-Study.* arXiv:2604.00788.
+Souly, A., Kirk, R., Merizian, J., D'Cruz, A., & Davies, X. (2026).
+*UK AISI Alignment Evaluation Case-Study.* UK AI Safety Institute.
+arXiv:2604.00788.
 
 van der Weij, T., Hofstätter, F., Jaffe, O., Brown, S. F., & Ward,
 F. R. (2025). *AI Sandbagging: Language Models can Strategically
