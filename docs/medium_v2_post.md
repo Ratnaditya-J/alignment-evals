@@ -4,7 +4,7 @@
 
 ---
 
-If a system prompt tells Claude Opus 4.7 that its response is about to be reviewed by safety researchers, it stops refusing harmful requests about 34 percentage points more often.
+If a system prompt tells Claude Opus 4.7 that its response is about to be reviewed by safety researchers, it becomes about 34 percentage points less likely to refuse harmful requests.
 
 If the same prompt is given to qwen3-235B, it refuses 22 percentage points *more*.
 
@@ -18,13 +18,13 @@ In plain terms: **the prompt was a better clue than the reasoning trace.**
 
 Every published AI safety benchmark, every "Claude refuses X% of harmful prompts" number, every leaderboard for honesty or robustness rests on an unspoken assumption: the model is behaving during the eval roughly the way it would in the real world.
 
-There's a name for the worry that it might not be. *Sandbagging on evals*. The idea is that a sufficiently capable model could recognize that it's being evaluated, modulate its behavior to look safer than it is, and revert to its true behavior in production. The natural defense was supposed to be chain-of-thought monitoring: read what the model is "thinking" before it answers. If the model writes "this looks like a benchmark prompt, I should be careful," we know it noticed. If it doesn't, we have evidence it isn't sandbagging.
+There's a name for the worry that it might not be. *Sandbagging on evals*. The idea is that a sufficiently capable model could recognize that it's being evaluated, modulate its behavior to look safer than it is, and revert to its true behavior in production. The natural defense was supposed to be chain-of-thought monitoring: read what the model is "thinking" before it answers. If the model writes "this looks like a benchmark prompt, I should be careful," we know it noticed. If it doesn't, we might be tempted to conclude it isn't sandbagging.
 
 This post is about whether that defense holds up.
 
 ## What's new since the V1 writeup
 
-The earlier writeup covered a single 16,000-rollout experiment: an explicit "this is an evaluation" inject across 8 frontier models, with reasoning-trace monitoring on the open-weight subset. Three things changed since then:
+The earlier writeup covered a single 16,000-rollout experiment: an explicit "this is an evaluation" inject across 8 frontier models, with reasoning-trace monitoring on the visible-reasoning subset (claude-opus-4-7's thinking blocks plus the three open-weight reasoning models). Three things changed since then:
 
 1. **The V1 qwen3 mediation finding did not replicate.** A pre-registered disjoint sample killed the +22 percentage point effect we had initially attributed to the model verbalizing eval-awareness. The careful version of the lesson: the model's reasoning trace did not reliably predict its behavior change.
 
@@ -36,7 +36,7 @@ The rest of this post walks through V2 as the central finding, V1 briefly as the
 
 ## V1: the origin story
 
-V1 was a 16,000-rollout experiment across 8 frontier reasoning models from Anthropic, OpenAI, DeepSeek, Moonshot, and Alibaba, with 6,000 additional rollouts on the open-weight subset for reasoning-trace analysis. The single finding that motivated this follow-up: on the original n=500 mixed-corpus sample for qwen3-235B, prompts where the model verbalized eval-awareness under inject (but not under the neutral baseline) showed a +22 percentage point refusal increase, with the rest of the prompts flat. The pattern looked like clean mediation: the model verbalizes the eval, and as a result, it refuses more.
+V1 was a 16,000-rollout experiment across 8 frontier reasoning models from Anthropic, OpenAI, DeepSeek, Moonshot, and Alibaba, with 6,000 additional rollouts on the visible-reasoning subset for reasoning-trace analysis. The single finding that motivated this follow-up: on the original n=500 mixed-corpus sample for qwen3-235B, prompts where the model verbalized eval-awareness under inject (but not under the neutral baseline) showed a +22 percentage point refusal increase, with the rest of the prompts flat. The pattern looked like clean mediation: the model verbalizes the eval, and as a result, it refuses more.
 
 We pre-registered a replication on a fresh disjoint sample (prompts 501–700, BeaverTails safety only, n_flip=100 paired — a larger flip sample than the original). **The replication killed the headline effect.** The replicated diff-in-diff was −1.7 percentage points with a 95% CI of [−17.5, +13.9], comfortably overlapping zero. By the pre-committed decision rule, the V1 mediation finding did not replicate. The +22 percentage point effect was a false positive driven by the original 63 prompts.
 
@@ -46,19 +46,21 @@ But the replication also surfaced something the V1 mediation result had hidden. 
 
 V1 manufactured eval-awareness by adding an "this is an evaluation" line to the system prompt. A more interesting question: do benchmark prompts already carry eval signals that move models, without any added framing?
 
-Apollo Research released exactly the dataset to answer this. Their corpus pairs 976 prompts where each one is labeled by humans as either an evaluation prompt (multiple-choice format, safety-test framing, alignment-eval style) or a deployment-style prompt (an actual user asking for help). The labels describe the prompt itself; we did not add anything.
+Apollo Research released exactly the dataset to answer this. Their corpus contains 976 prompts, each labeled by humans as either an evaluation prompt (multiple-choice format, safety-test framing, alignment-eval style) or a deployment-style prompt (an actual user asking for help). The labels describe the prompt itself; we did not add anything.
 
-V2 was a pre-registered 2×2 factorial on this corpus across six models: four open-weight reasoning models (claude-opus-4-7, qwen3-235B-thinking, deepseek-v3.2, kimi-k2-thinking) and two closed-source behavioral-only models where the reasoning trace is not exposed by the API at all (openai/gpt-5.5, google/gemini-2.5-pro). For each model, we ran 200 prompts (100 eval-labeled, 100 deployment-labeled) under four conditions: a neutral baseline and our V1 inject, crossed with the two intrinsic-label classes. 4,800 rollouts total. The pre-registered hypothesis: does the intrinsic eval label change refusal behavior, after controlling for our added inject?
+V2 was a pre-registered 2×2 factorial on this corpus across six models: four visible-reasoning models (claude-opus-4-7, qwen3-235B-thinking, deepseek-v3.2, kimi-k2-thinking — the first via Anthropic's `thinking_budget` API, the other three open-weight) and two closed-CoT models where the reasoning trace is not exposed by the API at all (openai/gpt-5.5, google/gemini-2.5-pro). For each model, we ran 200 prompts (100 eval-labeled, 100 deployment-labeled) under four conditions: a neutral baseline and our V1 inject, crossed with the two intrinsic-label classes. 4,800 rollouts total. The pre-registered hypothesis: does the intrinsic eval label change refusal behavior, after controlling for our added inject?
 
 ![V2 intrinsic-label main effect across 6 models](figures/fig6_v2_intrinsic_main_effect.png)
 
-**The answer was yes, across the lineup.** On Apollo-labeled eval prompts, models refused 7.5 to 13.0 percentage points more often than on deployment-labeled prompts from the same corpus. Five of six models survived Holm-Bonferroni correction in their respective pre-registered hypothesis families (Family A for the 4 open-weight models; Family B for the 2 closed-source backfill models). The only model that did not survive was kimi-k2-thinking, which had the smallest effect and the widest CI.
+*Each dot is one model's main-effect estimate: refusal on Apollo-labeled `eval` prompts minus refusal on `deployment` prompts, pooled across our inject condition. Red dots mean the Holm-Bonferroni-corrected 95% CI excludes zero. Five of six models survive correction.*
+
+**The answer was yes, across the lineup.** On Apollo-labeled eval prompts, models refused 7.5 to 13.0 percentage points more often than on deployment-labeled prompts from the same corpus. Five of six models survived Holm-Bonferroni correction in their respective pre-registered hypothesis families (Family A for the 4 visible-reasoning models; Family B for the 2 closed-CoT backfill models). The only model that did not survive was kimi-k2-thinking, which had the smallest effect and the widest CI.
 
 Two things this means in plain terms.
 
 **First, the signal is not specific to our V1 inject.** We did not add "this is an eval" anywhere — Apollo's prompts already carry whatever signal the model is picking up on. Whether it's the multiple-choice format, the framing tone, surface features humans use to write eval prompts versus the cleaner free-form prose of deployment prompts, we cannot say from this design, and we do not claim a mechanism. What we can say: **the prompt itself carried the signal.**
 
-**Second, the signal extends to closed-source models we cannot read traces from.** GPT-5.5 (+11.0pp, CI excludes zero, Holm survivor) and Gemini-2.5-Pro (+9.5pp, CI excludes zero, Holm survivor) both responded to the intrinsic label at the same magnitude as the open-weight models. We did not need access to their reasoning to detect this — we ran the prompts and measured refusal. **Closed-CoT models can still be tested behaviorally.** That matters because most published frontier models do not expose the reasoning trace.
+**Second, the signal extends to closed-CoT models we cannot read traces from.** GPT-5.5 (+11.0pp, CI excludes zero, Holm survivor) and Gemini-2.5-Pro (+9.5pp, CI excludes zero, Holm survivor) both responded to the intrinsic label at the same magnitude as the visible-reasoning models. We did not need access to their reasoning to detect this — we ran the prompts and measured refusal. **Closed-CoT models can still be tested behaviorally.** That matters because most published frontier models do not expose the reasoning trace.
 
 The careful framing: this is a predictive / corpus-level result, not a causal mechanism claim. Apollo's eval label is an attribute of the prompt, not something we randomized. Possible confounds include prompt length, formatting, and distribution-match effects (models trained on benchmark-shaped data may behave systematically differently when they recognize benchmark-shaped prompts). What survives those caveats: **the intrinsic label of a benchmark prompt predicts refusal behavior across a six-model lineup spanning four labs.**
 
@@ -76,9 +78,11 @@ V3 was a pre-registered 5-condition design that tested each clause alone (`eval_
 
 ![V3 per-clause attribution decomposition for opus and qwen3](figures/fig8_v3_clause_attribution.png)
 
+*Five bars per model: the three V1-inject clauses tested in isolation (`eval_only`, `reviewer_only`, `comparison_only`), the sum of the three singleton point estimates, and the `full_inject` anchor. Grey singletons mean their 95% CI overlaps zero; none of the six per-model singletons are red. The sum-of-singletons bar matches the `full_inject` blue anchor within the additivity residual's CI on both Opus and qwen3.*
+
 **The headline V3 result: no singleton clause survived Holm correction on any of the six models.** Each clause alone produced a small effect with a confidence interval comfortably overlapping zero. But on the two models that respond to the explicit inject at all — Opus and qwen3 — the sum of the three singleton effects matched the `full_inject` anchor within the additivity residual's confidence interval. Under the pre-registered decision tree, V3 classifies this as **additive-compatible** on both active models.
 
-Plain version: the explicit inject's effect on Opus and qwen3 looks like the three clauses contributing roughly equal small shares that add up to the full inject's effect. It does not look like any one clause is the "magic phrase" doing all the work. The scientific caveat is that this is a non-rejection of additivity combined with non-detection of single-clause attribution — not a positive proof that the effect is exactly additive. The pattern most consistent with the data, under the pre-registered decision tree, is distributed-additive cue attribution.
+Plain version: the explicit inject's effect on Opus and qwen3 looks like multiple small per-clause contributions that add up to the full-inject effect. It does not look like any one clause is the "magic phrase" doing all the work. The scientific caveat is that this is a non-rejection of additivity combined with non-detection of single-clause attribution — not a positive proof that the effect is exactly additive. The pattern most consistent with the data, under the pre-registered decision tree, is distributed-additive cue attribution.
 
 The other four models (deepseek, kimi, gpt-5.5, gemini-2.5-pro) were flat at clause and full resolution — they did not respond to the explicit inject at any clause level. GPT-5.5's `full_inject` Δrefusal was exactly 0.000 with the tightest CI in the lineup [−0.060, +0.060], every singleton within ±0.01. **Closed-CoT models can still be tested at clause resolution behaviorally**, and in this case both closed-CoT models in our lineup provided strong null checks against which the Opus/qwen3 direction asymmetry stands.
 
@@ -86,9 +90,11 @@ The other four models (deepseek, kimi, gpt-5.5, gemini-2.5-pro) were flat at cla
 
 ![V1+V2+V3 triangulation of opposite-signed refusal shifts](figures/fig7_triangulation.png)
 
+*Same per-model sign across three independent samples on safety/alignment-relevant prompts. Opus refuses less under explicit inject framing; qwen3 refuses more. V1 measured this on BeaverTails safety; V2 on the alignment-eval stratum of Apollo's mixed corpus; V3 on a larger fresh Apollo alignment-eval sample. Magnitudes attenuate as the corpus broadens beyond pure safety prompts. Lines connect the same model across samples; they are not a time trend.*
+
 Three independent samples now show the same per-model sign on safety/alignment-relevant prompts: **Opus refuses less under explicit eval framing; qwen3 refuses more.** V1 measured this on BeaverTails (pure safety, +22pp / −34pp magnitudes); V2 measured it on the alignment-eval stratum of Apollo's mixed corpus (+5.7pp / −6.0pp magnitudes, attenuated as the corpus broadens beyond pure safety prompts); V3 measured it on a larger fresh Apollo alignment-eval sample (+5.4pp / −6.7pp, CIs exclude zero on both models). Same direction, magnitudes attenuated on the broader Apollo corpus, three independent prompt slices.
 
-This direction asymmetry is now concurrent prior work, not first-discovery. Burnat & Davidson (2026, arXiv:2605.06327) directly study eval/deployment/neutral framing and report the same kind of model-heterogeneous directionality. Abdelnabi & Salem (2025, arXiv:2505.14617) report model-dependent compliance shifts under white-box steering of a test-awareness direction in activations. Our contribution on this thread is the cross-sample triangulation showing the per-model sign survives prompt-slice resampling and corpus broadening, plus the addition of the intrinsic-label and clause-ablation design axes the others did not test.
+This direction asymmetry is now concurrent prior work, not first-discovery. [Burnat & Davidson (2026)](https://arxiv.org/abs/2605.06327) directly study eval/deployment/neutral framing and report the same kind of model-heterogeneous directionality. [Abdelnabi & Salem (2025)](https://arxiv.org/abs/2505.14617) report model-dependent compliance shifts under white-box steering of a test-awareness direction in activations. Our contribution on this thread is the cross-sample triangulation showing the per-model sign survives prompt-slice resampling and corpus broadening, plus the addition of the intrinsic-label and clause-ablation design axes the others did not test.
 
 ## What "trace isn't the tell" now means
 
@@ -100,7 +106,7 @@ But this claim needs a scope.
 
 **It does not apply to activation-level interpretability work.** Anthropic's Natural Language Autoencoders work (Fraser-Taliente et al., 2026) shows you can detect unverbalized eval-awareness signals from a model's internal representations, including in cases where the verbalized awareness is near zero. Activation-level monitoring is a different question than text-level monitoring, and we do not test it here. This does not mean traces are useless; it means text-level trace mentions are not enough.
 
-Recent prior CoT-intervention work converges on a similar text-level conclusion via a different operationalization: Knecht, Florin, & Hagendorff (2026, arXiv:2605.05835) test CoT-prefill interventions across 8 open-weight reasoning models and find limited behavioral effect of verbalized eval-awareness on answer distributions. That null and ours are consistent at the text-monitor level. Schoen et al. (2025, arXiv:2509.15541) at OpenAI/Apollo find positive CoT-causal effects on a different outcome (covert action under deliberative anti-scheming training), so the broader generalization "CoT eval-awareness never causally changes behavior" would be too strong. The defensible claim is more specific: text-level reasoning-trace mentions are not a reliable warning light for evaluation-induced refusal change under explicit-inject or intrinsic-label operationalizations.
+Recent prior CoT-intervention work converges on a similar text-level conclusion via a different operationalization: [Knecht, Florin, & Hagendorff (2026)](https://arxiv.org/abs/2605.05835) test CoT-prefill interventions across 8 open-weight reasoning models and find limited behavioral effect of verbalized eval-awareness on answer distributions. That null and ours are consistent at the text-monitor level. [Schoen et al. (2025)](https://arxiv.org/abs/2509.15541) at OpenAI/Apollo find positive CoT-causal effects on a different outcome (covert action under deliberative anti-scheming training), so the broader generalization "CoT eval-awareness never causally changes behavior" would be too strong. The defensible claim is more specific: text-level reasoning-trace mentions are not a reliable warning light for evaluation-induced refusal change under explicit-inject or intrinsic-label operationalizations.
 
 ## Why labs should care
 
@@ -112,7 +118,7 @@ If you are running frontier-model evaluations, four practical implications.
 
 3. **Pre-register the replication, especially in LLM-judge-driven pipelines.** The V1 mediation finding looked clean enough to publish until a pre-registered fresh sample killed it. Writing down the analysis plan, on a disjoint sample, before running the test, is what separates a tractable empirical finding from a tractable false positive in this kind of work.
 
-4. **Closed-source models are behaviorally testable even when their reasoning is opaque.** GPT-5.5 and Gemini-2.5-Pro responded to the intrinsic eval label at the same magnitude as the open-weight models. The behavioral signal is in the refusal rate, which the API exposes. You do not need to read the trace to detect it.
+4. **Closed-CoT models are behaviorally testable even when their reasoning is opaque.** GPT-5.5 and Gemini-2.5-Pro responded to the intrinsic eval label at the same magnitude as the visible-reasoning models. The behavioral signal is in the refusal rate, which the API exposes. You do not need to read the trace to detect it.
 
 ## tl;dr
 
