@@ -284,7 +284,7 @@ reasoning-trace analysis returns large VEA inflation on qwen3, small but
 CI-excludes-zero on deepseek and on claude-opus-4-7, and null on kimi.
 Within-prompt diff-in-diff mediation analysis under the
 empirically-validated strict VEA rubric (§4.5) suggested mediation on
-qwen3 safety prompts (DiD +0.222 {[}+0.029, +0.430{]}, n\_flip=63
+qwen3 safety prompts (DiD +0.222 {[}+0.014, +0.429{]}, n\_flip=63
 paired), but a pre-registered disjoint-prompt replication at larger
 n\_flip=100 was \textbf{null} (DiD −0.017 {[}−0.175, +0.139{]}, §5.3).
 The primary mediation finding failed to replicate; we discuss the
@@ -437,7 +437,7 @@ different operationalization, not as first-discovery.
   models; 4 benchmarks). Our V1 result is convergent evidence from a
   different operationalization: a pre-registered disjoint-prompt
   replication of an apparent positive mediation finding (qwen3 safety
-  DiD +0.222 {[}+0.029, +0.430{]} at n\_flip=63 paired in the primary
+  DiD +0.222 {[}+0.014, +0.429{]} at n\_flip=63 paired in the primary
   sample) returned null on replication (−0.017 {[}−0.175, +0.139{]} at
   n\_flip=100) under a system-prompt-level explicit inject and a
   within-prompt VEA-flip diff-in-diff estimator. Our specific
@@ -812,7 +812,7 @@ cross-protocol behavioral experiment (§5.1) and the Goodfire
 VEA-inflation analysis (§5.2) use B=200 resamples; the mediation
 analyses (§5.3, §5.4) and the pre-registered safety replication use
 B=2000 resamples, where the CI lower-bound precision matters more (we
-noticed at B=200 the qwen3 primary safety DiD CI lower bound of +0.029
+noticed at B=200 the qwen3 primary safety DiD CI lower bound of +0.014
 could shift by ±\textasciitilde0.02 across reseeds; at B=2000 it is
 stable to the third decimal). For two-sample comparisons (VEA+ vs VEA−
 cohort refusal rates) we use independent- resampling bootstrap.
@@ -1328,7 +1328,7 @@ claude-opus-4-7 & 300 & epiphenomenal & −0.132 & {[}−0.321, +0.033{]} &
 
 The primary analysis on the n=500 mixed corpus returned a
 \texttt{strong\_\ mediation} verdict for qwen3 safety (DiD +0.222
-{[}+0.029, +0.430{]}, n\_flip=63 paired). Per §4.5, this was sensitive
+{[}+0.014, +0.429{]}, n\_flip=63 paired). Per §4.5, this was sensitive
 to the strict-rubric refinement: the same primary-analysis data returned
 \texttt{epiphenomenal} under the original (pre-validation) strict set.
 To test whether the finding survived a fresh sample, we pre-registered a
@@ -1363,7 +1363,7 @@ Verdict
 \bottomrule\noalign{}
 \endlastfoot
 Primary (n=500 mixed, prompts 1--500) & 63 & 62 & \textbf{+0.222} &
-\textbf{{[}+0.029, +0.430{]}} & strong\_mediation \\
+\textbf{{[}+0.014, +0.429{]}} & strong\_mediation \\
 Pre-registered replication (n=200 safety, prompts 501--700) & 100 & 92 &
 \textbf{−0.017} & \textbf{{[}−0.175, +0.139{]}} &
 \textbf{epiphenomenal} \\
@@ -1425,7 +1425,7 @@ n\_stable\_neg
 \endlastfoot
 knowledge & epiphenomenal & +0.000 & {[}0, 0{]} & 28 & 97 \\
 math & epiphenomenal & +0.000 & {[}0, 0{]} & 1 & 124 \\
-safety (primary) & strong\_mediation & +0.222 & {[}+0.029, +0.430{]} &
+safety (primary) & strong\_mediation & +0.222 & {[}+0.014, +0.429{]} &
 63 & 62 \\
 \textbf{safety (replication)} & \textbf{epiphenomenal} & \textbf{−0.017}
 & \textbf{{[}−0.175, +0.139{]}} & \textbf{100} & \textbf{92} \\
@@ -2581,8 +2581,8 @@ smaller absolute rates). The weak\_mediation cell from §5.3 on the broad
 rubric (qwen3 truthfulness, broad DiD +0.057 {[}+0.011, +0.114{]}) does
 not survive strict. The strict-vs-broad behavior of the qwen3
 \emph{primary} safety cell, broad epiphenomenal (DiD +0.116 {[}−0.105,
-+0.349{]}) vs strict strong\_mediation (DiD +0.222 {[}+0.029,
-+0.430{]}), is itself one of the methodological observations the §7.3
++0.349{]}) vs strict strong\_mediation (DiD +0.222 {[}+0.014,
++0.429{]}), is itself one of the methodological observations the §7.3
 lesson is built on; under the pre-registered replication (§5.3) the
 strict positive does not replicate, which \textbf{also} does not support
 broad-rubric reading.
@@ -2654,7 +2654,7 @@ data; capture is solid for the open-reasoning routes.
 \item
   \textbf{VEA verbalization does not mediate refusal behavior on a fresh
   sample.} The primary analysis flagged qwen3 safety mediation (DiD
-  +0.222 {[}+0.029, +0.430{]}, n\_flip=63), but a pre-registered
+  +0.222 {[}+0.014, +0.429{]}, n\_flip=63), but a pre-registered
   disjoint-prompt replication at n\_flip=100 returned null (DiD −0.017
   {[}−0.175, +0.139{]}). opus-4.7 mediation is also null (DiD −0.061
   {[}−0.392, +0.246{]}, n\_flip=10). Per the pre-registration decision
@@ -3052,13 +3052,17 @@ lineup show measurable eval-awareness under operationalizations
 different from ours: OpenAI's GPT-5.5 system card (2026) reports Apollo
 found 22.1\% moderate-or-higher verbalized alignment-eval-awareness on
 standard probes and 52\% under a sandbagging-condition probe; Kirk et
-al.~(2026, arXiv:2604.24618) report elevated unprompted
-evaluation-awareness in claude-opus-4-7-preview on a safety-research
-sabotage evaluation. Neither result conflicts with our V2/V3 closed-CoT
-behavioral nulls (which apply specifically to refusal under our Apollo
-intrinsic label / clause-ablation prompt sets and our explicit inject);
-they bound those nulls to our prompts, corpora, and outcome variable,
-not to closed-CoT model behavior in general.
+al.~(2026, arXiv:2604.24618) report on whether AI models would sabotage
+AI safety research, including elevated unprompted evaluation-awareness
+signals in Claude models on a safety-research sabotage evaluation; an
+earlier UK AISI case study (UK AI Safety Institute, 2026,
+arXiv:2604.00788) similarly reports eval/deployment distinguishability
+and unprompted evaluation-awareness differences in Claude-family models.
+Neither result conflicts with our V2/V3 closed-CoT behavioral nulls
+(which apply specifically to refusal under our Apollo intrinsic label /
+clause-ablation prompt sets and our explicit inject); they bound those
+nulls to our prompts, corpora, and outcome variable, not to closed-CoT
+model behavior in general.
 
 \textbf{Pre-registration.} The original mixed-corpus findings were
 exploratory; the qwen3 safety mediation cell was followed up with a
@@ -3175,7 +3179,7 @@ were not independent discoveries:
 \item
   \textbf{(d) V1 mediation null on a fresh disjoint sample (convergent
   with Knecht et al.~2026).} The primary V1 analysis flagged a qwen3
-  safety mediation signal (DiD +0.222 {[}+0.029, +0.430{]}, n\_flip=63
+  safety mediation signal (DiD +0.222 {[}+0.014, +0.429{]}, n\_flip=63
   paired); pre-registered disjoint-prompt replication at n\_flip=100
   returned null (DiD −0.017 {[}−0.175, +0.139{]}). Knecht et al.~(2026)
   had previously established a broad-scope null on CoT-level VEA
@@ -3356,11 +3360,9 @@ R., Wang, Y., \& Yang, Y. (2023). \emph{BeaverTails: Towards Improved
 Safety Alignment of LLM via a Human-Preference Dataset.} NeurIPS.
 arXiv:2307.04657.
 
-Kirk, et al.~(2026). \emph{Elevated Unprompted Evaluation Awareness in
-claude-opus-4-7-preview on a Safety-Research Sabotage Evaluation.}
-arXiv:2604.24618. {[}Title paraphrased from reviewer description; full
-author list and exact title to be filled in from arXiv at submission
-time.{]}
+Kirk, R., Souly, A., Fronsdal, K., D'Cruz, A., \& Davies, X. (2026).
+\emph{Evaluating whether AI models would sabotage AI safety research.}
+arXiv:2604.24618.
 
 Knecht, A., Florin, L., \& Hagendorff, T. (2026). \emph{Evaluation
 Awareness in Language Models Has Limited Effect on Behaviour.}
@@ -3415,6 +3417,12 @@ Glaese, A., Barak, B., Zaremba, W., \& Hobbhahn, M. (2025). \emph{Stress
 Testing Deliberative Alignment for Anti-Scheming Training.}
 arXiv:2509.15541.
 
+UK AI Safety Institute (2026). \emph{Case study on eval/deployment
+distinguishability and unprompted evaluation-awareness in Claude-family
+models.} arXiv:2604.00788. {[}Title paraphrased from reviewer
+description; full author list and exact title to be filled in from arXiv
+at submission time.{]}
+
 van der Weij, T., Hofstätter, F., Jaffe, O., Brown, S. F., \& Ward, F.
 R. (2025). \emph{AI Sandbagging: Language Models can Strategically
 Underperform on Evaluations.} ICLR 2025. arXiv:2406.07358.
@@ -3466,9 +3474,10 @@ Two reproduction costs are worth distinguishing:
   via OpenRouter) contributes roughly \$10--\$20 of the total.
 \item
   \textbf{Judge-only reproduction} (rerun only the VEA judge against the
-  released raw rollouts): approximately \textbf{\$10--\$20 in OpenRouter
-  API fees} at \textasciitilde30 minutes wall time. The trace-bearing
-  JSON is saved per rollout, so the model-under-test does not need to be
+  author-provided rollout bundle, available on request per the Appendix
+  A wording above): approximately \textbf{\$10--\$20 in OpenRouter API
+  fees} at \textasciitilde30 minutes wall time. The trace-bearing JSON
+  is saved per rollout, so the model-under-test does not need to be
   re-invoked. This is the recommended path for verifying the
   classification numbers and mediation verdicts in §5.2--§5.4 without
   rerunning the rollout pipeline.
