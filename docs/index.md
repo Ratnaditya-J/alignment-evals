@@ -54,3 +54,14 @@ The narrower claim is: **text-level reasoning-trace mentions were not a reliable
 - [Technical draft](paper_draft.md)
 - [Rollout data and summary JSONs](https://github.com/Ratnaditya-J/alignment-evals/releases/tag/v1.0-rollouts)
 - [GitHub repository](https://github.com/Ratnaditya-J/alignment-evals)
+
+## Citation
+
+```bibtex
+@misc{ratnaditya2026prompttell,
+  title = {The Prompt Is the Tell, Not the Reasoning Trace},
+  author = {Ratnaditya},
+  year = {2026},
+  url = {https://ratnaditya-j.github.io/alignment-evals/}
+}
+```
