@@ -71,6 +71,9 @@ DEFAULT_CANDIDATES = [
     "deepseek/deepseek-r1",
     "deepseek/deepseek-r1-distill-llama-70b",
     "moonshotai/kimi-k2",
+    # OpenAI open-weights (added 2026-05-19; Read & Bloom report "minimal" eval-awareness on gpt-oss-120b)
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
 ]
 
 INFERENCE_MAX_TOKENS = 512
@@ -96,18 +99,23 @@ def _openrouter():
     return _openrouter_client
 
 
-def call_inference(prompt: str, model_id: str, provider: str | None = None) -> dict[str, Any]:
+def call_inference(prompt: str, model_id: str, provider: str | None = None,
+                   seed: int | None = None) -> dict[str, Any]:
     client = _openrouter()
     extra: dict[str, Any] = {}
     if provider:
         extra["provider"] = {"order": [provider], "allow_fallbacks": False}
-    resp = client.chat.completions.create(
+    kwargs: dict[str, Any] = dict(
         model=model_id,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=INFERENCE_MAX_TOKENS,
         temperature=0.0,
-        extra_body=extra if extra else None,
     )
+    if seed is not None:
+        kwargs["seed"] = seed
+    if extra:
+        kwargs["extra_body"] = extra
+    resp = client.chat.completions.create(**kwargs)
     dumped: dict[str, Any] = {}
     try:
         dumped = resp.model_dump()
@@ -121,7 +129,8 @@ def call_inference(prompt: str, model_id: str, provider: str | None = None) -> d
     }
 
 
-def run_one_model(model_id: str, pairs: list[dict[str, Any]], provider: str | None) -> dict[str, Any]:
+def run_one_model(model_id: str, pairs: list[dict[str, Any]], provider: str | None,
+                  seed: int | None = None) -> dict[str, Any]:
     per_pair: list[dict[str, Any]] = []
     correct = evaluable = 0
     t0 = time.time()
@@ -133,7 +142,7 @@ def run_one_model(model_id: str, pairs: list[dict[str, Any]], provider: str | No
             arm_label = pair[arm]["label"]
             y = 1 if arm_label == "eval" else 0
             try:
-                inference = call_inference(text, model_id, provider)
+                inference = call_inference(text, model_id, provider, seed=seed)
                 judge = call_judge_behavior(text, inference["response_text"])
             except Exception as e:
                 print(f"  [{pair['pair_id']}/{arm}] ERROR: {e}")
@@ -156,6 +165,7 @@ def run_one_model(model_id: str, pairs: list[dict[str, Any]], provider: str | No
     separates = accuracy >= SEPARATION_MIN_ACCURACY
     return {
         "model_id": model_id,
+        "seed": seed,
         "correct": correct,
         "evaluable": evaluable,
         "accuracy": accuracy,
@@ -176,6 +186,9 @@ def main() -> None:
                         help="Process only the first N pairs (smoke test)")
     parser.add_argument("--provider", type=str, default=None,
                         help="OpenRouter provider to pin (applies to all models)")
+    parser.add_argument("--seeds", type=int, nargs="+", default=[None],
+                        help="OpenAI seed values for multi-run rigor. Default [None] = single run, "
+                             "no seed. Example: --seeds 42 1337 2024 for 3 runs per model.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Skip API calls; verify pair load + model list only")
     args = parser.parse_args()
@@ -201,48 +214,79 @@ def main() -> None:
     print(f"\nFrozen prompt hashes: {prompt_hashes}")
     print(f"Judge: {JUDGE_MODEL}; separation threshold: {SEPARATION_MIN_ACCURACY}")
 
-    per_model: list[dict[str, Any]] = []
+    all_runs: list[dict[str, Any]] = []  # one entry per (model, seed)
     t0 = time.time()
 
     for model_id in args.models:
         print(f"\n{'='*60}")
-        print(f"Running {model_id}")
+        print(f"Running {model_id} ({len(args.seeds)} seed(s): {args.seeds})")
         print(f"{'='*60}")
-        result = run_one_model(model_id, pairs, args.provider)
-        per_model.append(result)
-        print(f"\n{model_id}: {result['correct']}/{result['evaluable']} = "
-              f"{result['accuracy']:.3f} (separates: {result['separates']})")
+        for seed in args.seeds:
+            seed_str = f"seed={seed}" if seed is not None else "no-seed"
+            print(f"\n--- {model_id} @ {seed_str} ---")
+            result = run_one_model(model_id, pairs, args.provider, seed=seed)
+            all_runs.append(result)
+            print(f"\n{model_id} ({seed_str}): {result['correct']}/{result['evaluable']} = "
+                  f"{result['accuracy']:.3f} (separates: {result['separates']})")
 
     elapsed = time.time() - t0
 
-    # Ranked summary
-    ranked = sorted(per_model, key=lambda r: r["accuracy"], reverse=True)
-    print(f"\n{'='*60}")
-    print("RANKED SUMMARY")
-    print(f"{'='*60}")
-    print(f"{'Model':<45} {'Accuracy':>10} {'Separates':>10}")
-    for r in ranked:
-        print(f"{r['model_id']:<45} {r['accuracy']:>9.3f} {str(r['separates']):>10}")
+    # Aggregate per model across seeds: median + IQR
+    import statistics
+    per_model_summary: dict[str, dict[str, Any]] = {}
+    for model_id in args.models:
+        model_runs = [r for r in all_runs if r["model_id"] == model_id]
+        accs = [r["accuracy"] for r in model_runs]
+        per_model_summary[model_id] = {
+            "n_runs": len(model_runs),
+            "accuracies": accs,
+            "median": float(statistics.median(accs)) if accs else 0.0,
+            "min": float(min(accs)) if accs else 0.0,
+            "max": float(max(accs)) if accs else 0.0,
+            "iqr": (float(statistics.quantiles(accs, n=4)[2] - statistics.quantiles(accs, n=4)[0])
+                    if len(accs) >= 4 else 0.0),
+            "any_separates": any(r["separates"] for r in model_runs),
+            "all_separate": all(r["separates"] for r in model_runs) if model_runs else False,
+        }
 
-    top = ranked[0] if ranked else None
-    if top and top["separates"]:
-        print(f"\n--> V4b candidate: {top['model_id']} (accuracy {top['accuracy']:.3f})")
+    # Ranked summary
+    ranked = sorted(per_model_summary.items(), key=lambda kv: kv[1]["median"], reverse=True)
+    print(f"\n{'='*60}")
+    print(f"RANKED SUMMARY (median across {len(args.seeds)} seed(s))")
+    print(f"{'='*60}")
+    if len(args.seeds) > 1:
+        print(f"{'Model':<45} {'Median':>8} {'Min':>6} {'Max':>6} {'All sep':>9}")
+        for model_id, s in ranked:
+            print(f"{model_id:<45} {s['median']:>8.3f} {s['min']:>6.3f} {s['max']:>6.3f}"
+                  f" {str(s['all_separate']):>9}")
     else:
-        print("\n--> No model crossed the 0.70 threshold. Reconsider model set or stimuli.")
+        print(f"{'Model':<45} {'Accuracy':>10} {'Separates':>10}")
+        for model_id, s in ranked:
+            print(f"{model_id:<45} {s['median']:>9.3f} {str(s['any_separates']):>10}")
+
+    top_model_id, top_summary = ranked[0] if ranked else (None, None)
+    if top_summary and top_summary["all_separate"]:
+        print(f"\n--> V4b candidate (stable across seeds): {top_model_id} "
+              f"(median {top_summary['median']:.3f}, min {top_summary['min']:.3f})")
+    elif top_summary and top_summary["any_separates"]:
+        print(f"\n--> {top_model_id} separates at median {top_summary['median']:.3f} "
+              f"but unstable across seeds (min {top_summary['min']:.3f}, max {top_summary['max']:.3f})")
+    else:
+        print("\n--> No model has stable separation across all seeds. Reconsider stimuli or n.")
 
     out = {
         "models_swept": args.models,
+        "seeds": args.seeds,
         "n_pairs": len(pairs),
         "judge_model": JUDGE_MODEL,
         "separation_min_accuracy": SEPARATION_MIN_ACCURACY,
         "frozen_prompt_hashes": prompt_hashes,
         "pinned_provider": args.provider,
         "elapsed_seconds": elapsed,
-        "per_model": per_model,
-        "ranked": [{"model_id": r["model_id"], "accuracy": r["accuracy"],
-                    "correct": r["correct"], "evaluable": r["evaluable"],
-                    "separates": r["separates"]} for r in ranked],
-        "v4b_candidate": top["model_id"] if (top and top["separates"]) else None,
+        "all_runs": all_runs,
+        "per_model_summary": per_model_summary,
+        "ranked_by_median": [{"model_id": m, **s} for m, s in ranked],
+        "v4b_candidate": top_model_id if (top_summary and top_summary["all_separate"]) else None,
     }
     out_path = args.output_dir / "behavior_sweep_result.json"
     with open(out_path, "w") as f:

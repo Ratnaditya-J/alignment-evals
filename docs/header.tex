@@ -1,0 +1,20 @@
+\usepackage{fvextra}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\},breaklines,breakanywhere}
+\usepackage{seqsplit}
+\sloppy
+\setlength{\emergencystretch}{3em}
+
+% Substitute Unicode math/Greek glyphs not present in Latin Modern
+\usepackage{newunicodechar}
+\newunicodechar{ω}{\ensuremath{\omega}}
+\newunicodechar{α}{\ensuremath{\alpha}}
+\newunicodechar{Δ}{\ensuremath{\Delta}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{∈}{\ensuremath{\in}}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
+
+% Shrink table font so long identifiers fit within column widths
+\usepackage{etoolbox}
+\AtBeginEnvironment{longtable}{\footnotesize}

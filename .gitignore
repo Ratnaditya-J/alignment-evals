@@ -123,6 +123,22 @@ site/
 
 # Local agent-config files (not committed to repo)
 AGENTS.md
+.claude/
 
-# Local agent-config files (not committed to repo)
-AGENTS.md
+# LaTeX build artifacts
+*.aux
+
+# SSH keys (never commit)
+runpod-key*
+id_ed25519*
+id_rsa*
+*.pem
+
+v4/runs/qwen3_stage2/*.npz
+*.npz
+
+v4/runs/qwen3_stage2/*.npz
+*.npz
+
+v4/runs/qwen3_stage2/*.npz
+*.npz
