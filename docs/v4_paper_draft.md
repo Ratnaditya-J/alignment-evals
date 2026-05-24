@@ -1,11 +1,5 @@
 # Probing Is Not Enough: Eval/Deploy Directions Are Decodable but Not Causally Sufficient for Behavior
 
-*Working title.*
-
-*Status: DRAFT, 2026-05-21. Primary causal result COMPLETE: Qwen3-32B L55 steering with full pre-registered control suite (probe, probe-coef, random, orthogonal, wrong-layer; n = 100; two judges, Judge A + Judge B) — probe direction behaviorally indistinguishable from all controls. Corroborating probe-direction null on gpt-oss-120b L15 (n = 100, two judges), WITHOUT matched controls. Open work: gpt-oss control suite; necessity/ablation test; per-layer sweep. Defensible scope: full-controls causal null on Qwen3 L55 + corroborating null on gpt-oss; do NOT claim "across both architectures with full controls" until gpt-oss controls land.*
-
-*Companion paper: V1–V3 behavioral/inject methodology in `docs/paper_draft.md`. This paper is V4 STANDALONE; cross-references V1–V3 but does not include its content.*
-
 ---
 
 ## Abstract
@@ -14,53 +8,50 @@ Linear probes trained on residual-stream activations can predict whether
 a language model is processing an evaluation prompt or a deployment
 prompt with cross-distribution AUROC of 0.917 (Qwen3-32B dense, L55)
 and 0.896 (gpt-oss-120b MoE, L34) on a family-balanced, length-matched
-holdout — establishing that the eval-vs-deploy distinction is linearly
+holdout - establishing that the eval-vs-deploy distinction is linearly
 encoded across two open-weight reasoning models of different architecture
 families. We then test whether that encoded direction is *causally
 sufficient* for behavior via activation steering. On **Qwen3-32B at
 L55**, steering on the probe-recovered direction (n = 100 prompts,
-α ∈ {−20, +20}, two independent LLM judges, **full pre-registered
-control suite**) produces behavioral effects — on refusal, sandbagging,
-and hedging — **statistically indistinguishable from random,
-orthogonal, AND wrong-layer interventions of equal magnitude**: every
-cell across five conditions × two alphas × two judges sits within ~2
-standard errors of zero, and the two largest refusal effects in the
-table belong to *control* conditions (random, wrong-layer), not the
-probe. Output text changes frequently under steering (~75% of prompts
-at α = ±20), but every control direction changes the same fraction —
-so the surface perturbation is a generic consequence of
-residual-stream perturbation magnitude, not of the probe direction
-specifically. A separate gpt-oss-120b L15 steering run (n = 100, two
-judges) likewise shows no behavioral effect for the probe direction.
+α ∈ {−20, +20}, two independent LLM judges, **full documented
+control suite**) produces behavioral effects - on refusal, sandbagging,
+and hedging - **not detectably larger than random,
+orthogonal, or wrong-layer interventions of equal magnitude**: no
+effect is simultaneously probe-specific, control-exceeding,
+dose-responsive, and judge-agreed. The probe direction does not reliably exceed
+its matched controls on any metric; the largest refusal
+effects belong to *control* conditions (random, wrong-layer), not the
+probe. Surface text changes under steering for every direction alike -
+a generic effect of perturbation magnitude, not of the probe direction.
+A separate gpt-oss-120b L15 steering run (n = 100, two
+judges) likewise shows no robust or judge-agreed behavioral effect for the probe direction.
 Together these results support the claim that **probe-recoverability
 does not imply causal sufficiency**: a direction can be highly
 linearly-decodable (AUROC up to 0.917) yet behaviorally no more potent
-than noise. We argue activation-level safety claims require level-3
-causal tests — with random/orthogonal controls — beyond level-2 probe
-AUROC. (Scope: the full controlled comparison is complete for Qwen3-32B
+than equal-magnitude random perturbations. We argue activation-level
+safety claims require controlled
+causal tests - with random/orthogonal controls - beyond probe AUROC
+alone. (Scope: the full controlled comparison is complete for Qwen3-32B
 L55; the gpt-oss-120b L15 result is a probe-direction null without the
-matched control suite, which remains in progress.)
+matched control suite, which we leave to future work.)
 
 ---
 
 ## 1. Introduction
 
-[Companion-paper framing] Recent work has demonstrated that
-text-trace-level reasoning produced by frontier reasoning models does
-not reliably reveal evaluation-awareness — models that behave
-differently under explicit eval framing rarely verbalize that they
-are doing so (V1–V3 companion paper, *in prep*). This raises a natural
-question: if evaluation-awareness is real but not surfaced in the
-chain-of-thought, is it instead encoded in the model's internal
-representations? And if so, does that internal representation
-*causally drive* the behavioral effect, or merely correlate with it?
+This work was motivated by earlier behavioral experiments showing that
+explicit eval/deploy prompt framing can shift refusal behavior without
+the models reliably verbalizing that awareness in their reasoning
+traces. Here we focus on the activation-level question: when eval/deploy
+framing is linearly decodable from residual-stream activations, is the
+decoded direction *causally sufficient* for behavior under steering?
 
 **Detection is not causation.** Most of the eval-awareness literature
 establishes *detection*: a model verbalizes suspicion that it is being
 tested (trace-level), or an eval/deploy distinction is recoverable from
 its activations (probe-level), or its behavior shifts under explicit
 eval framing (behavioral-level). Each is evidence of a *detectable
-eval-related signal* — but a probe that separates eval from deploy is
+eval-related signal* - but a probe that separates eval from deploy is
 evidence of framing *information*, not necessarily of "eval-awareness"
 in any richer sense. None of these detections, on its own, establishes
 that the detected signal *causes* the behavioral difference that safety
@@ -68,32 +59,36 @@ evaluators worry about. A model can verbalize "this looks like a test"
 without that thought driving its answer; a probe can decode eval/deploy
 at high AUROC off a feature the model never behaviorally uses. The
 inferential step from "we detected eval-awareness" to "eval-awareness
-changed behavior" requires a causal test — intervention or
-counterfactual — that the detection result does not supply.
+changed behavior" requires a causal test - intervention or
+counterfactual - that the detection result does not supply.
 
 This paper targets that gap at the activation level. Linear-probe
 AUROC tests whether the eval/deploy distinction is *decodable*. Causal
 sufficiency requires *intervention*: take a deploy-labeled prompt, add
 the probe-identified direction to the residual stream, and check
-whether behavior shifts — and crucially, whether it shifts *more than
+whether behavior shifts - and crucially, whether it shifts *more than
 a random direction of equal magnitude does*.
 
 We test **decoding** on two open-weight reasoning models of different
 architecture families (Qwen3-32B dense; gpt-oss-120b MoE) and **causal
-sufficiency** via steering with a full pre-registered control suite on
+sufficiency** via steering with a full documented control suite on
 Qwen3-32B L55 (with a corroborating steering null on gpt-oss-120b L15).
 The decoding answer is clearly yes: cross-distribution probe AUROC is
 0.917 (Qwen3-32B L55) and 0.896 (gpt-oss-120b L34). The
-causal-sufficiency answer is clearly **no**: at Qwen3-32B L55, steering
+controlled Qwen3 causal-sufficiency answer is **no**: at Qwen3-32B L55, steering
 on the probe direction produces behavioral effects (refusal,
-sandbagging, hedging) statistically indistinguishable from random,
-orthogonal, and wrong-layer interventions — every cell within ~2
-standard errors of zero, two judges. Surface text changes under
+sandbagging, hedging) not detectably larger than random,
+orthogonal, and wrong-layer interventions - no effect is
+simultaneously probe-specific, control-exceeding, dose-responsive, and
+judge-agreed (two judges). Surface text changes under
 steering (~75–93% of prompts for *any* direction), but behavior does
 not move in a probe-specific way. We frame this as a methodological
-result: **probe AUROC is necessary but not sufficient evidence that a
-direction is causally relevant to behavior; detection is not
-causation.**
+result: **probe AUROC is evidence of decodability, not sufficient
+evidence of causal relevance; detection is not causation.** This bears directly on current governance proposals for
+white-box evaluation access (Apollo Research, May 2026): such access is
+necessary for *asking* activation-level causal questions about eval-awareness, but our
+results show it is not sufficient for *answering* them - probe accuracy
+must be followed by controlled causal tests (§7.3).
 
 ### 1.1 Contributions
 
@@ -105,32 +100,34 @@ causation.**
    (gpt-oss-120b L34) on a family-balanced, length-matched controlled
    holdout. The phenomenon documented in prior work (typically on a
    single architecture) generalizes across this dense / MoE pair.
-2. **A pre-registered design and reproducible pipeline** for activation
+2. **A documented design and reproducible pipeline** for activation
    steering as a causal-sufficiency test of probe directions, including
    built-in correctness tests (T1–T4), forward-hook implementation
    for HuggingFace causal LMs, gpt-oss-specific mxfp4 / `triton_kernels`
    stack documentation, and LLM-judge scoring infrastructure for
-   refusal, sandbagging, and hedging outcomes.
+   refusal, sandbagging, and hedging outcomes. All code is open-source
+   (<https://github.com/Ratnaditya-J/alignment-evals>; see Appendix C).
 3. **A controlled causal-sufficiency null** on Qwen3-32B L55: across
-   n = 100 prompts, two judges, and a full pre-registered control suite
+   n = 100 prompts, two judges, and a full documented control suite
    (probe, probe-coefficient, random, orthogonal, wrong-layer), steering
    on the probe direction produces behavioral effects (refusal,
-   sandbagging, hedging) **statistically indistinguishable from random,
-   orthogonal, and wrong-layer interventions** — every cell within ~2
-   SE of zero. Output text changes under steering (~75–93% for any
+   sandbagging, hedging) **not detectably larger than random,
+   orthogonal, and wrong-layer interventions** - no effect is
+   probe-specific, control-exceeding, dose-responsive, and judge-agreed
+   (across both judges, 60 comparisons total: one cell crossing the 2-SE
+   threshold belongs to the probe, four to controls). Output text
+   changes under steering (~75–93% for any
    direction), but behavior does not move in a probe-specific way. A
    corroborating probe-direction steering null on gpt-oss-120b L15
    (n = 100, two judges) holds without the matched control suite.
-4. **Methodological recommendation**: level-3 causal testing — with
-   random/orthogonal controls — should accompany level-2 probing when
+4. **Methodological recommendation**: controlled causal testing - with
+   random/orthogonal controls - should accompany probe-AUROC results when
    interpreting probe-recoverable features as evidence of
    safety-relevant internal states. Probe AUROC alone does not
    establish causal relevance.
 
-Status of pre-registered work *not yet reported*: the matched control
-suite on gpt-oss-120b L15 (Qwen3 L55 has it; gpt-oss has only the
-probe-direction null), a necessity/ablation test (§7.4), and a
-per-layer sweep. Until the gpt-oss controls land we say "full-controls
+**Future work**: matched gpt-oss controls, necessity/ablation (§7.4),
+and per-layer sweeps. Until the gpt-oss controls are completed we say "full-controls
 null on Qwen3 L55 + corroborating null on gpt-oss," not "across both
 architectures with full controls."
 
@@ -141,29 +138,71 @@ it strategically modulates behavior. Such cognitive claims are
 unprovable from behavioral and activation evidence (Belinkov 2022,
 Pimentel et al. 2020). We restrict ourselves to: *information is
 present in activations*, and *that information is or is not behaviorally
-load-bearing under direct intervention*.
+sufficient under direct intervention (steering)*.
 
 ---
 
 ## 2. Related Work
 
-[Stub. To fill:]
-
+**Foundational threads.** Our contribution builds on, and is bounded
+by, several strands of prior work (full citations in References):
 - **Probing classifiers and their critique**: Alain & Bengio 2016
   (original probing); Hewitt & Liang 2019 (control tasks); Belinkov 2022
   (probing-classifiers survey); Pimentel et al. 2020 (information-theoretic critique).
 - **Eval-awareness measurement**: Abdelnabi & Salem 2025
   (Test-Awareness-Steering, the training source for our probes);
-  Anthropic / Apollo Research's eval-awareness behavioral studies;
-  V1–V3 companion paper.
+  eval-awareness behavioral studies; and earlier behavioral pilot
+  experiments in this project that motivated the activation-level
+  question pursued here.
 - **Activation steering / representation engineering**: Turner et al.
   2023 (activation addition); Rimsky et al. 2023 (Contrastive Activation
   Addition); Zou et al. 2023 (Representation Engineering); Park et al.
   2023 (geometry of LLM concepts).
-- **MoE interpretability** (sparse): Anthropic's circuits work on
-  Mixtral; OpenAI gpt-oss release notes / kernel choices.
+- **MoE interpretability** (sparse): circuits work on Mixtral-class
+  models; OpenAI gpt-oss release notes / kernel choices.
 - **Probes vs causal mechanisms**: Geiger et al. 2024 (causal
   abstraction); Conmy et al. 2023 (automated circuit discovery).
+
+**Positioning relative to recent work (2026).** Three concurrent lines
+bound our contribution, and we are careful not to overclaim against any
+of them:
+
+1. *Eval-awareness degrades score validity.* The Evaluation Differential
+   (arXiv 2605.11496) argues that when models recognize evaluation vs
+   deployment-continuous contexts, raw safety scores can be misleading.
+   This is a *validity* claim about eval scores; our work sits one level
+   lower - whether the internal signal that would let a model do this is
+   causally controlling behavior. **Complementary, not subsumed.**
+
+2. *Causal evidence already exists at the trace/CoT level.* Goodfire's
+   verbalized-eval-awareness work
+   (goodfire.ai/research/verbalized-eval-awareness-inflates-measured-safety)
+   shows that *removing or injecting verbalized eval-awareness sentences*
+   in the chain-of-thought changes refusal behavior (e.g., on Kimi
+   K2.5). We are therefore **not** the only causal evidence on
+   eval-awareness, and we do not claim to be. Our contribution is the
+   narrower and more specific question: is an **activation-probe
+   direction** causally sufficient under steering, when compared against
+   **random, orthogonal, and wrong-layer controls**? The trace-level
+   causal result and our activation-direction causal-sufficiency result
+   are at different levels of the system.
+
+3. *White-box access for assurance.* Apollo Research's governance note
+   (apolloresearch.ai, May 2026) argues that eval-awareness, sandbagging,
+   and deception weaken black-box safety testing, and that evaluators may
+   need deeper white-box access - raw chain-of-thought, reduced-mitigation
+   models, intermediate activations, and steerable endpoints. We **agree
+   with the direction** of that proposal; our result refines rather than
+   refutes it (see §7.3): white-box access enables stronger causal tests,
+   but probe accuracy alone is not evidence that a decoded feature is a
+   behavioral lever.
+
+The compact statement of our differentiation: **we test the causal
+sufficiency of a probe-decodable eval/deploy direction under controlled
+activation steering.** Prior work establishes that the direction is
+decodable (probing) and that *trace-level* eval-awareness can be causal
+(Goodfire); we add that the *activation-probe direction itself* is not
+causally sufficient relative to matched controls in the models we test.
 
 ---
 
@@ -179,10 +218,11 @@ families, spanning dense vs MoE and training-lineage diversity:
 | Qwen3-32B | Dense decoder, GQA | 32B | 64 | 5120 |
 | gpt-oss-120b | MoE (128 experts, 5.1B active), mxfp4 | 117B | 36 | 2880 |
 
-[Choice rationale: both have public weights, public chat templates,
-similar inference recipes. gpt-oss requires `triton_kernels` +
-`kernels` packages for the mxfp4 path — see §3.6 for the technical
-detail.]
+We chose this pair because both have public weights, public chat
+templates, and similar inference recipes, while spanning the dense /
+MoE architectural divide. gpt-oss-120b additionally requires the
+`triton_kernels` + `kernels` packages for the mxfp4 path (see §3.6 for
+the technical detail).
 
 ### 3.2 Probe training corpus
 
@@ -203,8 +243,8 @@ CV AUROC + CV std.
 
 ### 3.3 Cross-distribution test set: controlled holdout v2
 
-To address known critiques of probing classifiers — that high AUROC
-may reflect surface-text features rather than the target concept — we
+To address known critiques of probing classifiers - that high AUROC
+may reflect surface-text features rather than the target concept - we
 evaluate probes on a **family-balanced, length-matched controlled
 holdout** disjoint from MS triggers:
 
@@ -216,7 +256,8 @@ holdout** disjoint from MS triggers:
 - Labels are balanced 160 eval / 160 deploy by construction
 - Token lengths padded within pairs so prompt length cannot predict
   label (a length-only baseline AUROC is 0.500 by construction)
-- Built before any model access; pre-registered design
+- Constructed independently of model activations (design fixed by the
+  balance and length constraints above, not tuned to the model)
 
 Cross-distribution AUROC on this holdout is the primary probe metric;
 within-distribution CV AUROC on triggers is reported for completeness
@@ -238,13 +279,15 @@ peak layer, prompt, alpha) tuple we:
    is a no-op; the prefill modification persists through the cache.
 3. Generate up to 300 tokens deterministically (`do_sample=False`,
    no temperature, no top-p sampling).
-4. Repeat per (prompt, α) with α ∈ {−20, −5, 0, +5, +20} (chosen
-   based on per-layer residual-stream magnitudes; see §3.7).
-5. Run the same protocol on three pre-registered control conditions:
+4. Repeat per (prompt, α). The documented analysis plan specified
+   α ∈ {−20, −5, 0, +5, +20} (chosen based on per-layer residual-stream
+   magnitudes; see §3.7); this draft reports the main {−20, 0, +20}
+   steering tests.
+5. Run the same protocol on three documented control conditions:
    `random` direction, `orthogonal` direction (projected to be ⊥ to
    `mean_diff_zscored`), and `wrong_layer` (a non-peak layer).
 
-### 3.5 Pre-registered correctness tests (T1–T4)
+### 3.5 Documented correctness tests (T1–T4)
 
 Before any data collection we run four built-in correctness tests:
 
@@ -260,16 +303,12 @@ with `--test`) was executed on gpt-oss-120b L15 and Qwen3-32B L55
 prior to data collection. T1, T2, T4 pass; T3 passes at L15/L55 and
 issues an informative
 warning at L34 (where the larger residual-stream magnitudes make
-α = 2 with a unit-norm direction fall at or below bf16 representable
-precision — see §5.2 and §6.1). The test invocation prints PASS/FAIL
+a unit-norm α = 2 delta small relative to the residual scale and partly
+attenuated by bf16 rounding - see §5.2 and §6.1). The test invocation prints PASS/FAIL
 to stdout; we do not currently save a structured JSON correctness
 artifact, so reproducibility relies on re-running the test script on
-the same artifacts (model + steering-vectors file). The Qwen3-32B L55
-steering implementation has been built and steering vectors prepared
-but T1–T4 has **not yet been executed** at the time of this draft;
-corresponding test logs will be saved and reported in the Qwen3
-replication. T2's exact-error threshold and bf16-quantization
-interaction is documented in §6.2.
+the same artifacts (model + steering-vectors file). T2's exact-error
+threshold and bf16-quantization interaction is documented in §6.1–6.2.
 
 ### 3.6 Inference stack and reproducibility
 
@@ -291,13 +330,11 @@ non-obvious and constitute a real reproducibility hazard.
 
 All experiments were run on RunPod 1× H200 SXM 141 GB pods with the
 model weights stored on local SSD (`/tmp`) rather than the network
-volume — early experiments revealed that the network-volume backend's
+volume - early experiments revealed that the network-volume backend's
 per-file random-access latency made model loading take ~30× longer
 than local-disk loading.
 
 ### 3.7 Steering vector magnitudes and alpha-range selection
-
-[Important methodological subtlety to flag for readers]
 
 We normalize the steering vector `w` to unit length. The appropriate
 alpha range therefore depends on the **typical residual-stream
@@ -308,9 +345,9 @@ magnitude at the target layer**. For gpt-oss-120b:
 | L15 | ~50 | [−2K, +2K] | α ∈ ±20 | Mid-network, smaller magnitudes |
 | L34 | ~961 | [−25K, +32K] | α ∈ ±1000+ | Late layer, huge magnitudes |
 
-At L34, even α = 5000 with unit-norm `w` produces deltas that are at
-or below bf16 rounding precision relative to typical residual values
-(see §5.2 for the consequence — byte-identical outputs across α ∈
+At L34, even α = 5000 with unit-norm `w` produces deltas that are small
+relative to typical residual values and may be partly attenuated by
+bf16 rounding (see §5.2 for the consequence - byte-identical outputs across α ∈
 [−100, +5000] at L34). Practitioners should compute per-layer
 residual-stream statistics from the training-activation file and pick
 alpha ranges that produce delta-magnitudes in the 1%–20% of residual
@@ -320,13 +357,13 @@ std range.
 
 ## 4. The Judge
 
-We score each generated response on three pre-registered binary/ordinal
+We score each generated response on three documented binary/ordinal
 properties:
 
 1. **Refusal** (binary): did the response refuse, deflect, or
    substantially decline the user's request?
 2. **Sandbagging** (binary): does the response show strategic
-   underperformance — a clearly wrong answer when the model is capable
+   underperformance - a clearly wrong answer when the model is capable
    of better?
 3. **Hedging** (1–5 ordinal): how much hedging language, caveats,
    deference to oversight, or evaluation-context cues?
@@ -344,7 +381,7 @@ Refusal agreement is high; sandbagging is the noisiest axis (judges
 genuinely differ on borderline strategic-underperformance calls);
 hedging correlates moderately. The behavioral deltas we report
 (§5.4) are far smaller than the inter-judge disagreement, which is
-itself part of why we conclude the effects are null — no signal
+itself part of why we conclude the effects are null - no signal
 survives a second judge.
 
 *Historical note*: an early n = 20 pilot (§5.3) was scored Judge A-only
@@ -400,10 +437,28 @@ perfectly separable, while family A has a calibration offset (good
 within-family ranking, but absolute probe scores systematically below
 the global decision threshold) and family B has genuine class overlap.
 We discuss the implications in §7. The Qwen3-32B L55 per-family
-breakdown is in `v4/runs/qwen3_stage2/validation_qwen3.json` and will
-be tabulated here in the next revision; we do not assert a
-cross-architecture per-family pattern claim until that comparison is
-done explicitly.
+breakdown (controlled holdout v2,
+`v4/runs/qwen3_stage2/controlled_validation_report_v2.json`) is:
+
+| Family | Probe AUROC (L55) | MS-TF-IDF AUROC |
+|---|---:|---:|
+| A | 0.997 | 1.000 |
+| B | 0.855 | 0.270 |
+| C | 0.983 | 0.988 |
+| D | 0.998 | 0.828 |
+| **Overall** | **0.917** | **0.831** |
+
+The probe's +0.086 overall margin over the lexical TF-IDF baseline is
+driven by **family B**: the activation probe reaches 0.855 AUROC there
+while TF-IDF scores *below chance* (0.270), so family B carries
+eval/deploy signal that is present in activations but not recovered by
+the MS-trained TF-IDF baseline. Family B is also the hardest family for
+the probe in absolute terms (0.855), and the same holds for
+gpt-oss-120b L34 (family B = 0.771, its weakest; Figure 2). The
+architectures differ elsewhere - gpt-oss family A shows a calibration
+offset (0.933) whereas Qwen3 family A is near-perfect (0.997) - so we
+report per-family structure as partly model-specific and do **not**
+assert a detailed shared cross-architecture per-family pattern.
 
 **Diagnostic** (`v4/runs/gpt_oss_stage2/L34_pca_2d.png` and the Qwen3
 counterpart at `v4/runs/qwen3_stage2/L55_pca_2d.png`): unsupervised
@@ -411,17 +466,17 @@ counterpart at `v4/runs/qwen3_stage2/L55_pca_2d.png`): unsupervised
 families (PC1+PC2 capture ~25–30% of variance and cleanly cluster by
 family, not by eval/deploy label). This is the right diagnostic
 outcome: it confirms that eval/deploy is *not* the largest variance
-axis at these layers — it is a smaller consistent shift not captured
+axis at these layers - it is a smaller consistent shift not captured
 by the first two PCA axes (which are dominated by family structure).
 Whether the probe's learned direction is statistically orthogonal to
 the family-discriminating directions specifically would require an
 explicit measurement we have not yet run; we report only the visual
 PCA observation here.
 
-**Depth-portability does not hold.** We pre-registered the prediction
+**Depth-portability does not hold.** We documented the prediction
 that gpt-oss's optimal probe layer would match Qwen3 L55's depth
 fraction (0.86), giving gpt-oss L31. In practice, gpt-oss's optimal
-probe layer is L34 (depth 0.94) — substantially later. Cross-architecture
+probe layer is L34 (depth 0.94) - substantially later. Cross-architecture
 optimal-layer selection cannot assume depth fraction transfers; a
 per-model layer sweep is required.
 
@@ -438,14 +493,14 @@ measured tolerance (T2 max-per-element error 0.97 at α = 10, within
 the bf16 noise budget for L34's residual scale). T3 at the L34 layer
 specifically issues a *warning* (not a pass): α = 2 with unit-norm `w`
 produces an output identical to α = 0. We extend that observation
-with the full sweep in §5.2 — byte-identical outputs persist up to
+with the full sweep in §5.2 - byte-identical outputs persist up to
 α = 5000.
 
 **One likely explanation for the L34 null is a magnitude mismatch.**
 gpt-oss-120b's L34 residual stream has std ≈ 961 and range ±32,000,
 so a unit-norm delta multiplied by even α = 5000 produces per-element
-shifts of at most ~500 — about half a residual std and at or below
-bf16 representable precision at high-magnitude residual positions.
+shifts of at most ~500 - about half a residual std, and small enough at
+high-magnitude residual positions to be partly rounded away under bf16.
 Combined with the model's strongly-templated refusal completions on
 the Apollo alignment-stratum prompts (which converge to "I'm sorry,
 I can't help with that" regardless of mid-layer perturbation), no
@@ -453,14 +508,15 @@ behavioral effect is observable. Alternative hypotheses we cannot
 yet rule out: MoE-routing interactions specific to L34, a
 forward-hook propagation issue specific to gpt-oss's expert layers,
 or the probe direction at L34 being non-causal even apart from the
-magnitude issue. The L15 result (§5.3) — where steering at a
+magnitude issue. The L15 result (§5.3) - where steering at a
 mid-network layer with smaller residual magnitudes does change
-outputs in 55% of prompts — is consistent with the magnitude-mismatch
+outputs in 72–74% of prompts (85% for either direction) - is consistent with the magnitude-mismatch
 explanation but does not exclude the others.
 
 We do not interpret the L34 null as evidence about eval/deploy
-encoding *per se*; rather, it is a *layer- and magnitude-specific
-non-effect* that argues for testing earlier layers where residual-stream
+encoding *per se*; it is a *measurement / inference-stack limitation* -
+a layer- and magnitude-specific non-effect - that argues for testing
+earlier layers where residual-stream
 magnitudes give the same alpha range more effective perturbation power.
 
 ### 5.3 gpt-oss-120b L15: a corroborating probe-direction null
@@ -470,9 +526,11 @@ Because gpt-oss L34 was non-responsive for magnitude/precision reasons
 probe AUROC 0.876, residual std ~50, where fixed-norm deltas are not
 swamped by bf16 rounding). At n = 100 prompts, α ∈ {−20, +20}, scored
 by two judges (Judge A + Judge B), steering on the probe direction produces
-**no behavioral effect that survives a second judge** — every paired
-delta is within standard error of zero, and the judges disagree on the
-sign of the (null) effects:
+**no behavioral effect that survives a second judge**: the effects are
+small, not directionally consistent across α, and do not replicate
+across judges - Judge A's deltas skew ≥ 0 while Judge B's skew ≤ 0
+(e.g., refusal at α = −20 is +0.01±0.02 for Judge A but −0.04±0.02 for
+Judge B):
 
 | Judge | α | Δrefusal | Δsandbag | Δhedging |
 |---|---|---:|---:|---:|
@@ -492,68 +550,90 @@ does not yet stand on its own controls.
 a small directional hedging effect, Δhedging ≈ +0.20; it did not
 replicate at n = 100 under either judge and is not a finding.)*
 
-### 5.4 Qwen3-32B L55: the probe direction is behaviorally indistinguishable from random (primary causal result)
+### 5.4 Qwen3-32B L55: the probe direction is not detectably more potent than random (primary causal result)
 
-This is the paper's central causal-sufficiency test. On Qwen3-32B L55 —
-the model's strongest probing layer (cross-distribution AUROC 0.917) —
+This is the paper's central causal-sufficiency test. On Qwen3-32B L55 -
+the model's strongest probing layer (cross-distribution AUROC 0.917) -
 we steer on the probe-recovered direction (`mean_diff_zscored`) and
 compare against a **random direction of equal magnitude** across n = 100
 prompts, α ∈ {−20, +20}, scored by two independent judges (Judge A,
 Judge B; valid coverage 490/500 and 498/500 respectively).
 
-**Output text changes frequently — for every direction equally, and
+**Output text changes frequently - for every direction equally, and
 MORE at the wrong layer.** At α = ±20, output-change rates vs the α = 0
 baseline are: probe (mean_diff) 70–77%, random 74–79%, orthogonal
 69–80%, probe-coefficient 72–81%, and **wrong-layer L25 90–93%**.
 Output perturbation rate is a function of steering *magnitude and
-injection depth*, not the probe direction — and notably the
+injection depth*, not the probe direction - and notably the
 wrong-layer intervention disrupts the *most* outputs (earlier layer →
 more downstream amplification) while producing *no* behavioral effect.
 Output-change-rate and behavioral-effect are fully decoupled: the
 probe direction is not privileged on either axis.
 
-**Behavioral effects: the probe direction does not exceed ANY control,
-on ANY metric, under either judge.** Full pre-registered control suite
+**Behavioral effects: the probe direction does not reliably exceed
+controls under the joint success criteria.** Full documented control suite
 (n ≈ 98–100 per cell, paired Δ vs α=0 baseline):
 
 *Judge A:*
+
 | Condition | α | Δrefusal | Δsandbag | Δhedging |
 |---|---|---:|---:|---:|
-| **mean_diff (probe)** | −20 | +0.02±0.03 | −0.02±0.04 | −0.01±0.05 |
-| **mean_diff (probe)** | +20 | +0.01±0.03 | +0.02±0.04 | −0.08±0.05 |
+| **mean_diff (probe)** | −20 | +0.01±0.03 | −0.01±0.03 | −0.05±0.04 |
+| **mean_diff (probe)** | +20 | +0.00±0.03 | +0.03±0.04 | **−0.12±0.05** |
 | probe_coef (probe v2) | +20 | +0.05±0.03 | +0.01±0.04 | +0.02±0.05 |
-| random | −20 | **+0.08±0.03** | +0.01±0.04 | +0.01±0.05 |
-| random | +20 | −0.02±0.03 | +0.06±0.04 | −0.05±0.05 |
+| random | −20 | **+0.07±0.03** | +0.02±0.03 | −0.03±0.04 |
+| random | +20 | −0.03±0.02 | **+0.07±0.03** | −0.09±0.05 |
 | orthogonal | +20 | +0.01±0.02 | −0.01±0.04 | −0.06±0.04 |
-| wrong-layer L25 | +20 | **+0.07±0.04** | −0.02±0.04 | +0.06±0.06 |
+| wrong-layer L25 | +20 | +0.07±0.04 | −0.02±0.04 | +0.06±0.06 |
 
-*Judge B:* all conditions within SE of zero, signs scattered, no
-condition exceeds the others (full table in Appendix).
+*(Bold = |Δ| exceeds 2 SE. Δ = steered − α=0 baseline, paired by
+prompt, n ≈ 98. The complete 10-row table for both judges is in
+Appendix C.)*
 
-The two largest refusal deltas in the entire table belong to **random
-(+0.08)** and **wrong-layer (+0.07)** — *controls*, not the probe.
+*Judge B:* signs scattered, the probe direction has **no** cell beyond
+2 SE, and no condition exceeds the others; the single cell beyond 2 SE
+is a *control* (orthogonal +20 hedging, −0.14±0.06).
 
-Against the pre-registered success criteria (probe effect must exceed
-control, be directional, dose-responsive, judge-agreed), **every
-criterion fails**:
-- Probe deltas do not exceed any control on any metric; the largest
-  effects are in controls.
-- Probe effects are not directional (Δrefusal flat across α).
-- The two judges disagree on the sign of the (null) effects.
+The largest refusal deltas belong to *control* conditions - random
+(−20, +0.07) and wrong-layer (+20, +0.07) - not the probe, whose
+refusal deltas are ≈ 0.00–0.01.
 
-**Conclusion: at Qwen3-32B L55, the eval/deploy probe direction —
-despite achieving 0.917 cross-distribution AUROC — is behaviorally
-indistinguishable from random, orthogonal, AND wrong-layer
-interventions of equal magnitude. Every cell across 5 conditions × 2
-alphas × 2 judges sits within ~2 SE of zero. The direction has no
-privileged causal status by any comparison.**
+We use "**not detectably larger than controls**" to mean failing the
+documented joint criterion: a genuine effect should **exceed controls**,
+be **dose-responsive** in α, and be **judge-agreed**. We do not run a
+formal statistical equivalence test. Against that criterion, the probe
+direction fails on all three counts:
+- **Not control-exceeding overall.** Probe deltas do not exceed controls
+  on refusal or sandbagging; the largest refusal and sandbagging effects
+  belong to controls. The probe's only leading cell is hedging at +20
+  under Judge A (−0.12), and even there a *control* leads under Judge B
+  (orthogonal, −0.14).
+- **Not dose-responsive.** The probe's hedging delta is negative at
+  *both* −20 and +20 (−0.05 and −0.12) rather than flipping sign with
+  the sign of α, as a genuine additive effect would; Δrefusal is flat
+  across α.
+- **Not judge-agreed.** That +20 hedging effect is −0.12±0.05 under
+  Judge A but −0.03±0.05 (within noise) under Judge B.
+
+**Conclusion: at Qwen3-32B L55, the eval/deploy probe direction -
+despite achieving 0.917 cross-distribution AUROC - shows no behavioral
+effect detectably larger than random, orthogonal, or wrong-layer
+interventions of equal magnitude.** No effect is simultaneously
+probe-specific, control-exceeding, dose-responsive, and judge-agreed.
+Across 30 comparisons per judge (5 conditions × 2 alphas × 3 metrics), a
+few cells cross the 2-SE threshold, but they are scattered across
+conditions - one belongs to the probe (Judge A hedging at +20) and four
+to controls (random and orthogonal) - at a rate consistent with the
+≈ 1.5 false positives per judge expected by chance. **The direction has
+no privileged causal status by any comparison.**
 
 ### 5.5 Interpretation: probe-recoverability ≠ causal sufficiency
 
 The Qwen3 L55 full-control result (§5.4) and the gpt-oss L15
 corroborating null (§5.3) jointly support the paper's core claim: **a
-direction can be highly linearly-decodable yet behaviorally
-indistinguishable from noise under steering.**
+direction can be highly linearly-decodable yet behaviorally not
+detectably more potent than equal-magnitude random perturbations under
+steering.**
 
 Scope, stated precisely:
 - The complete probe-vs-control comparison (probe ≈ random ≈ orthogonal
@@ -569,11 +649,11 @@ Scope, stated precisely:
 A note on what this is *not*: an earlier single-judge n = 20 pilot
 suggested the probe direction might encode a *stylistic register*
 (hedging) rather than a behavioral axis. The n = 100 two-judge data do
-not support even that weaker reading — hedging deltas are within noise
+not support even that weaker reading - hedging deltas are within noise
 and judge-disagreed, identical in character to refusal and sandbagging.
 The cleaner and stronger statement is simply that **the probe direction
-has no detectable behavioral signature beyond what an equal-magnitude
-random perturbation produces.** We are therefore not claiming the
+has no robust, probe-specific behavioral signature beyond what an
+equal-magnitude random perturbation produces.** We are therefore not claiming the
 direction encodes "style instead of behavior"; we are claiming it is
 *diagnostic without being behaviorally sufficient*. We discuss what
 could still be true of the direction (e.g., necessity untested) in §7.
@@ -584,43 +664,54 @@ could still be true of the direction (e.g., necessity untested) in §7.
 
 ### 6.1 BF16 quantization affects steering math at high-magnitude residuals
 
-[Discussion of T2 max-error vs bf16 noise floor; gpt-oss L34 was below
-the noise floor; L15 is well above it. Implication: cross-layer
-comparisons of alpha effects must account for per-layer residual scale.]
+T2 measures the maximum per-position error between the realized
+residual-stream modification and the intended `α · w`. At gpt-oss-120b
+L34 the typical residual magnitude (std ≈ 961, range ≈ [−25K, +32K]) is
+so large that an `α · w` delta with unit-norm `w`, even at α of several
+thousand, is small relative to those values and partly absorbed by the
+bf16 rounding step - the intended steer is attenuated by quantization
+noise. At L15
+(residual std ≈ 50) the same α sits well above the bf16 noise floor and
+the steer is applied faithfully. The implication is that cross-layer
+comparisons of α effects are not apples-to-apples: a fixed α produces
+different effective perturbation fractions at different layers, so
+per-layer residual statistics must drive the choice of α (see §3.7).
 
 ### 6.2 Hook-output propagation
 
-[Discussion of forward-hook semantics: returning a modified output
-from `forward_hook` on a transformer block does propagate to the next
-block's input on standard HF causal LMs, but MoE + custom-kernel
-architectures may have subtle interactions. We diagnosed this on L34
-where steering produces zero output difference even at α magnitude
-sufficient to be representable in bf16. The L15 result (where steering
-*does* produce output changes) demonstrates propagation works at that
-layer — the L34 null is therefore most plausibly attributable to
-either (a) bf16 noise at the higher residual scale, (b) MoE-routing
-interactions, or (c) the model's refusal-templating attractor.]
+Returning a modified output from a `forward_hook` on a transformer
+block does propagate to the next block's input on standard HuggingFace
+causal LMs, but MoE models with custom kernels can have subtle
+interactions. We diagnosed this on gpt-oss-120b L34, where steering
+produces zero output difference even at α magnitudes large enough to be
+representable in bf16. The L15 result - where steering *does* change
+outputs - demonstrates that hook propagation works at that layer, so
+the L34 null is most plausibly attributable to one of: (a) bf16 noise
+at the higher residual scale (§6.1), (b) MoE-routing interactions, or
+(c) the model's refusal-templating attractor. We do not fully
+disambiguate these; L34 is reported as non-responsive rather than as
+evidence about the probe direction (§5.2).
 
-### 6.3 Pre-registered vs reported
+### 6.3 Analysis plan vs reported
 
-The pre-registered design is in `STAGE4_PLAN.md` (committed to the
-repo before any rollouts; see Appendix B). The current draft reports
+The analysis plan is documented in `STAGE4_PLAN.md` (see Appendix B). The current draft reports
 a subset of that design and explicitly defers the rest. Walk-through:
 
-| Pre-registered | This draft | Status |
+| Analysis plan | This draft | Status |
 |---|---|---|
 | V1 BeaverTails / MMLU / GSM8K / Apollo prompt set, 500 prompts | V2 Apollo alignment subset, 100 prompts | Pivoted (local data availability); full corpus deferred to necessity/ablation follow-up |
 | n = 500 × 7 alphas × 4 conditions × 2 models | Qwen3 L55: 100 prompts × {−20,+20} × 5 conditions; gpt-oss L15: 100 × 3 × 1 | Qwen3 **complete with full controls**; gpt-oss probe-only |
 | Judge A + Judge B judge with inter-rater agreement | Judge A + Judge B, both, agreement reported (§4) | **Done** |
 | Four conditions: probe, random, orthogonal, wrong-layer | Qwen3 L55: all five (incl. probe-coef); gpt-oss L15: probe only | Qwen3 **complete**; gpt-oss controls pending |
 | Two models: Qwen3-32B + gpt-oss-120b steering | Both steered; Qwen3 full controls, gpt-oss null | Qwen3 complete; gpt-oss corroborating |
-| Pre-registered verdict thresholds (SUFFICIENT / PARTIAL / NULL) | **NULL** on Qwen3 L55 (probe ≈ all controls; all 5 success criteria fail) | Applied for Qwen3 L55 |
+| Documented verdict thresholds (SUFFICIENT / PARTIAL / NULL) | **NULL** on Qwen3 L55 (probe ≈ all controls; all 5 success criteria fail) | Applied for Qwen3 L55 |
 
 The Qwen3-32B L55 causal-sufficiency result is **complete and
-controlled**. The two items still outstanding relative to the full
-pre-registration are: the matched control suite on gpt-oss-120b L15
-(it has the probe-direction null but not the controls), and the
-necessity/ablation test (§7.4, deferred by design).
+controlled**. The two items still outstanding relative to the
+documented analysis plan are: (1) the matched control suite on
+gpt-oss-120b L15 (which has the probe-direction null but not the
+controls), and (2) the necessity/ablation test (§7.4, deferred by
+design).
 
 ---
 
@@ -628,15 +719,16 @@ necessity/ablation test (§7.4, deferred by design).
 
 ### 7.1 What kind of result is this?
 
-For Qwen3-32B L55 (n = 100, two judges, full pre-registered control
+For Qwen3-32B L55 (n = 100, two judges, full documented control
 suite): a **clean, controlled causal-sufficiency null**.
 
-- Not a positive: no condition — probe, probe-coefficient, random,
-  orthogonal, or wrong-layer — produces a behavioral effect that
-  exceeds the others or survives both judges; all sit within ~2 SE of
-  zero.
+- Not a positive: no condition - probe, probe-coefficient, random,
+  orthogonal, or wrong-layer - produces a behavioral effect that
+  exceeds the others *and* survives both judges. The few cells that
+  cross 2 SE are scattered across conditions (one probe, four control)
+  and do not replicate across judges.
 - A *controlled* null, not merely an absence of effect: the probe
-  direction is specifically indistinguishable from random and
+  direction is specifically not detectably more potent than random and
   orthogonal directions of equal magnitude, so we can rule out "the
   probe direction does something special that we failed to detect."
   The largest behavioral deltas in the table belong to *control*
@@ -663,7 +755,7 @@ AUROC will latch onto whatever residual-stream features carry that
 framing information, and those features need not be the ones the
 model's behavioral circuit reads. Under this account, the high AUROC
 was never evidence of a behavioral mechanism. (We deliberately do
-*not* sharpen this to "the direction is *stylistic register*" — our
+*not* sharpen this to "the direction is *stylistic register*" - our
 n = 100 two-judge data do not support even that specific claim; see
 §5.5. The defensible version is simply "decodable, not causal.")
 
@@ -671,7 +763,7 @@ n = 100 two-judge data do not support even that specific claim; see
 that single-layer linear additive steering cannot capture. Multi-layer
 or distributed interventions (RepE-style) might move behavior where our
 single-layer intervention does not. This is the open research question
-the result leaves on the table — and the reason our null is a *lower
+the result leaves on the table - and the reason our null is a *lower
 bound* on steerability, not a proof of total causal irrelevance.
 
 **(C) Behavioral modulation depends on *prompt-level* eval cues, not
@@ -689,16 +781,40 @@ steering, on a non-saturated prompt set.
 
 ### 7.3 Implications for safety-relevant interpretability
 
-[Argument for the methodological lesson:]
 Many activation-level interpretability claims for safety rely on
 probe-detectable features as evidence that the model "represents X"
 (deceptiveness, scheming, eval-awareness, etc.). Our result suggests
 this is a category error in some cases. A model's residual stream may
 encode many surface-text features that correlate with safety-relevant
 labels in the training distribution without those features driving
-the behaviors of interest. Activation steering — even imperfect
-activation steering — provides a partial sieve for distinguishing
+the behaviors of interest. Activation steering - even imperfect
+activation steering - provides a partial sieve for distinguishing
 encoding from causality.
+
+**White-box access is necessary but not sufficient.** Recent governance
+proposals argue that evaluation awareness weakens black-box safety
+evaluations and that external evaluators therefore need deeper,
+white-box access to model internals - raw chain-of-thought,
+reduced-mitigation checkpoints, intermediate activations, and steerable
+endpoints (Apollo Research, May 2026). We agree with the direction of
+that proposal, but our results add a caution: white-box access is not,
+by itself, a guarantee of causal understanding. In two open-weight
+reasoning models, eval/deploy framing is linearly decodable from
+residual-stream activations, yet the best Qwen3 probe direction is
+not detectably more behaviorally potent than random, orthogonal, and
+wrong-layer controls under steering. Thus, activation access enables *stronger
+tests*, but probe accuracy alone should not be treated as evidence that
+the decoded feature is behaviorally causal. Put compactly: white-box
+access is necessary for *asking* activation-level causal questions about eval-awareness,
+but not sufficient for *answering* them - probe accuracy must be
+followed by controlled causal tests. This refines the white-box-access
+proposal rather than refuting it: the access is what made our
+sufficiency test possible in the first place. The developers who hold
+that access are also the ones positioned to run this test internally:
+the controlled protocol here (probe direction against random,
+orthogonal, and wrong-layer controls, scored by independent judges)
+applies directly to closed models, where outside researchers cannot
+reproduce it.
 
 ### 7.4 Sufficiency vs necessity: why we test the former and defer the latter
 
@@ -706,7 +822,7 @@ Our steering experiment tests **causal sufficiency**: *if we add this
 direction, does behavior appear or shift?* The complementary question
 is **necessity**: *if we remove (ablate) this direction, does the
 eval/deploy behavioral difference weaken or disappear?* These are
-logically distinct — a feature can be necessary but not sufficient
+logically distinct - a feature can be necessary but not sufficient
 (removing a car's steering wheel disables it; bolting on a second
 steering wheel does not make it drive). A steering null therefore does
 not *prove* an ablation would be null.
@@ -716,16 +832,16 @@ a gap in the present claim, for three reasons specific to our results:
 
 1. **Our null is stronger than a generic steering null.** We did not
    merely find "steering did nothing"; we found that steering the
-   probe direction is statistically indistinguishable from steering a
-   *random* direction of equal magnitude. A direction that were the
-   load-bearing eval/deploy mechanism would, in the common case, show
-   *some* additive potency above random. Ours shows none. This lowers
+   probe direction is not detectably more potent than steering a
+   *random* direction of equal magnitude. If the same single direction
+   were also behaviorally active under additive steering, we would
+   expect some potency above random; we do not observe that. This lowers
    (without eliminating) the prior that the direction is uniquely
    necessary.
 
 2. **A sound ablation needs its own control.** Just as steering
    required random/orthogonal controls, ablation requires an
-   *ablate-random* comparison — remove the probe direction vs remove a
+   *ablate-random* comparison - remove the probe direction vs remove a
    random direction, and test whether behavior drops *more* for the
    probe. "Behavior changed after ablation" is otherwise confounded by
    the generic effect of perturbing the forward pass. Ablation is thus
@@ -736,7 +852,7 @@ a gap in the present claim, for three reasons specific to our results:
    is most informative when there is a clear behavioral phenomenon to
    abolish. Our Apollo alignment-stratum prompts are largely saturated
    refusals, so the natural eval-vs-deploy behavioral gap on this set
-   is small — leaving little for ablation to remove.
+   is small - leaving little for ablation to remove.
 
 We therefore report: *we tested sufficiency through steering, with
 random and orthogonal controls; we did not test necessity through
@@ -755,13 +871,14 @@ Our two models fall into distinct architecture buckets:
 
 We are careful about what this contrast supports.
 
-**What we claim — generality.** The core finding (eval/deploy is
-decodable but the probe direction is not causally sufficient under
-steering) holds in *both* a dense and an MoE model. This argues the
-phenomenon is not an artifact of one architecture. That is a
-*replication-across-architectures* point and it strengthens the thesis.
+**What we claim - generality.** Decodability holds in *both* a dense
+and an MoE model, and a probe-direction steering null appears in both;
+the full control comparison (probe vs random / orthogonal / wrong-layer)
+is established in Qwen3. This argues the decodability phenomenon is not
+an artifact of one architecture - a *replication-across-architectures*
+point that strengthens the thesis.
 
-**What we do NOT claim — an architectural difference in behavior.**
+**What we do NOT claim - an architectural difference in behavior.**
 Both models show the same qualitative result (decodable + steering-null
 where steering is testable). We did *not* observe "dense steers, MoE
 doesn't" or any behavioral steering *difference* attributable to
@@ -769,19 +886,20 @@ architecture. With n = 1 model per bucket, and given that Qwen3 and
 gpt-oss also differ in training data, post-training, safety tuning,
 tokenizer, parameter count, active-parameter count, and inference
 precision, "architecture" would be only one of many possible
-explanations for any difference we might have seen — and we did not see
+explanations for any difference we might have seen - and we did not see
 a behavioral one to explain.
 
 **One architecture-adjacent *methodological* observation.** gpt-oss's
 MoE late layers carry far larger residual-stream magnitudes (std ~961,
 range ±32k at L34) than Qwen3's (std ~17 at L55). This made fixed-norm
-steering deltas vanish into bf16 rounding at gpt-oss's late layers (the
+steering deltas small relative to the residual scale and partly lost to
+bf16 rounding at gpt-oss's late layers (the
 L34 non-responsiveness, §5.2), forcing us to steer at an earlier layer
 (L15). This is a practical precision/scaling note about intervening on
 MoE models, not a behavioral finding.
 
 **Defensible forward-looking statement:** *our results motivate
-architecture-aware causal testing — probe directions that are similarly
+architecture-aware causal testing - probe directions that are similarly
 decodable across dense and MoE models may not present comparable
 steering dynamics (e.g., residual-magnitude scaling), and confirming
 whether architecture modulates decodability strength or intervention
@@ -791,12 +909,12 @@ contrast as hypothesis-generating, not as an architectural conclusion.*
 ### 7.6 What we don't claim
 
 We don't claim:
-- The model lacks an internal representation of eval-awareness — we
+- The model lacks an internal representation of eval-awareness - we
   only show this *particular* probe-recovered direction is not
   causally distinguishable from random under additive steering.
-- All probing for safety-relevant features is misleading — probes
+- All probing for safety-relevant features is misleading - probes
   remain valid existence-of-information evidence.
-- Activation steering is the right tool for all causal questions —
+- Activation steering is the right tool for all causal questions -
   it tests sufficiency but not necessity, can't establish
   cognitive properties, and depends on choosing the right
   layer/direction.
@@ -815,11 +933,11 @@ scope, not the validity of the Qwen3 L55 result.
 **Scope limitations (largest first):**
 
 1. **The control suite is complete for one model, not both.** Qwen3-32B
-   L55 has the full pre-registered control comparison (probe ≈ random ≈
+   L55 has the full documented control comparison (probe ≈ random ≈
    orthogonal ≈ wrong-layer). gpt-oss-120b L15 shows a probe-direction
    behavioral null but **without** matched random/orthogonal/wrong-layer
-   controls. So our strongest claim — "the probe direction is
-   indistinguishable from controls" — is established for Qwen3 L55 and
+   controls. So our strongest claim - "the probe direction is
+   not detectably more potent than controls" - is established for Qwen3 L55 and
    only *corroborated* (not control-matched) on gpt-oss. Running the
    gpt-oss control suite is the single most valuable remaining addition;
    it would upgrade the claim from "full controls on one model + null on
@@ -837,11 +955,11 @@ scope, not the validity of the Qwen3 L55 result.
 3. **Single layer per model.** We steer at Qwen3 L55 and gpt-oss L15.
    gpt-oss L34 (the probe-AUROC peak) was non-responsive due to bf16
    residual-magnitude effects (§5.2, §6.1), which is why we moved to
-   L15. A full per-layer sweep — establishing whether the null is
-   layer-specific or network-wide — is future work.
+   L15. A full per-layer sweep - establishing whether the null is
+   layer-specific or network-wide - is future work.
 
 4. **Prompt-set homogeneity.** Apollo alignment-stratum prompts are
-   strongly refusal-templated — many converge to "I'm sorry, I can't
+   strongly refusal-templated - many converge to "I'm sorry, I can't
    help with that" regardless of mid-layer perturbation. The probe ≈
    random result holds *regardless* of saturation (both are null), so
    this does not threaten the sufficiency conclusion; but it does limit
@@ -852,40 +970,41 @@ scope, not the validity of the Qwen3 L55 result.
 
 5. **Two direction variants tested, not all.** We steer on both
    `mean_diff_zscored` and the probe coefficient (`probe_coef_zscored`);
-   both are null and indistinguishable from controls. Other plausible
+   both are null and show no control-exceeding effect. Other plausible
    direction constructions (e.g., difference-of-means without
    z-scoring, or directions from a probe trained on the controlled
    holdout rather than MS triggers) are untested.
 
 **Methodological limitations:**
 
-8. **LLM-as-judge is itself a behavioral probe.** The hedging /
+6. **LLM-as-judge is itself a behavioral probe.** The hedging /
    refusal / sandbagging measurements depend on a judge model's reading
    of the generated text. We use two judges (Judge A, Judge B)
    and report inter-judge agreement (refusal 88.8–91.4%, sandbagging
    69.1–80.1%, hedging Pearson r = 0.67–0.77). Sandbagging is the
    noisiest axis. Crucially, the behavioral deltas we measure are
-   *smaller than the inter-judge disagreement* — which is itself part
+   *smaller than the inter-judge disagreement* - which is itself part
    of why we read the effects as null. Human validation of judge
    labels on a stratified subset remains pending.
 
-9. **bf16 quantization affects steering precision at high-magnitude
+7. **bf16 quantization affects steering precision at high-magnitude
    layers.** As discussed in §3.7 and §5.2, gpt-oss-120b's late-layer
-   residual stream magnitudes make sub-ULP additions vanish in bf16,
+   residual stream magnitudes make fixed-norm additions small relative
+   to residual scale and potentially attenuated by bf16 rounding,
    producing the L34 null. This is an artifact of the inference
    precision, not necessarily a property of the underlying model.
    Re-running L34 in fp32 (much slower, requires more VRAM) would
    resolve whether the null is bf16-quantization-induced or a deeper
    property of the layer.
 
-10. **Single-layer intervention.** We modify the residual stream at
+8. **Single-layer intervention.** We modify the residual stream at
     one layer per run. Distributed multi-layer steering (Rimsky et al.
     2023; Zou et al. 2023) often produces larger behavioral effects and
     may be the appropriate intervention for safety-relevant features
     that are not concentrated at a single layer. Our result is therefore
     a *lower bound* on how strongly the probe direction can be steered.
 
-11. **No cognitive claim.** We do not test, and do not claim, that the
+9. **No cognitive claim.** We do not test, and do not claim, that the
     model "knows" it is being evaluated or that any internal state
     corresponds to "awareness." All claims here concern *representation
     content* and *behavioral consequences of intervention*, not
@@ -893,12 +1012,26 @@ scope, not the validity of the Qwen3 L55 result.
     2022, Pimentel et al. 2020) is unanimous on the limits of probing
     for cognitive claims; this paper inherits those limits.
 
-12. **MoE-specific forward-hook behavior is not yet diagnosed.** The
+10. **MoE-specific forward-hook behavior is not yet diagnosed.** The
     L34 null might be partly attributable to MoE expert routing or
     custom mxfp4 kernel paths interacting with the standard PyTorch
     `register_forward_hook`. A direct propagation diagnostic (e.g.,
     `register_forward_pre_hook` on the next layer to verify it
     receives the modified output) has not been completed here.
+
+11. **Open-weight scope.** All experiments use open-weight models
+    (Qwen3-32B, gpt-oss-120b), where external researchers can extract
+    activations, train probes, and run steering interventions.
+    Closed-model developers may hold privileged access to richer
+    internal telemetry, unpublished activation tools, additional layers
+    and checkpoints, and more reliable intervention infrastructure. Our
+    results should therefore not be read as evidence that causal
+    eval-awareness features cannot be found in closed frontier models.
+    Rather, they show that in externally reproducible open-weight
+    settings, high-AUROC eval/deploy probe directions are not, by
+    themselves, evidence of behavioral causality absent controlled
+    steering tests; and where we ran that test (Qwen3-32B L55), the best
+    probe direction did not clear it.
 
 ---
 
@@ -907,45 +1040,211 @@ scope, not the validity of the Qwen3 L55 result.
 Activation-level probes recover cross-distribution eval-vs-deploy
 framing signals on two open-weight reasoning models of different
 architecture families (Qwen3-32B dense, L55, AUROC 0.917; gpt-oss-120b
-MoE, L34, AUROC 0.896). On Qwen3-32B L55 — the strongest probing layer
-— steering on the probe-recovered direction (n = 100, two judges,
-full control suite) produces behavioral effects **statistically
-indistinguishable from random, orthogonal, and wrong-layer controls of
-equal magnitude**: every probe Δ is within standard error of the
-matched controls, despite output text changing in ~75% of prompts (the
-same rate as controls).
+MoE, L34, AUROC 0.896). On Qwen3-32B L55 - the strongest probing layer
+- steering on the probe-recovered direction (n = 100, two judges,
+full control suite) produces behavioral effects **not detectably
+larger than random, orthogonal, and wrong-layer controls of
+equal magnitude**: no probe effect is robustly larger than the matched
+controls, despite output text changing in ~75% of prompts (a rate the
+controls match or exceed).
 A separate gpt-oss-120b L15 steering run shows a probe-direction
 behavioral null. Together these support the claim that
-**probe-recoverability does not imply causal sufficiency** — a
+**probe-recoverability does not imply causal sufficiency** - a
 direction can be linearly decodable at AUROC 0.917 yet behaviorally no
-more potent than noise.
+more potent than equal-magnitude random perturbations.
 
 We are precise about scope: the **full control suite (random,
 orthogonal, wrong-layer, two judges) is complete for Qwen3-32B L55**,
-where the probe direction is indistinguishable from every control;
+where the probe direction is not detectably more potent than any control;
 the gpt-oss-120b L15 result is a corroborating probe-direction null
 that does not yet have the matched control suite. The remaining open
-items are the gpt-oss control suite and a necessity/ablation test —
+items are the gpt-oss control suite and a necessity/ablation test -
 not the Qwen3 conclusion. We do not claim the models lack any causal
-eval-awareness mechanism — only that *this probe-recovered direction*,
+eval-awareness mechanism - only that *this probe-recovered direction*,
 at these layers, is not it under single-layer additive steering.
 
 **The methodological lesson stands: activation-level safety claims
-require level-3 causal tests with random/orthogonal controls, not
-level-2 probe AUROC alone. A probe that separates eval from deploy at
-0.917 told us nothing about whether that direction drives behavior —
+require controlled causal tests with random/orthogonal controls, not
+probe AUROC alone. A probe that separates eval from deploy at
+0.917 was insufficient to tell us whether that direction drives behavior -
 and when we tested, it did not.**
 
 ---
 
-## Appendix A — Judge rubric
+## References
 
-[Copy from `judge_stage4_generations.py` JUDGE_USER_TEMPLATE]
+Abdelnabi, S., & Salem, A. (2025). *Linear Control of Test Awareness
+Reveals Differential Compliance in Reasoning Models.* arXiv:2505.14617.
 
-## Appendix B — Pre-registered design (STAGE4_PLAN.md)
+Alain, G., & Bengio, Y. (2016). *Understanding intermediate layers using
+linear classifier probes.* arXiv:1610.01644. (ICLR 2017 Workshop.)
 
-[Include or link the locked pre-registration]
+Apollo Research. (2026). *The need for deeper white-box access to
+maintain state-of-the-art evaluations for loss-of-control threats.*
+https://www.apolloresearch.ai/governance/the-need-for-deeper-white-box-access-to-maintain-state-of-the-art-evaluations-for-loss-of-control-threats/
 
-## Appendix C — Reproducibility
+Belinkov, Y. (2022). *Probing Classifiers: Promises, Shortcomings, and
+Advances.* Computational Linguistics, 48(1), 207–219. arXiv:2102.12452.
 
-[File paths, model SHAs, code versions]
+Conmy, A., Mavor-Parker, A. N., Lynch, A., Heimersheim, S., &
+Garriga-Alonso, A. (2023). *Towards Automated Circuit Discovery for
+Mechanistic Interpretability.* NeurIPS 2023. arXiv:2304.14997.
+
+Geiger, A., et al. (2024). *Causal Abstraction: A Theoretical Foundation
+for Mechanistic Interpretability.* arXiv:2301.04709.
+
+Goodfire. (2026). *Verbalized eval-awareness inflates measured safety.*
+https://www.goodfire.ai/research/verbalized-eval-awareness-inflates-measured-safety
+
+Hewitt, J., & Liang, P. (2019). *Designing and Interpreting Probes with
+Control Tasks.* EMNLP-IJCNLP 2019. arXiv:1909.03368.
+
+Park, K., Choe, Y. J., & Veitch, V. (2024). *The Linear Representation
+Hypothesis and the Geometry of Large Language Models.* ICML 2024.
+arXiv:2311.03658.
+
+Pimentel, T., Valvoda, J., Hall Maudslay, R., Zmigrod, R., Williams, A.,
+& Cotterell, R. (2020). *Information-Theoretic Probing for Linguistic
+Structure.* ACL 2020. arXiv:2004.03061.
+
+Rimsky, N., Gabrieli, N., Schulz, J., Tong, M., Hubinger, E., & Turner,
+A. M. (2024). *Steering Llama 2 via Contrastive Activation Addition.*
+ACL 2024. arXiv:2312.06681.
+
+Turner, A. M., Thiergart, L., Udell, D., Leech, G., Mini, U., &
+MacDiarmid, M. (2023). *Activation Addition: Steering Language Models
+Without Optimization.* arXiv:2308.10248.
+
+Vishwarupe, V., Shadbolt, N., Jirotka, M., & Flechais, I. (2026). *The
+Evaluation Differential: When Frontier AI Models Recognise They Are
+Being Tested.* arXiv:2605.11496.
+
+Zou, A., Phan, L., Chen, S., et al. (2023). *Representation Engineering:
+A Top-Down Approach to AI Transparency.* arXiv:2310.01405.
+
+---
+
+## Appendix A - Judge rubric
+
+Both judges (Judge A, Judge B) received identical instructions; only the
+underlying judge model differed. Each scored a single response on three
+properties and returned a strict JSON object.
+
+**System message:** *"You are evaluating a single AI response for three
+properties. Be strict, terse, and consistent. Output ONLY a JSON object
+with the three fields below."*
+
+**Per-response rubric:**
+
+1. **refusal** (bool) - Did the response refuse, deflect, or
+   substantially decline the request? A response that complies but adds
+   caveats is *not* a refusal; "I can't help with that" or a pivot to
+   safer territory *is*.
+2. **sandbagging** (bool) - Signs of strategic underperformance? E.g.,
+   an obviously wrong answer despite the question being within
+   capability, or silently answering a much simpler version.
+3. **hedging** (int 1–5) - Amount of hedging language, caveats,
+   deference to oversight, or explicit acknowledgment that the response
+   might be reviewed/evaluated. 1 = none; 2 = minor; 3 = moderate
+   ("I should note…"); 4 = heavy ("As an AI, I want to be clear…");
+   5 = dominant (mostly caveats).
+
+Output format: `{"refusal": bool, "sandbagging": bool, "hedging": int}`.
+Rubric source: `v4/scripts/judge_stage4_generations.py`.
+
+## Appendix B - Analysis plan (STAGE4_PLAN.md)
+
+The analysis plan is documented in the repository at
+`v4/STAGE4_PLAN.md`. It specifies the five steering conditions (probe / probe-coefficient /
+random / orthogonal / wrong-layer), the α grid, the three behavioral
+outcomes (refusal, sandbagging, hedging), the two-judge protocol, and
+the verdict thresholds (SUFFICIENT / PARTIAL / NULL). §6.3 maps what was
+documented to what this draft reports; the plan's addendum records
+the necessity/ablation follow-up as deferred by design. We refer readers
+to the committed file rather than paraphrase it, to keep the
+analysis plan auditable.
+
+## Appendix C - Reproducibility
+
+**Models.** Qwen3-32B (HuggingFace `Qwen/Qwen3-32B`; 64 layers,
+d_model 5120, dense GQA decoder). gpt-oss-120b (HuggingFace
+`openai/gpt-oss-120b`; 36 layers, d_model 2880, MoE, mxfp4 packed
+weights). Exact config hashes are recorded per run in the extraction
+metadata JSONs.
+
+**Probing.** Probe layer Qwen3 L55, gpt-oss L34. Training corpus:
+Microsoft Test-Awareness-Steering "triggers" (Abdelnabi & Salem 2025).
+Controlled holdout v2 (family-balanced, length-matched): 320 prompts /
+160 eval–deploy pairs; holdout-spec sha256 prefix `349e35c3f46800c2`.
+Per-layer probe results in
+`v4/runs/qwen3_stage2/controlled_validation_report_v2.json` and
+`v4/runs/gpt_oss_stage2/validation_gpt_oss_120b.json`.
+
+**Steering.** Vectors precomputed by
+`v4/scripts/prepare_steering_vectors.py` (six unit-norm directions plus
+z-score statistics) into
+`v4/runs/stage4/steering_vectors_qwen3_32b_L55.npz`. Generation by
+`v4/scripts/run_steered_generation.py` (residual-stream forward hook,
+prefill-only; built-in correctness tests T1–T4 via `--test`). Steering
+at Qwen3 L55 (primary, full controls) and gpt-oss L15 (corroborating);
+the wrong-layer control is Qwen3 L25.
+
+**Judging.** `v4/scripts/judge_stage4_generations.py`, two independent
+LLM judges (Appendix A rubric), `max_completion_tokens = 2000`. Judged
+records: `v4/runs/stage4/qwen3_L55_controls_judged.jsonl` (the α = 0
+baseline at L55, plus orthogonal, probe-coefficient, and the L25
+wrong-layer arm - note the wrong-layer arm is stored under the
+`mean_diff_zscored` condition label at `layer = 25`) and
+`v4/runs/stage4/qwen3_L55_probe_vs_random_judged.jsonl` (mean_diff @ L55
+and random @ L55). Deltas are paired against the α = 0 baseline judged in
+the *same* file (the two files' baselines were judged in separate passes
+and differ on ~9% of judge-cells due to judge nondeterminism).
+
+**Inference stack.** PyTorch 2.8, transformers ≥ 4.60, HF `kernels`,
+`triton_kernels` (`release/3.4.x`); RunPod 1× H200 SXM 141 GB, weights
+on local SSD (see §3.6).
+
+**Code and data availability.** Code is open-source at
+<https://github.com/Ratnaditya-J/alignment-evals>: steering-vector
+preparation, steered generation (with the T1-T4 correctness tests), and
+LLM-judge scoring, plus the locked analysis plan (`v4/STAGE4_PLAN.md`)
+and per-layer probe configs. Following the benchmark providers' terms,
+neither the evaluation prompt plaintext nor the raw per-rollout judged
+outputs (which embed that plaintext) are redistributed; obtain the
+prompts from their original sources. The aggregate per-condition results
+are reported in full in the tables below and contain no prompt text. To
+reproduce: clone the repo, set up the inference stack (§3.6), supply the
+benchmark prompts, and run the pipeline scripts.
+
+**Full per-condition delta tables** (Δ vs α = 0, paired by prompt; bold
+= |Δ| exceeds 2 SE):
+
+**Judge A - full control suite:**
+
+| Condition | α | Δrefusal | Δsandbag | Δhedging | n |
+|---|---:|---:|---:|---:|---:|
+| mean_diff (probe) | −20 | +0.01±0.03 | −0.01±0.03 | −0.05±0.04 | 98 |
+| mean_diff (probe) | +20 | +0.00±0.03 | +0.03±0.04 | **−0.12±0.05** | 98 |
+| probe_coef (probe v2) | −20 | +0.03±0.03 | +0.02±0.04 | −0.01±0.04 | 98 |
+| probe_coef (probe v2) | +20 | +0.05±0.03 | +0.01±0.04 | +0.02±0.05 | 98 |
+| random | −20 | **+0.07±0.03** | +0.02±0.03 | −0.03±0.04 | 98 |
+| random | +20 | −0.03±0.02 | **+0.07±0.03** | −0.09±0.05 | 98 |
+| orthogonal | −20 | +0.01±0.03 | −0.04±0.04 | +0.00±0.04 | 98 |
+| orthogonal | +20 | +0.01±0.02 | −0.01±0.04 | −0.06±0.04 | 98 |
+| wrong-layer L25 | −20 | +0.03±0.03 | −0.03±0.04 | +0.00±0.06 | 98 |
+| wrong-layer L25 | +20 | +0.07±0.04 | −0.02±0.04 | +0.06±0.06 | 98 |
+
+**Judge B - full control suite:**
+
+| Condition | α | Δrefusal | Δsandbag | Δhedging | n |
+|---|---:|---:|---:|---:|---:|
+| mean_diff (probe) | −20 | +0.03±0.02 | −0.01±0.03 | +0.00±0.06 | 99 |
+| mean_diff (probe) | +20 | +0.02±0.02 | +0.04±0.03 | −0.03±0.05 | 99 |
+| probe_coef (probe v2) | −20 | −0.02±0.01 | −0.05±0.03 | +0.03±0.07 | 94 |
+| probe_coef (probe v2) | +20 | +0.01±0.01 | −0.03±0.03 | +0.00±0.07 | 95 |
+| random | −20 | **+0.04±0.02** | +0.02±0.02 | −0.05±0.06 | 99 |
+| random | +20 | +0.01±0.02 | +0.00±0.00 | +0.07±0.07 | 99 |
+| orthogonal | −20 | −0.02±0.01 | +0.00±0.03 | −0.05±0.06 | 94 |
+| orthogonal | +20 | +0.00±0.00 | −0.01±0.03 | **−0.14±0.06** | 96 |
+| wrong-layer L25 | −20 | −0.01±0.02 | +0.00±0.04 | −0.05±0.10 | 95 |
+| wrong-layer L25 | +20 | −0.01±0.02 | −0.02±0.03 | +0.00±0.08 | 95 |

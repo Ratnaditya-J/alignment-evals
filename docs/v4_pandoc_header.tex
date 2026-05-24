@@ -1,0 +1,19 @@
+% Header include for building docs/v4_paper_draft.md -> PDF with pandoc + xelatex.
+% The V4 paper uses several math-relation symbols that the STIX Two Text *text*
+% face does not carry (they live in STIX Two Math). Route just those glyphs
+% through math mode so they render from the math font; body text stays STIX.
+\usepackage{newunicodechar}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{≠}{\ensuremath{\neq}}
+\newunicodechar{∈}{\ensuremath{\in}}
+\newunicodechar{⊥}{\ensuremath{\perp}}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+
+% Reduce right-margin overflow from long inline code (file paths, CLI flags):
+% microtype tightens justification; emergencystretch + sloppy let TeX move
+% long unbreakable tokens to fresh lines instead of spilling past the margin.
+\usepackage{microtype}
+\setlength{\emergencystretch}{3em}
+\sloppy
