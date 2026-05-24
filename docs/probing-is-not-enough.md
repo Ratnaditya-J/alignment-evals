@@ -596,10 +596,10 @@ controls under the joint success criteria (Figure 4).** Full documented control 
 ![Steering effects at α=+20 on Qwen3-32B L55: the probe direction
 (`mean_diff`, shaded) versus probe-coefficient, random, orthogonal, and
 wrong-layer (L25) controls, for refusal, sandbagging, and hedging
-(points ±2 SE, both judges). No condition - including the probe - is
-displaced from zero more than the controls, or in a way that replicates
-across both judges. α=−20 and the full per-condition tables are reported
-in Appendix C.](figures/v4_steering_forest.png){width=100%}
+(points ±2 SE, both judges). The probe direction is not displaced from
+zero more than the controls, nor in a way that replicates across both
+judges. α=−20 and the full per-condition tables are reported in
+Appendix C.](figures/v4_steering_forest.png){width=100%}
 
 *Judge A:*
 
