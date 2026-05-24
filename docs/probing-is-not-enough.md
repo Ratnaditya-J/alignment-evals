@@ -415,14 +415,17 @@ to MS-triggers-specific text features that the baseline could
 memorize. Length-only baseline AUROC is 0.500 on both (the controlled
 holdout is length-matched within pairs by construction).
 
-**Figure 1** (the paper's headline cross-architecture figure;
-`v4/runs/v4b_cross_arch_probe_projection.png`): for each model, the
-holdout activations at the peak layer are projected onto the
-trained probe coefficient `w`, and the resulting 1-D scores are
-plotted as overlaid histograms of eval (red) vs deploy (blue). Both
-panels show clear class separation; the gpt-oss panel exhibits more
-spread and a partial bimodality in the eval distribution that traces
-to per-family variance (see Figure 2).
+For each model, the holdout activations at the peak layer are projected
+onto the trained probe coefficient `w`, and the resulting 1-D scores are
+plotted as overlaid histograms of eval vs deploy (Figure 1). Both panels
+show clear class separation; the gpt-oss panel exhibits more spread and
+a partial bimodality in the eval distribution that traces to per-family
+variance (Figure 2).
+
+![Cross-architecture eval/deploy linear-probe projection. For each
+model, controlled-holdout activations at the peak probing layer are
+projected onto the probe coefficient `w`; histograms show eval (red) vs
+deploy (blue), with the decision boundary dashed.](figures/v4_probe_projection.png){width=100%}
 
 **Per-family analysis** (gpt-oss-120b L34): probe AUROC varies
 substantially across the four framing families on the controlled
@@ -435,12 +438,18 @@ holdout:
 | C | 0.998 |
 | D | 1.000 |
 
-**Figure 2** (`v4/runs/gpt_oss_stage2/L34_probe_projection_per_family.png`):
-per-family histograms reveal that family C and family D are essentially
-perfectly separable, while family A has a calibration offset (good
-within-family ranking, but absolute probe scores systematically below
-the global decision threshold) and family B has genuine class overlap.
-We discuss the implications in §7. The Qwen3-32B L55 per-family
+Per-family histograms (Figure 2) reveal that family C and family D are
+essentially perfectly separable, while family A has a calibration offset
+(good within-family ranking, but absolute probe scores systematically
+below the global decision threshold) and family B has genuine class
+overlap. We discuss the implications in §7.
+
+![Per-family eval/deploy probe projection (gpt-oss-120b L34). Probe
+separability varies sharply across the four framing families: C and D
+near-perfect, A a calibration offset, B genuine class
+overlap.](figures/v4_per_family.png){width=90%}
+
+The Qwen3-32B L55 per-family
 breakdown (controlled holdout v2,
 `v4/runs/qwen3_stage2/controlled_validation_report_v2.json`) is:
 
@@ -464,18 +473,23 @@ offset (0.933) whereas Qwen3 family A is near-perfect (0.997) - so we
 report per-family structure as partly model-specific and do **not**
 assert a detailed shared cross-architecture per-family pattern.
 
-**Diagnostic** (`v4/runs/gpt_oss_stage2/L34_pca_2d.png` and the Qwen3
-counterpart at `v4/runs/qwen3_stage2/L55_pca_2d.png`): unsupervised
-2-D PCA of the holdout activations is dominated by the four framing
-families (PC1+PC2 capture ~25–30% of variance and cleanly cluster by
-family, not by eval/deploy label). This is the right diagnostic
-outcome: it confirms that eval/deploy is *not* the largest variance
-axis at these layers - it is a smaller consistent shift not captured
-by the first two PCA axes (which are dominated by family structure).
-Whether the probe's learned direction is statistically orthogonal to
-the family-discriminating directions specifically would require an
-explicit measurement we have not yet run; we report only the visual
-PCA observation here.
+Unsupervised 2-D PCA of the holdout activations (Figure 3) is dominated
+by the four framing families: PC1+PC2 capture ~25–30% of variance and
+cleanly cluster by family, not by eval/deploy label. This is the right
+diagnostic outcome: it confirms that eval/deploy is *not* the largest
+variance axis at these layers - it is a smaller consistent shift not
+captured by the first two PCA axes (which are dominated by family
+structure); gpt-oss-120b L34 shows the same pattern. Whether the
+probe's learned direction is statistically orthogonal to the
+family-discriminating directions specifically would require an explicit
+measurement we have not yet run; we report only the visual PCA
+observation here.
+
+![2-D PCA of Qwen3-32B L55 holdout activations, colored by eval/deploy
+label (left) and by framing family (right). The top two principal
+components cluster by family, not by eval/deploy, so the eval/deploy
+distinction is a smaller shift off the dominant variance
+axes.](figures/v4_pca.png){width=100%}
 
 **Depth-portability does not hold.** We documented the prediction
 that gpt-oss's optimal probe layer would match Qwen3 L55's depth
@@ -575,7 +589,7 @@ Output-change-rate and behavioral-effect are fully decoupled: the
 probe direction is not privileged on either axis.
 
 **Behavioral effects: the probe direction does not reliably exceed
-controls under the joint success criteria.** Full documented control suite
+controls under the joint success criteria (Figure 4).** Full documented control suite
 (n ≈ 98–100 per cell, paired Δ vs α=0 baseline):
 
 *Judge A:*
@@ -593,6 +607,13 @@ controls under the joint success criteria.** Full documented control suite
 *(Bold = |Δ| exceeds 2 SE. Δ = steered − α=0 baseline, paired by
 prompt, n ≈ 98. The complete 10-row table for both judges is in
 Appendix C.)*
+
+![Steering effects at α=+20 on Qwen3-32B L55: the probe direction
+(`mean_diff`, shaded) versus probe-coefficient, random, orthogonal, and
+wrong-layer (L25) controls, for refusal, sandbagging, and hedging
+(points ±2 SE, both judges). No condition - including the probe - is
+displaced from zero more than the controls, or in a way that replicates
+across both judges.](figures/v4_steering_forest.png){width=100%}
 
 *Judge B:* signs scattered, the probe direction has **no** cell beyond
 2 SE, and no condition exceeds the others; the single cell beyond 2 SE
