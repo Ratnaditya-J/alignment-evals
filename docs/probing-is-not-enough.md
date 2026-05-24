@@ -150,6 +150,7 @@ sufficient under direct intervention (steering)*.
 
 **Foundational threads.** Our contribution builds on, and is bounded
 by, several strands of prior work (full citations in References):
+
 - **Probing classifiers and their critique**: Alain & Bengio 2016
   (original probing); Hewitt & Liang 2019 (control tasks); Belinkov 2022
   (probing-classifiers survey); Pimentel et al. 2020 (information-theoretic critique).
@@ -377,6 +378,7 @@ Rubric and exact prompt template in Appendix A.
 **Inter-rater agreement (both judges, Qwen3 L55 dataset).** Across the
 combined judged Qwen3 L55 records (≈1180/1200 valid for each judge),
 the two judges agree at:
+
 - Refusal: 88.8–91.4% (across the probe-vs-random and controls files)
 - Sandbagging: 69.1–80.1%
 - Hedging: Pearson r = 0.67–0.77
@@ -450,8 +452,7 @@ near-perfect, A a calibration offset, B genuine class
 overlap.](figures/v4_per_family.png){width=90%}
 
 The Qwen3-32B L55 per-family
-breakdown (controlled holdout v2,
-`v4/runs/qwen3_stage2/controlled_validation_report_v2.json`) is:
+breakdown (controlled holdout v2) is:
 
 | Family | Probe AUROC (L55) | MS-TF-IDF AUROC |
 |---|---:|---:|
@@ -592,6 +593,14 @@ probe direction is not privileged on either axis.
 controls under the joint success criteria (Figure 4).** Full documented control suite
 (n ≈ 98–100 per cell, paired Δ vs α=0 baseline):
 
+![Steering effects at α=+20 on Qwen3-32B L55: the probe direction
+(`mean_diff`, shaded) versus probe-coefficient, random, orthogonal, and
+wrong-layer (L25) controls, for refusal, sandbagging, and hedging
+(points ±2 SE, both judges). No condition - including the probe - is
+displaced from zero more than the controls, or in a way that replicates
+across both judges. α=−20 and the full per-condition tables are reported
+in Appendix C.](figures/v4_steering_forest.png){width=100%}
+
 *Judge A:*
 
 | Condition | α | Δrefusal | Δsandbag | Δhedging |
@@ -608,13 +617,6 @@ controls under the joint success criteria (Figure 4).** Full documented control 
 prompt, n ≈ 98. The complete 10-row table for both judges is in
 Appendix C.)*
 
-![Steering effects at α=+20 on Qwen3-32B L55: the probe direction
-(`mean_diff`, shaded) versus probe-coefficient, random, orthogonal, and
-wrong-layer (L25) controls, for refusal, sandbagging, and hedging
-(points ±2 SE, both judges). No condition - including the probe - is
-displaced from zero more than the controls, or in a way that replicates
-across both judges.](figures/v4_steering_forest.png){width=100%}
-
 *Judge B:* signs scattered, the probe direction has **no** cell beyond
 2 SE, and no condition exceeds the others; the single cell beyond 2 SE
 is a *control* (orthogonal +20 hedging, −0.14±0.06).
@@ -628,6 +630,7 @@ documented joint criterion: a genuine effect should **exceed controls**,
 be **dose-responsive** in α, and be **judge-agreed**. We do not run a
 formal statistical equivalence test. Against that criterion, the probe
 direction fails on all three counts:
+
 - **Not control-exceeding overall.** Probe deltas do not exceed controls
   on refusal or sandbagging; the largest refusal and sandbagging effects
   belong to controls. The probe's only leading cell is hedging at +20
@@ -661,6 +664,7 @@ detectably more potent than equal-magnitude random perturbations under
 steering.**
 
 Scope, stated precisely:
+
 - The complete probe-vs-control comparison (probe ≈ random ≈ orthogonal
   ≈ wrong-layer, two judges, n = 100) is established for **Qwen3-32B
   L55**. This is the paper's primary causal evidence.
@@ -934,6 +938,7 @@ contrast as hypothesis-generating, not as an architectural conclusion.*
 ### 7.6 What we don't claim
 
 We don't claim:
+
 - The model lacks an internal representation of eval-awareness - we
   only show this *particular* probe-recovered direction is not
   causally distinguishable from random under additive steering.
@@ -1065,9 +1070,9 @@ scope, not the validity of the Qwen3 L55 result.
 Activation-level probes recover cross-distribution eval-vs-deploy
 framing signals on two open-weight reasoning models of different
 architecture families (Qwen3-32B dense, L55, AUROC 0.917; gpt-oss-120b
-MoE, L34, AUROC 0.896). On Qwen3-32B L55 - the strongest probing layer
-- steering on the probe-recovered direction (n = 100, two judges,
-full control suite) produces behavioral effects **not detectably
+MoE, L34, AUROC 0.896). On Qwen3-32B L55, the strongest probing layer,
+steering on the probe-recovered direction (n = 100, two judges, full
+control suite) produces behavioral effects **not detectably
 larger than random, orthogonal, and wrong-layer controls of
 equal magnitude**: no probe effect is robustly larger than the matched
 controls, despite output text changing in ~75% of prompts (a rate the

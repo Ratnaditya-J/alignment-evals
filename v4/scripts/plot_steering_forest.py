@@ -86,15 +86,15 @@ def main():
     ypos = list(range(n_c))[::-1]  # probe at top
     probe_y = ypos[0]
 
-    fig, axes = plt.subplots(1, 3, figsize=(12, 3.6), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(12, 6), sharey=True)
     for ax, (m, mlabel) in zip(axes, metrics):
         ax.axhspan(probe_y - 0.45, probe_y + 0.45, color="0.92", zorder=0)
         ax.axvline(0, ls="--", color="0.4", lw=1, zorder=1)
         for (label, recs, base, cond, layer), y in zip(conds, ypos):
             for jk, _ in judges:
                 mu, se = delta(cell(recs, cond, layer, ALPHA), base, jk, m)
-                ax.errorbar(mu, y + offset[jk], xerr=2 * se, fmt="o", ms=4,
-                            capsize=2, color=colors[jk], zorder=3)
+                ax.errorbar(mu, y + offset[jk], xerr=2 * se, fmt="o", ms=6,
+                            capsize=3, color=colors[jk], zorder=3)
         ax.set_title(mlabel, fontsize=10)
         ax.set_xlabel("Δ vs α=0  (±2 SE)", fontsize=8)
         ax.grid(axis="x", ls=":", alpha=0.4)
