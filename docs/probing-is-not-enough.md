@@ -399,7 +399,7 @@ runs reported here.
 
 ## 5. Results
 
-### 5.1 Cross-architecture probing replicates (V4b)
+### 5.1 Cross-architecture probing replicates
 
 **Headline numbers** (probe trained on MS triggers, evaluated on
 controlled holdout v2, n = 320 prompts):
@@ -498,7 +498,7 @@ probe layer is L34 (depth 0.94) - substantially later. Cross-architecture
 optimal-layer selection cannot assume depth fraction transfers; a
 per-model layer sweep is required.
 
-### 5.2 Causal sufficiency test (Stage 4): L34 is non-responsive
+### 5.2 Causal sufficiency test: L34 is non-responsive
 
 We first attempted steering at the probe-optimal layer for each model.
 On gpt-oss-120b L34, **outputs were byte-identical across α ∈

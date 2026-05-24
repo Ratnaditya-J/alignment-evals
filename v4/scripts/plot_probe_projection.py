@@ -51,7 +51,7 @@ def plot_panel(ax, scores, y, title: str, auroc: float) -> None:
     ax.axvline(0, color="black", linestyle="--", linewidth=1, label="decision boundary")
     ax.set_xlabel("probe score (activation · w + b)")
     ax.set_ylabel("count")
-    ax.set_title(f"{title}\nAUROC = {auroc:.3f}")
+    ax.set_title(title)
     ax.legend()
     ax.grid(alpha=0.3)
 
@@ -81,7 +81,7 @@ def main() -> None:
     plot_panel(axes[0], scores_L, y_L, args.left_title, auroc_L)
     plot_panel(axes[1], scores_R, y_R, args.right_title, auroc_R)
 
-    fig.suptitle("V4b cross-architecture replication: eval/deploy linear-probe projection",
+    fig.suptitle("Cross-architecture eval/deploy linear-probe projection",
                  fontsize=13)
     plt.tight_layout()
 
