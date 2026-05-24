@@ -1,8 +1,8 @@
 # Probing Is Not Enough: Eval/Deploy Directions Are Decodable but Not Causally Sufficient for Behavior
 
-Ratnaditya J.
+Ratnaditya Jonnalagadda
 
-*May 2026*
+*ratnaditya@gmail.com · May 2026*
 
 ---
 
