@@ -1,60 +1,68 @@
 # alignment-evals
 
-Empirical alignment-eval research and the shared infrastructure that supports it. Topics: evaluation awareness, sandbagging, scheming-style behavior, honesty evals — measured directly, with pre-registered designs and replication discipline.
+Empirical research on evaluation awareness and safety-relevant signals in language models.
 
-**NOTE: Refer to V2 [below](https://github.com/Ratnaditya-J/alignment-evals/blob/main/README.md#v2) for the complete picutre on eval-awareness work.**
+## Current Paper
 
-## What's in here
+### Probing Is Not Enough: Eval/Deploy Directions Are Decodable but Not Causally Sufficient for Behavior
 
-- **V1 Evaluation Awareness (complete).** A cross-protocol behavioral study of 8 frontier models + a Goodfire-style reasoning-trace analysis on the open-reasoning trio + a closed-source extension on `claude-opus-4-7` + a pre-registered disjoint-prompt replication on `qwen3-235B`.
-  - Paper: [`docs/paper_draft.md`](docs/paper_draft.md)
-  - Blog (long-form): [`docs/blog_draft.md`](docs/blog_draft.md)
-  - Blog (~800-word version): [`docs/blog_draft_short.md`](docs/blog_draft_short.md)
-  - Pre-registration document (filed before the replication ran; see git history for proof of timing): [`docs/pre_registration_qwen3_safety_mediation.md`](docs/pre_registration_qwen3_safety_mediation.md)
-- **V2 (completed) ** Extending to Apollo Research's released 1,000-prompt evaluation-awareness benchmark for a labeled-ground-truth analysis.
-- **Future Roadmap** for sandbagging / scheming-style probes and honesty evals: docs/v2_research_synthesis.md, docs/v2_architecture.md, docs/eval_awareness_sota_roadmap.md.
+[Paper PDF](docs/probing-is-not-enough.pdf) | [Markdown version](docs/probing-is-not-enough.md) | [V4 methods and scripts](v4/)
 
-## V1 takeways
+Linear probes can distinguish evaluation prompts from deployment-style prompts in residual-stream activations across two open-weight reasoning models. The key question is whether the recovered direction is behaviorally meaningful under intervention.
 
-> Inject framing changes safety refusal in two reasoning models in opposite directions (qwen3 refuses +22pp more, opus refuses −34pp less). Neither effect shows up in the strict-VEA reasoning-trace signal; both manifest in the stratum where the model never wrote anything like "this is an eval." Explicit verbalized eval-awareness is correlated with the inject framing (replicated four times on qwen3) but is **not** the channel through which inject changes refusal behavior on a fresh, pre-registered prompt sample.
+| Model | Architecture | Peak probe layer | Cross-distribution AUROC |
+| --- | --- | ---: | ---: |
+| Qwen3-32B | Dense decoder | L55 | **0.917** |
+| gpt-oss-120b | Sparse MoE | L34 | **0.896** |
 
-For details, the [paper](docs/paper_draft.md) is the canonical reference.
+On Qwen3-32B at L55, steering the probe-recovered direction did not produce effects on refusal, sandbagging, or hedging that were detectably larger than equal-magnitude random, orthogonal, or wrong-layer interventions. Surface text changed under all steering directions, but not in a probe-specific behavioral pattern.
 
-## Repro results
+![Controlled Qwen3 steering comparison](docs/figures/v4_steering_forest.png)
 
-Two reproduction paths:
+**Conclusion:** probe recoverability is evidence that eval/deploy information is linearly encoded. It is not, by itself, evidence that the recovered direction is causally sufficient for behavior.
 
-- **Judge-only** (~$10-$20, ~30 min run time). Re-run only the VEA judge against the released rollout bundle at [v1.0-rollouts](https://github.com/Ratnaditya-J/alignment-evals/releases/tag/v1.0-rollouts) (`alignment-evals-rollouts.tar.gz`; namespaced `v1/`, `v2/`, `v3/`; the `runs/` tree itself is not committed to this repo because of cumulative size); the trace JSON is saved per rollout so the model-under-test does not need to be re-invoked. Recommended for verifying §5.2-§5.4 numbers.
-- **Full** (~$500 in API fees, a few hours). Re-run every model + judge call from scratch across the cross-protocol experiment (8 models × 4 conditions × n=2,000), the Goodfire open-reasoning trio (n=500), the opus-4.7 extension (n=300), the pre-registered qwen3 replication (n=200), and the judge passes over all of them.
+**Scope:** the full matched-control steering comparison is complete for Qwen3-32B at L55. The gpt-oss-120b experiments establish cross-architecture decodability and a corroborating probe-direction steering null, but do not include the full matched-control suite. The paper tests sufficiency under single-layer additive steering, not all forms of causal relevance or operational monitoring usefulness.
 
-Each summary JSON records the seeds, judge model identifiers, and prompt-template hashes used in its production.
+## V4 Artifacts
 
-## V2 
+| Artifact | Location |
+| --- | --- |
+| Paper | [`docs/probing-is-not-enough.pdf`](docs/probing-is-not-enough.pdf) |
+| Technical source | [`docs/probing-is-not-enough.md`](docs/probing-is-not-enough.md) |
+| Experimental plan | [`v4/STAGE4_PLAN.md`](v4/STAGE4_PLAN.md) |
+| Methodology | [`v4/METHODOLOGY_v2.md`](v4/METHODOLOGY_v2.md) |
+| Activation extraction and probe training | [`v4/scripts/`](v4/scripts/) |
+| Steering and judge rubric | [`v4/scripts/STAGE4_README.md`](v4/scripts/STAGE4_README.md), [`v4/judges/rubric_v1.md`](v4/judges/rubric_v1.md) |
+| Figures | [`docs/figures/`](docs/figures/) |
 
-- **V2 (Completed):** integrate Apollo Research's [eval-awareness benchmark](https://github.com/jjpn97/eval_awareness) (1,000 labeled eval-vs-deployment transcripts) as a new corpus. Run the existing 4-condition arxiv protocol on top to study intrinsic eval signal × extrinsic eval cue interactions. Paper: [`docs/paper.pdf`](docs/paper.pdf)
-- **Sandbagging probes (upcoming)** behavioral measurements designed to detect strategic under-performance during evaluation.
-- **Honesty evals (upcoming):** measuring whether model self-reports about reasoning, beliefs, and capabilities track ground truth.
-- **Scheming-style behavioral probes (upcoming)** following Apollo Research's lead.
+Reproduction requires open model weights, benchmark prompts from their original sources, and GPU inference. Raw prompt-bearing rollouts and activation files are not redistributed. The paper reports the aggregate results and inference stack in detail.
 
-See docs/v2_research_synthesis.md and docs/v2_architecture.md for the design details.
+## Earlier Studies: Prompt And Trace-Level Eval Awareness
 
-## Related work
+The earlier V1-V3 studies examine whether evaluation-related prompt cues change visible behavior and whether explicit mentions in reasoning traces track those changes.
 
-- Apollo Research, [*Large Language Models Often Know When They Are Being Evaluated*](https://arxiv.org/abs/2505.23836) (Needham et al. 2025) — transcript-level classification of eval vs deployment.
-- Laine et al., [*Me, Myself, and AI: The Situational Awareness Dataset (SAD)*](https://arxiv.org/abs/2407.04694) (NeurIPS 2024) — 7-category, 16-task benchmark of model self-knowledge.
-- Apollo Research, [*Claude Sonnet 3.7 often knows when it's in alignment evaluations*](https://www.apolloresearch.ai/science/claude-sonnet-37-often-knows-when-its-in-alignment-evaluations/).
-- Goodfire's spontaneous-VEA work and Anthropic's alignment-faking research are also relevant prior art.
+| Study | Question | Main result | Artifact |
+| --- | --- | --- | --- |
+| V1 | Does explicit evaluation framing change behavior and verbalized eval awareness? | Safety refusal shifted in opposite directions for Opus and qwen3 on prompts where neither verbalized the evaluation. A pre-registered qwen3 mediation replication returned null. | [`docs/paper_draft.md`](docs/paper_draft.md) |
+| V2 | Do prompts intrinsically labeled as evaluation-like predict behavior? | Eval-labeled prompts predicted higher refusal across six models; five of six effects survived correction. | [`docs/paper.pdf`](docs/paper.pdf) |
+| V3 | Is the explicit framing effect attributable to one clause? | No singleton clause survived correction; the active-model pattern was compatible with distributed contributions. | [`docs/paper.pdf`](docs/paper.pdf) |
 
-## Background
+Public summary: [The Prompt Is the Tell, Not the Reasoning Trace: Eval Awareness](https://medium.com/@ratnaditya/the-prompt-is-the-tell-not-the-reasoning-trace-eval-awareness-241287e9ac70)
 
-I created eval-awareness work originally inside the `IsItBenchmark` repository (which focuses on benchmark contamination detection) and was spun off into this dedicated repository in May 2026 to:
+These studies motivate the activation-level paper but do not subsume it. V1-V3 evaluate prompts, behavior, and text-level reasoning traces. V4 tests internal activation signals with controlled interventions.
 
-- give the alignment-eval audience a clearly-named home for the work,
-- make space for the planned sandbagging / honesty / scheming work,
-- maintain the contamination-detection codebase separately.
+## Repository Layout
 
-Commit history from before the spinoff is preserved in this repository via `git filter-repo` original commit timestamps and authors are intact, which matters for the pre-registration document's filing timestamp. The pre-spinoff commits are also visible in [`Ratnaditya-J/IsItBenchmark`](https://github.com/Ratnaditya-J/IsItBenchmark).
+| Path | Contents |
+| --- | --- |
+| [`docs/`](docs/) | Papers, public write-ups, figures, and pre-registration documents |
+| [`v4/`](v4/) | Activation-level probing and steering study |
+| [`scripts/`](scripts/) | Paper and figure build utilities |
+
+## Contact
+
+Ratnaditya Jonnalagadda, [ratnaditya@gmail.com](mailto:ratnaditya@gmail.com)
 
 ## License
 
-MIT. Feel free to use this for any future development or improvements on eval awareness work. 
+MIT
