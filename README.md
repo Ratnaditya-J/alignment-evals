@@ -6,7 +6,7 @@ Empirical research on evaluation awareness and safety-relevant signals in langua
 
 ### Probing Is Not Enough: Eval/Deploy Directions Are Decodable but Not Causally Sufficient for Behavior
 
-[Paper PDF](docs/probing-is-not-enough.pdf) | [Markdown version](docs/probing-is-not-enough.md) | [V4 methods and scripts](v4/)
+[Paper PDF](docs/probing-is-not-enough.pdf)
 
 Linear probes can distinguish evaluation prompts from deployment-style prompts in residual-stream activations across two open-weight reasoning models. The key question is whether the recovered direction is behaviorally meaningful under intervention.
 
@@ -23,17 +23,9 @@ On Qwen3-32B at L55, steering the probe-recovered direction did not produce effe
 
 **Scope:** the full matched-control steering comparison is complete for Qwen3-32B at L55. The gpt-oss-120b experiments establish cross-architecture decodability and a corroborating probe-direction steering null, but do not include the full matched-control suite. The paper tests sufficiency under single-layer additive steering, not all forms of causal relevance or operational monitoring usefulness.
 
-## V4 Artifacts
+## V4 Implementation
 
-| Artifact | Location |
-| --- | --- |
-| Paper | [`docs/probing-is-not-enough.pdf`](docs/probing-is-not-enough.pdf) |
-| Technical source | [`docs/probing-is-not-enough.md`](docs/probing-is-not-enough.md) |
-| Experimental plan | [`v4/STAGE4_PLAN.md`](v4/STAGE4_PLAN.md) |
-| Methodology | [`v4/METHODOLOGY_v2.md`](v4/METHODOLOGY_v2.md) |
-| Activation extraction and probe training | [`v4/scripts/`](v4/scripts/) |
-| Steering and judge rubric | [`v4/scripts/STAGE4_README.md`](v4/scripts/STAGE4_README.md), [`v4/judges/rubric_v1.md`](v4/judges/rubric_v1.md) |
-| Figures | [`docs/figures/`](docs/figures/) |
+[Methodology](v4/METHODOLOGY_v2.md) | [Scripts](v4/scripts/) | [Figures](docs/figures/)
 
 Reproduction requires open model weights, benchmark prompts from their original sources, and GPU inference. Raw prompt-bearing rollouts and activation files are not redistributed. The paper reports the aggregate results and inference stack in detail.
 
