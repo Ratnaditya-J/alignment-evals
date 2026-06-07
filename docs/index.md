@@ -10,6 +10,7 @@ Across **32,170 rollouts**, eval-related prompt cues predicted refusal shifts mo
 
 [Read the Medium post](https://medium.com/@ratnaditya/the-prompt-is-the-tell-not-the-reasoning-trace-eval-awareness-241287e9ac70) ·
 [Paper PDF](paper.pdf) ·
+[Illustrated research walkthrough](eval-awareness-illustrations.md) ·
 [Code and data](https://github.com/Ratnaditya-J/alignment-evals) ·
 [Rollout release](https://github.com/Ratnaditya-J/alignment-evals/releases/tag/v1.0-rollouts) ·
 
@@ -51,6 +52,7 @@ The narrower claim is: **text-level reasoning-trace mentions were not a reliable
 
 - [Medium post](https://medium.com/@ratnaditya/the-prompt-is-the-tell-not-the-reasoning-trace-eval-awareness-241287e9ac70)
 - [Paper PDF](paper.pdf)
+- [Illustrated research walkthrough](eval-awareness-illustrations.md)
 - [Technical draft](paper_draft.md)
 - [Rollout data and summary JSONs](https://github.com/Ratnaditya-J/alignment-evals/releases/tag/v1.0-rollouts)
 - [GitHub repository](https://github.com/Ratnaditya-J/alignment-evals)
