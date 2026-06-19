@@ -32,7 +32,11 @@ judges) likewise shows no robust or judge-agreed behavioral effect for the probe
 Together these results support the claim that **probe-recoverability
 does not imply causal sufficiency**: a direction can be highly
 linearly-decodable (AUROC up to 0.917) yet behaviorally no more potent
-than equal-magnitude random perturbations. We argue activation-level
+than equal-magnitude random perturbations. This corroborates concurrent
+work (Nguyen et al., 2025) that found probe-direction steering does not
+recover sandbagging, and strengthens it with a matched
+random/orthogonal/wrong-layer control suite, three behavioral outcomes,
+and a second architecture. We argue activation-level
 safety claims require controlled
 causal tests - with random/orthogonal controls - beyond probe AUROC
 alone. (Scope: the full controlled comparison is complete for Qwen3-32B
@@ -93,6 +97,12 @@ white-box evaluation access (Apollo Research, May 2026): such access is
 necessary for *asking* activation-level causal questions about eval-awareness, but our
 results show it is not sufficient for *answering* them - probe accuracy
 must be followed by controlled causal tests (§7.3).
+
+Concurrent work (Nguyen et al., arXiv 2507.01786) reports a closely
+related probe-steering null for sandbagging on Llama-3.3-70B; we
+corroborate it and strengthen it with a matched-direction control suite,
+additional behavioral outcomes (refusal, sandbagging, hedging), and a
+second architecture (see §2).
 
 ### 1.1 Contributions
 
@@ -202,12 +212,56 @@ of them:
    but probe accuracy alone is not evidence that a decoded feature is a
    behavioral lever.
 
+4. *Probe-direction steering of eval-awareness (closest prior result).*
+   Nguyen et al. (arXiv 2507.01786, "Probing and Steering Evaluation
+   Awareness") probe eval-awareness on Llama-3.3-70B-Instruct and steer
+   along the linear-probe direction to recover sandbagged WMDP
+   performance. They report that probe-direction steering gives under 5%
+   recovery at all magnitudes (versus 83% for a "you are deployed" prompt
+   suffix and roughly 25% for SAE-feature steering), concluding the model
+   "[does not] use these evaluation awareness representations to sandbag."
+   This is the closest result to ours, and our finding **corroborates**
+   it. We strengthen and generalize it in three ways: (i) a
+   matched-direction control suite (random, orthogonal, wrong-layer at
+   equal magnitude) showing the probe direction is not merely
+   low-recovery but *not control-exceeding*; (ii) three behavioral
+   outcomes (refusal, sandbagging, hedging) with two judges and a
+   four-part success criterion, not WMDP recovery alone; (iii) two
+   architectures (Qwen3-32B dense, gpt-oss-120b MoE) rather than one.
+   **Corroborated; we add matched controls, behaviors, and
+   cross-architecture scope.**
+
+5. *Steering as a capability-elicitation technique.* The Elicitation
+   Game (arXiv 2502.02180) benchmarks elicitation methods on
+   password-locked and circuit-broken model organisms and finds
+   activation steering is a weak elicitor relative to prompting and
+   fine-tuning (e.g., at most 2% on APPS code generation), using a
+   persona/truthfulness steering concept without matched-direction
+   controls. Their question is which technique best *recovers a hidden
+   capability*; ours is whether the *eval-awareness probe direction* is
+   causally sufficient for eval-sensitive behavior under matched
+   controls. **Related theme (steering underperforms); different
+   construct and controls.**
+
+6. *Linear probes rely on textual evidence (detection side).* Boxo et
+   al. (arXiv 2509.21344) show linear-probe *detection* accuracy
+   collapses when textual leakage is removed - sandbagging AUROC drops
+   from 0.94 to chance (0.50) on a non-verbalizing model organism -
+   arguing probes read surface text rather than "cognition." That
+   critique targets probe validity on the *detection* side; our result
+   is on the *causal/steering* side. **Complementary failure mode of the
+   same overclaiming pattern.**
+
 The compact statement of our differentiation: **we test the causal
 sufficiency of a probe-decodable eval/deploy direction under controlled
 activation steering.** Prior work establishes that the direction is
-decodable (probing) and that *trace-level* eval-awareness can be causal
-(Goodfire); we add that the *activation-probe direction itself* is not
-causally sufficient relative to matched controls in the models we test.
+decodable (probing), that *trace-level* eval-awareness can be causal
+(Goodfire), and that probe-direction steering yields little sandbagging
+recovery on a single model (Nguyen et al. 2507.01786); we corroborate
+that last result and strengthen it with a matched-direction control
+suite (random/orthogonal/wrong-layer), three behavioral outcomes, and
+two architectures - showing the probe direction is not merely
+low-recovery but *not control-exceeding* in the models we test.
 
 ---
 
@@ -1116,6 +1170,10 @@ https://www.apolloresearch.ai/governance/the-need-for-deeper-white-box-access-to
 Belinkov, Y. (2022). *Probing Classifiers: Promises, Shortcomings, and
 Advances.* Computational Linguistics, 48(1), 207–219. arXiv:2102.12452.
 
+Boxo, G., Neelappa, A., & Raval, S. (2026). *Linear probes rely on
+textual evidence: Results from leakage mitigation studies in language
+models.* arXiv:2509.21344.
+
 Conmy, A., Mavor-Parker, A. N., Lynch, A., Heimersheim, S., &
 Garriga-Alonso, A. (2023). *Towards Automated Circuit Discovery for
 Mechanistic Interpretability.* NeurIPS 2023. arXiv:2304.14997.
@@ -1128,6 +1186,14 @@ https://www.goodfire.ai/research/verbalized-eval-awareness-inflates-measured-saf
 
 Hewitt, J., & Liang, P. (2019). *Designing and Interpreting Probes with
 Control Tasks.* EMNLP-IJCNLP 2019. arXiv:1909.03368.
+
+Hofstätter, F., van der Weij, T., Teoh, J., Djoneva, R., Bartsch, H., &
+Ward, F. R. (2025). *The Elicitation Game: Evaluating Capability
+Elicitation Techniques.* ICML 2025 (PMLR 267). arXiv:2502.02180.
+
+Nguyen, J., Hoang, K., Attubato, C. L., & Hofstätter, F. (2025).
+*Probing and Steering Evaluation Awareness of Language Models.* ICML 2025
+Workshops (AIW & TAIG). arXiv:2507.01786.
 
 Park, K., Choe, Y. J., & Veitch, V. (2024). *The Linear Representation
 Hypothesis and the Geometry of Large Language Models.* ICML 2024.
