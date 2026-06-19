@@ -6,6 +6,8 @@ Empirical research on evaluation awareness and safety-relevant signals in langua
 
 ### Probing Is Not Enough: Eval/Deploy Directions Are Decodable but Not Causally Sufficient for Behavior
 
+**Status: submitted to TMLR (OpenReview) on 2026-06-18 — under double-blind review.**
+
 [Paper PDF](docs/probing-is-not-enough.pdf)
 
 Linear probes can distinguish evaluation prompts from deployment-style prompts in residual-stream activations across two open-weight reasoning models. The key question is whether the recovered direction is behaviorally meaningful under intervention.
