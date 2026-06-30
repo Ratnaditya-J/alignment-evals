@@ -142,3 +142,9 @@ v4/runs/qwen3_stage2/*.npz
 
 v4/runs/qwen3_stage2/*.npz
 *.npz
+
+# Local endorsement-strategy notes — contain third-party contact info; keep OUT of this public repo
+docs/arxiv-endorsement-status.md
+docs/endorser_candidates.md
+docs/endorsement_email_jord.md
+assets/
